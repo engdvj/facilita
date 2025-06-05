@@ -44,3 +44,4 @@ def test_create_category_and_color(client, app):
     # verify listing
     res = client.get('/api/categories')
     assert any(c['id'] == cat_id for c in res.get_json())
+

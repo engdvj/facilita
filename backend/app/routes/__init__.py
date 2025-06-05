@@ -62,6 +62,7 @@ def create_category():
         return {'message': 'Missing name'}, 400
     category = Category(
         name=name,
+
         color=data.get('color'),
         icon=data.get('icon')
     )
@@ -71,6 +72,7 @@ def create_category():
     except IntegrityError:
         db.session.rollback()
         return {'message': 'Category already exists'}, 400
+
     return {
         'id': category.id,
         'name': category.name,
@@ -100,3 +102,4 @@ def create_color():
         db.session.rollback()
         return {'message': 'Color already exists'}, 400
     return {'id': color.id, 'value': color.value}, 201
+
