@@ -16,7 +16,10 @@ cd backend
 python -m venv venv
 source venv/bin/activate ou venv\Scripts\activate
 pip install -r requirements.txt
-export JWT_SECRET_KEY=uma-chave-secreta  # defina em producao
+# A aplicacao usa por padrao a chave 'facilita-dev-secret' quando executada em
+# modo de desenvolvimento. Para producao, defina sua propria:
+# export JWT_SECRET_KEY=uma-chave-secreta
+# ou deixe sem definir e ela usara a padrao acima
 python setup_db.py  # cria o banco e o usuário admin
 python wsgi.py      # inicia o servidor em http://localhost:5000
 ```

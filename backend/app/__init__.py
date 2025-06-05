@@ -1,11 +1,10 @@
 from flask import Flask
 from .extensions import db, jwt, cors
 import os
-import secrets
 
-
-def create_app():
+def create_app(debug: bool = False):
     app = Flask(__name__)
+    app.config.setdefault("DEBUG", debug)
     app.config.setdefault(
         "SQLALCHEMY_DATABASE_URI",
         os.getenv("DATABASE_URL", "sqlite:///facilita.sqlite"),
@@ -14,10 +13,10 @@ def create_app():
 
     secret = os.getenv("JWT_SECRET_KEY")
     if not secret:
-        if app.debug:
-            secret = secrets.token_hex(16)
+        if app.config.get("DEBUG"):
+            secret = "facilita-dev-secret"
             print(
-                "WARNING: JWT_SECRET_KEY not set; using a random key for development",
+                "WARNING: JWT_SECRET_KEY not set; using development default",
                 flush=True,
             )
         else:
