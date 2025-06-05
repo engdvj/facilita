@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required
+from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import User, Link, Category, Color
 
@@ -36,9 +37,13 @@ def list_categories():
 @jwt_required()
 def create_link():
     data = request.get_json() or {}
+    title = data.get('title')
+    url = data.get('url')
+    if not title or not url:
+        return {'message': 'Missing title or url'}, 400
     link = Link(
-        title=data.get('title'),
-        url=data.get('url'),
+        title=title,
+        url=url,
         category_id=data.get('category_id'),
         color=data.get('color'),
         image_url=data.get('image_url')
@@ -52,13 +57,22 @@ def create_link():
 @jwt_required()
 def create_category():
     data = request.get_json() or {}
+    name = data.get('name')
+    if not name:
+        return {'message': 'Missing name'}, 400
     category = Category(
-        name=data.get('name'),
+        name=name,
+
         color=data.get('color'),
         icon=data.get('icon')
     )
     db.session.add(category)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {'message': 'Category already exists'}, 400
+
     return {
         'id': category.id,
         'name': category.name,
@@ -82,5 +96,10 @@ def create_color():
         return {'message': 'Missing value'}, 400
     color = Color(value=value)
     db.session.add(color)
-    db.session.commit()
-    return { 'id': color.id, 'value': color.value }, 201
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {'message': 'Color already exists'}, 400
+    return {'id': color.id, 'value': color.value}, 201
+

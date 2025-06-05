@@ -35,5 +35,8 @@ npm run dev         # roda em http://localhost:5173
 Para compilar o frontend em produção é necessário ter o Node.js instalado e a
 CLI do Vite disponível (`npm install -g vite`).
 
+
+Após realizar login em `/admin/login`, utilize o menu de administração para
+criar cores, categorias e links. O token JWT é enviado automaticamente.
 Credenciais padrão do administrador: **admin/admin123**
 
