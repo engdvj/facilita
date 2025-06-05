@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { motion } from 'framer-motion'
 import api from '../api'
 
 export default function AdminColors() {
@@ -28,22 +29,22 @@ export default function AdminColors() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl">Cores</h2>
-      <form onSubmit={handleCreate} className="flex items-center gap-2">
+    <div className="space-y-6 max-w-lg mx-auto">
+      <h2 className="text-xl font-heading">Cores</h2>
+      <form onSubmit={handleCreate} className="flex items-center gap-2 bg-slate-800 p-4 rounded">
         <input
           type="color"
           value={newColor}
           onChange={e => setNewColor(e.target.value)}
           className="w-20 h-10 p-0 border rounded"
         />
-        <button className="bg-blue-600 px-4 py-2 rounded">Adicionar</button>
+        <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">Adicionar</button>
       </form>
-      <ul className="list-disc pl-6">
+      <motion.ul className="list-disc pl-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         {colors.map(c => (
-          <li key={c.id}>{c.value}</li>
+          <motion.li key={c.id} layout>{c.value}</motion.li>
         ))}
-      </ul>
+      </motion.ul>
     </div>
   )
 }

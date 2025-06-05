@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { motion } from 'framer-motion'
 import api from '../api'
 import { LinkData } from '../components/LinkCard'
 
@@ -45,9 +46,9 @@ export default function AdminLinks() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl">Links</h2>
-      <form onSubmit={handleCreate} className="flex flex-col gap-2 max-w-sm">
+    <div className="space-y-6 max-w-lg mx-auto">
+      <h2 className="text-xl font-heading">Links</h2>
+      <form onSubmit={handleCreate} className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded">
         <input
           className="p-2 rounded text-black"
           placeholder="Título"
@@ -92,13 +93,13 @@ export default function AdminLinks() {
           value={newLink.image_url}
           onChange={e => setNewLink({ ...newLink, image_url: e.target.value })}
         />
-        <button className="bg-blue-600 px-4 py-2 rounded">Adicionar</button>
+        <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">Adicionar</button>
       </form>
-      <ul className="list-disc pl-6">
+      <motion.ul className="list-disc pl-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         {links.map(l => (
-          <li key={l.id}>{l.title}</li>
+          <motion.li key={l.id} layout>{l.title}</motion.li>
         ))}
-      </ul>
+      </motion.ul>
     </div>
   )
 }
