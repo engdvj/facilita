@@ -12,8 +12,8 @@ export default function Login() {
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     try {
-      const res = await api.post('/auth/login', { username, password })
-      localStorage.setItem('token', res.data.access_token)
+      await api.post('/auth/login', { username, password })
+      localStorage.setItem('loggedIn', 'true')
       toast.success('Login realizado')
       navigate('/admin')
     } catch (err) {

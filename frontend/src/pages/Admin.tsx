@@ -6,8 +6,8 @@ export default function Admin() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
+    const loggedIn = localStorage.getItem('loggedIn') === 'true'
+    if (!loggedIn) {
       navigate('/admin/login')
     }
   }, [navigate])

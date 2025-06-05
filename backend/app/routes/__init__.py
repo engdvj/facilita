@@ -1,10 +1,20 @@
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required
+from flask import Blueprint, request, jsonify, session
+from functools import wraps
 from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import User, Link, Category, Color
 
 bp = Blueprint('api', __name__)
+
+
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not session.get('user_id'):
+            return {'message': 'Unauthorized'}, 401
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 @bp.post('/auth/login')
@@ -16,8 +26,8 @@ def login():
         return {'message': 'Missing credentials'}, 400
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        token = create_access_token(identity=user.id)
-        return {'access_token': token}
+        session['user_id'] = user.id
+        return {'message': 'ok'}
     return {'message': 'Invalid credentials'}, 401
 
 
@@ -34,7 +44,7 @@ def list_categories():
 
 
 @bp.post('/links')
-@jwt_required()
+@login_required
 def create_link():
     data = request.get_json() or {}
     title = data.get('title')
@@ -54,7 +64,7 @@ def create_link():
 
 
 @bp.post('/categories')
-@jwt_required()
+@login_required
 def create_category():
     data = request.get_json() or {}
     name = data.get('name')
@@ -88,7 +98,7 @@ def list_colors():
 
 
 @bp.post('/colors')
-@jwt_required()
+@login_required
 def create_color():
     data = request.get_json() or {}
     value = data.get('value')
