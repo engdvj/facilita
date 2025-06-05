@@ -6,8 +6,6 @@ from pathlib import Path
 
 # load variables from a .env file located at the project root
 load_dotenv(Path(__file__).resolve().parents[2] / '.env')
-
-
 def create_app(debug: bool = False):
     app = Flask(__name__)
     app.config.setdefault("DEBUG", debug)
