@@ -10,7 +10,7 @@ export default function AdminLinks() {
   const [newLink, setNewLink] = useState({
     title: '',
     url: '',
-    category_id: 0,
+    category_id: null as number | null,
     color: '',
     image_url: ''
   })
@@ -30,14 +30,14 @@ export default function AdminLinks() {
     setColors(colorRes.data)
   }
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` }
-
   const handleCreate = async (e: any) => {
     e.preventDefault()
     try {
-      await api.post('/links', newLink, { headers })
+      const payload = { ...newLink }
+      if (payload.category_id === null) delete (payload as any).category_id
+      await api.post('/links', payload)
       await refresh()
-      setNewLink({ title: '', url: '', category_id: 0, color: '', image_url: '' })
+      setNewLink({ title: '', url: '', category_id: null, color: '', image_url: '' })
       toast.success('Link criado')
     } catch {
       toast.error('Erro ao criar link')
@@ -62,10 +62,16 @@ export default function AdminLinks() {
         />
         <select
           className="p-2 rounded text-black"
-          value={newLink.category_id}
-          onChange={e => setNewLink({ ...newLink, category_id: parseInt(e.target.value) })}
+          value={newLink.category_id ?? ''}
+          onChange={e => {
+            const val = e.target.value
+            setNewLink({
+              ...newLink,
+              category_id: val === '' ? null : parseInt(val)
+            })
+          }}
         >
-          <option value={0}>Categoria</option>
+          <option value="">Categoria</option>
           {categories.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}

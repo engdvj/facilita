@@ -17,12 +17,10 @@ export default function AdminCategories() {
     setColors(colorRes.data)
   }
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` }
-
   const handleCreate = async (e: any) => {
     e.preventDefault()
     try {
-      await api.post('/categories', newCategory, { headers })
+      await api.post('/categories', newCategory)
       await refresh()
       setNewCategory({ name: '', color: '', icon: '' })
       toast.success('Categoria criada')

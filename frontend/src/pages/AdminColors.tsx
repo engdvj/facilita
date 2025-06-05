@@ -15,12 +15,10 @@ export default function AdminColors() {
     setColors(res.data)
   }
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` }
-
   const handleCreate = async (e: any) => {
     e.preventDefault()
     try {
-      await api.post('/colors', { value: newColor }, { headers })
+      await api.post('/colors', { value: newColor })
       await fetchColors()
       setNewColor('#ffffff')
       toast.success('Cor criada')

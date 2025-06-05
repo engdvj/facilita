@@ -1,12 +1,28 @@
 from flask import Flask
 from .extensions import db, jwt, cors
+import os
+import secrets
 
 
 def create_app():
     app = Flask(__name__)
-    app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///facilita.sqlite")
+    app.config.setdefault(
+        "SQLALCHEMY_DATABASE_URI",
+        os.getenv("DATABASE_URL", "sqlite:///facilita.sqlite"),
+    )
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
-    app.config.setdefault("JWT_SECRET_KEY", "change-me")
+
+    secret = os.getenv("JWT_SECRET_KEY")
+    if not secret:
+        if app.debug:
+            secret = secrets.token_hex(16)
+            print(
+                "WARNING: JWT_SECRET_KEY not set; using a random key for development",
+                flush=True,
+            )
+        else:
+            raise RuntimeError("JWT_SECRET_KEY environment variable not set")
+    app.config["JWT_SECRET_KEY"] = secret
 
     db.init_app(app)
     jwt.init_app(app)
