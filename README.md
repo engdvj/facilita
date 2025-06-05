@@ -20,6 +20,8 @@ python setup_db.py  # cria o banco e o usuário admin
 python wsgi.py      # inicia o servidor em http://localhost:5000
 ```
 
+Se novos modelos forem adicionados ao backend, execute novamente `python setup_db.py` ou simplesmente reinicie o servidor. O `create_app()` agora garante que tabelas ausentes sejam criadas automaticamente.
+
 ### Frontend
 
 ```bash

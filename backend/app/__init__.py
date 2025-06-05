@@ -13,6 +13,10 @@ def create_app():
     cors.init_app(app)
 
     from . import models
+
+    # ensure all tables exist so new models work without rerunning setup_db
+    with app.app_context():
+        db.create_all()
     from .routes import bp as api_bp
     app.register_blueprint(api_bp, url_prefix="/api")
 
