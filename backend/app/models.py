@@ -39,3 +39,8 @@ class Link(db.Model):
             "color": self.color,
             "imageUrl": self.image_url,
         }
+
+
+class Color(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.String(30), unique=True, nullable=False)
