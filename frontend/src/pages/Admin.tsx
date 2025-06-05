@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
-import api from '../api'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 
 export default function Admin() {
@@ -11,23 +9,21 @@ export default function Admin() {
     const token = localStorage.getItem('token')
     if (!token) {
       navigate('/admin/login')
-      return
     }
-    api
-      .get('/links', { headers: { Authorization: `Bearer ${token}` } })
-      .catch(() => {
-        toast.error('Sessão expirada')
-        navigate('/admin/login')
-      })
   }, [navigate])
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       <Header />
+      <nav className="bg-slate-800 p-4 space-x-4">
+        <Link to="/admin/links" className="hover:underline">Links</Link>
+        <Link to="/admin/categories" className="hover:underline">Categorias</Link>
+        <Link to="/admin/colors" className="hover:underline">Cores</Link>
+      </nav>
       <div className="p-4">
-        <h2 className="text-2xl mb-4">Painel Administrativo</h2>
-        <p>Em desenvolvimento...</p>
+        <Outlet />
       </div>
     </div>
   )
 }
+
