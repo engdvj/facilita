@@ -1,25 +1,8 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-
-function Home() {
-  const [message, setMessage] = useState('')
-  useEffect(() => {
-    axios.get('/api/ping').then((res) => setMessage(res.data.message))
-  }, [])
-
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl mb-4">FACILITA CHVC</h1>
-      <p>Backend status: {message}</p>
-      <Link to="/admin/login" className="text-blue-400">Admin Login</Link>
-    </div>
-  )
-}
-
-function Login() {
-  return <div className="p-4">Login Placeholder</div>
-}
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import Home from './pages/Home'
+import Login from './pages/Login'
+import Admin from './pages/Admin'
 
 export default function App() {
   return (
@@ -27,7 +10,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin/login" element={<Login />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
+      <Toaster position="bottom-center" />
     </BrowserRouter>
   )
 }
