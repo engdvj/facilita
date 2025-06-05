@@ -2,7 +2,6 @@ from flask import Flask
 from .extensions import db, jwt, cors
 import os
 
-
 def create_app(debug: bool = False):
     app = Flask(__name__)
     app.config.setdefault("DEBUG", debug)
