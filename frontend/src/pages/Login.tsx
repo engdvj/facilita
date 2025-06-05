@@ -9,7 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     try {
       const res = await api.post('/auth/login', { username, password })
@@ -29,14 +29,14 @@ export default function Login() {
           className="p-2 rounded"
           placeholder="Usuário"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e: any) => setUsername(e.target.value)}
         />
         <input
           type="password"
           className="p-2 rounded"
           placeholder="Senha"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e: any) => setPassword(e.target.value)}
         />
         <button type="submit" className="bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Entrar</button>
       </form>

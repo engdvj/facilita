@@ -15,13 +15,15 @@ export default function Home() {
   const [categoryId, setCategoryId] = useState<number | 'all'>('all')
 
   useEffect(() => {
-    api.get('/links').then((res) => setLinks(res.data))
-    api.get('/categories').then((res) => setCategories(res.data))
+    api.get('/links').then((res: any) => setLinks(res.data))
+    api.get('/categories').then((res: any) => setCategories(res.data))
   }, [])
 
-  const filtered = links.filter((l) => {
+  const filtered = links.filter((l: LinkData) => {
     const matchSearch = l.title.toLowerCase().includes(search.toLowerCase())
-    const matchCat = categoryId === 'all' || l.category === categories.find((c) => c.id === categoryId)?.name
+    const matchCat =
+      categoryId === 'all' ||
+      l.category === categories.find((c: Category) => c.id === categoryId)?.name
     return matchSearch && matchCat
   })
 
@@ -32,27 +34,29 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e: any) => setSearch(e.target.value)}
             type="text"
             placeholder="Buscar..."
             className="flex-1 rounded-md p-2"/>
           <select
             className="rounded-md p-2"
             value={categoryId}
-            onChange={(e) => {
+            onChange={(e: any) => {
               const val = e.target.value
               setCategoryId(val === 'all' ? 'all' : parseInt(val))
             }}
           >
             <option value="all">Todas categorias</option>
-            {categories.map((c) => (
+            {categories.map((c: Category) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((link) => (
-            <LinkCard key={link.id} link={link} />
+          {filtered.map((link: LinkData) => (
+            <div key={link.id}>
+              <LinkCard link={link} />
+            </div>
           ))}
         </div>
       </div>
