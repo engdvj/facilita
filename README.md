@@ -12,16 +12,14 @@ Projeto monorepo contendo o frontend em React e o backend em Flask descritos em 
 ### Backend
 
 ```bash
+cp .env.example .env  # gere o arquivo de configuracao na raiz do projeto
 cd backend
 python -m venv venv
 source venv/bin/activate ou venv\Scripts\activate
 pip install -r requirements.txt
-# A aplicacao usa por padrao a chave 'facilita-dev-secret' quando executada em
-# modo de desenvolvimento. Para producao, defina sua propria:
-# export JWT_SECRET_KEY=uma-chave-secreta
-# ou deixe sem definir e ela usara a padrao acima
+# Edite ../.env e defina JWT_SECRET_KEY para producao se necessario
 python setup_db.py  # cria o banco e o usuário admin
-python wsgi.py      # inicia o servidor em http://localhost:5000
+FLASK_DEBUG=0 python wsgi.py      # inicia em producao
 ```
 
 Se novos modelos forem adicionados ao backend, execute novamente `python setup_db.py` ou simplesmente reinicie o servidor. O `create_app()` agora garante que tabelas ausentes sejam criadas automaticamente.
