@@ -40,6 +40,10 @@ export default function AdminLinks() {
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
@@ -159,7 +163,6 @@ export default function AdminLinks() {
       <form
         onSubmit={editingId ? saveEdit : handleCreate}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
-
       >
         <input
           className={fieldClass}
@@ -184,7 +187,6 @@ export default function AdminLinks() {
         <select
           className={fieldClass}
           value={editingId ? editLink.category_id ?? "" : newLink.category_id ?? ""}
-
           onChange={(e) => {
             const val = e.target.value;
             if (editingId) {

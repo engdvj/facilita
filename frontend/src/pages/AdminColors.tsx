@@ -57,11 +57,12 @@ export default function AdminColors() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto">
-      <h2 className="text-xl font-heading">Cores</h2>
+    <div className="space-y-6 max-w-xl mx-auto">
+      <h2 className="text-2xl font-heading text-center">Cores</h2>
       <form
         onSubmit={handleCreate}
-        className="flex items-center gap-2 bg-white dark:bg-slate-800 p-4 rounded text-gray-900 dark:text-white"
+        className="flex items-center gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+
       >
         <input
           type="color"
@@ -80,10 +81,8 @@ export default function AdminColors() {
       >
         {colors.map((c) => (
           <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
-            <span
-              className="w-5 h-5 rounded"
-              style={{ backgroundColor: c.value }}
-            />
+
+
             {editingId === c.id ? (
               <>
                 <input
@@ -104,7 +103,9 @@ export default function AdminColors() {
               </>
             ) : (
               <>
-                <span className="flex-1">{c.value}</span>
+                <span className="flex-1 font-mono" style={{ color: c.value }}>
+                  {c.value}
+                </span>
                 <button
                   onClick={() => startEdit(c)}
                   className="text-sm text-blue-400"

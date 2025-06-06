@@ -184,7 +184,6 @@ export default function AdminDashboard() {
                 <button onClick={() => removeLink(l.id)} className="text-sm text-red-400">
                   Excluir
                 </button>
-
               </motion.li>
             ))}
           </motion.ul>
