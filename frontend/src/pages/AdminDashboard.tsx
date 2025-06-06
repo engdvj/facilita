@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
+
   const [editCatId, setEditCatId] = useState<number | null>(null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
@@ -63,6 +64,7 @@ export default function AdminDashboard() {
     });
     setEditImageType("url");
     setEditImageFile(null);
+
   };
 
   const saveLink = async () => {
@@ -81,6 +83,7 @@ export default function AdminDashboard() {
     setEditLinkId(null);
     setEditImageFile(null);
     setEditImageType("url");
+
     await refresh();
   };
 
@@ -145,6 +148,7 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                 {editCatId === c.id ? (
                   <>
@@ -215,6 +219,7 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedLinks.map((l) => (
               <motion.li key={l.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+
                 {editLinkId === l.id ? (
                   <>
                     <input
@@ -281,6 +286,7 @@ export default function AdminDashboard() {
                         onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
                       />
                     )}
+
                     <button onClick={saveLink} className="text-sm text-green-400">Salvar</button>
                     <button onClick={() => setEditLinkId(null)} className="text-sm text-yellow-400">Cancelar</button>
                   </>
@@ -325,6 +331,7 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
                   <>

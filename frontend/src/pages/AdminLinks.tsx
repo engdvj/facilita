@@ -33,6 +33,8 @@ export default function AdminLinks() {
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
   useEffect(() => {
     refresh();
@@ -128,6 +130,7 @@ export default function AdminLinks() {
       <form
         onSubmit={handleCreate}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+
       >
         <input
           className={fieldClass}
@@ -196,6 +199,7 @@ export default function AdminLinks() {
             onChange={(e) => setNewImageFile(e.target.files?.[0] || null)}
           />
         )}
+
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>
@@ -210,6 +214,7 @@ export default function AdminLinks() {
             key={l.id}
             layout
             className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white"
+
           >
             {editingId === l.id ? (
               <>
@@ -285,6 +290,7 @@ export default function AdminLinks() {
                     onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
                   />
                 )}
+
                 <button onClick={saveEdit} className="text-sm text-green-400">
                   Salvar
                 </button>
