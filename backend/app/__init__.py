@@ -1,4 +1,5 @@
 from flask import Flask, send_from_directory
+
 from .extensions import db, cors
 import os
 from dotenv import load_dotenv
