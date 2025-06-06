@@ -25,8 +25,8 @@ class Link(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
     url = db.Column(db.String(255), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
-    category = db.relationship('Category', backref='links')
+    category_id = db.Column(db.Integer, db.ForeignKey("category.id"))
+    category = db.relationship("Category", backref="links")
     color = db.Column(db.String(30))
     image_url = db.Column(db.String(255))
 
@@ -36,6 +36,7 @@ class Link(db.Model):
             "title": self.title,
             "url": self.url,
             "category": self.category.name if self.category else None,
+            "categoryId": self.category_id,
             "color": self.color,
             "imageUrl": self.image_url,
         }

@@ -1,6 +1,5 @@
 Flask
 Flask-SQLAlchemy
-Flask-JWT-Extended
 Flask-Cors
 Werkzeug
 python-dotenv
