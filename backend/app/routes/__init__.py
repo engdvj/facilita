@@ -3,7 +3,6 @@ from functools import wraps
 from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import User, Link, Category, Color
-
 def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -136,6 +135,7 @@ def create_api_blueprint():
         category = Category.query.get_or_404(cat_id)
         db.session.delete(category)
         db.session.commit()
+
         return {"message": "deleted"}
 
 

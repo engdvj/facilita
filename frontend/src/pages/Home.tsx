@@ -30,14 +30,20 @@ export default function Home() {
     setPage(1);
   }, [search, categoryId]);
 
-
   const filtered = links.filter((l: LinkData) => {
     const matchSearch = l.title.toLowerCase().includes(search.toLowerCase());
     const matchCat = categoryId === "all" || l.categoryId === categoryId;
     return matchSearch && matchCat;
   });
+
   const pageCount = Math.ceil(filtered.length / perPage) || 1;
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const categoryMap = useMemo(() => {
+    const map: Record<number, Category> = {};
+    for (const c of categories) map[c.id] = c;
+    return map;
+  }, [categories]);
 
   const categoryMap = useMemo(() => {
     const map: Record<number, Category> = {};
@@ -94,12 +100,12 @@ export default function Home() {
                     ? 'text-white'
                     : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white'
                 }`}
-                style={active ? { backgroundColor: c.color } : {}}
+                style={
+                  active
+                    ? { backgroundColor: c.color }
+                    : { borderColor: c.color || 'transparent' }
+                }
               >
-                <span
-                  className="w-3 h-3 rounded-full border"
-                  style={{ backgroundColor: c.color }}
-                />
                 {Icon && <Icon size={16} />}
                 {c.name}
               </button>

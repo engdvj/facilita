@@ -12,7 +12,6 @@ export interface LinkData {
   imageUrl?: string;
   category?: string;
   categoryColor?: string;
-
 }
 
 export default function LinkCard({ link }: { link: LinkData }) {
@@ -21,10 +20,9 @@ export default function LinkCard({ link }: { link: LinkData }) {
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-2xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group border-2"
+      className="rounded-3xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group"
       style={{
         backgroundColor: link.color || "#1e293b",
-        borderColor: link.categoryColor || "transparent",
       }}
 
     >
@@ -44,6 +42,10 @@ export default function LinkCard({ link }: { link: LinkData }) {
       <div className="absolute top-2 right-2 text-white opacity-0 group-hover:opacity-100 transition-opacity">
         <ArrowUpRight size={18} />
       </div>
+      {link.categoryColor && (
+        <div className="h-1" style={{ backgroundColor: link.categoryColor }} />
+      )}
+
     </motion.a>
   );
 }

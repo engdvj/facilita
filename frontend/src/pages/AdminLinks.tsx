@@ -18,7 +18,6 @@ export default function AdminLinks() {
     color: "",
     image_url: "",
   });
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState({
     title: "",
@@ -158,7 +157,6 @@ export default function AdminLinks() {
             setNewLink({ ...newLink, image_url: e.target.value })
           }
         />
-
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>
