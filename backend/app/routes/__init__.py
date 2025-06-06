@@ -78,7 +78,16 @@ def update_link(link_id):
             setattr(link, field, data[field])
     db.session.commit()
     return link.to_dict()
-
+@bp.patch("/links/<int:link_id>")
+@login_required
+def update_link(link_id):
+    link = Link.query.get_or_404(link_id)
+    data = request.get_json() or {}
+    for field in ["title", "url", "category_id", "color", "image_url"]:
+        if field in data:
+            setattr(link, field, data[field])
+    db.session.commit()
+    return link.to_dict()
 
 @bp.delete("/links/<int:link_id>")
 @login_required

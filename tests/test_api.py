@@ -64,9 +64,9 @@ def test_create_category_and_color(client, app):
     res = client.patch(f"/api/categories/{cat_id}", json={"name": "tech"})
     assert res.status_code == 200
 
-
     res = client.delete(f"/api/categories/{cat_id}")
     assert res.status_code == 200
+
 
     # verify listing
     res = client.get("/api/categories")

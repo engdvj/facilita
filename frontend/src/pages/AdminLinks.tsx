@@ -14,10 +14,12 @@ export default function AdminLinks() {
   const [newLink, setNewLink] = useState({
     title: "",
     url: "",
+
     category_id: null as number | null,
     color: "",
     image_url: "",
   });
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState({
     title: "",
@@ -26,6 +28,7 @@ export default function AdminLinks() {
     color: "",
     image_url: "",
   });
+
 
   useEffect(() => {
     refresh();
@@ -86,6 +89,7 @@ export default function AdminLinks() {
       toast.error("Erro ao atualizar");
     }
   };
+
 
   const remove = async (id: number) => {
     if (!confirm("Excluir link?")) return;

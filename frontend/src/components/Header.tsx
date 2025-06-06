@@ -37,7 +37,6 @@ export default function Header() {
             <Shield size={18} />
             Admin
           </Link>
-
           <button onClick={toggleTheme} className="ml-2">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
