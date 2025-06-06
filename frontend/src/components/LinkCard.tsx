@@ -1,13 +1,16 @@
-import { motion } from 'framer-motion'
-import { ArrowUpRight } from 'lucide-react'
+
+import { motion } from "framer-motion";
+import { ArrowUpRight } from "lucide-react";
+
 
 export interface LinkData {
-  id: number
-  title: string
-  url: string
-  color?: string
-  imageUrl?: string
-  category?: string
+  id: number;
+  title: string;
+  url: string;
+  categoryId?: number;
+  color?: string;
+  imageUrl?: string;
+  category?: string;
 }
 
 export default function LinkCard({ link }: { link: LinkData }) {
@@ -17,7 +20,9 @@ export default function LinkCard({ link }: { link: LinkData }) {
       target="_blank"
       rel="noopener noreferrer"
       className="rounded-xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group"
-      style={{ backgroundColor: link.color || '#1e293b' }}
+
+      style={{ backgroundColor: link.color || "#1e293b" }}
+
     >
       {link.imageUrl && (
         <img src={link.imageUrl} alt="" className="h-32 w-full object-cover" />
@@ -30,5 +35,5 @@ export default function LinkCard({ link }: { link: LinkData }) {
         <ArrowUpRight size={18} />
       </div>
     </motion.a>
-  )
+  );
 }
