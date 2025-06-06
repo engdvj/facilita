@@ -30,10 +30,16 @@ Se novos modelos forem adicionados ao backend, execute novamente `python setup_d
 cd frontend
 npm install
 npm run dev         # roda em http://localhost:5173
+
+# para producao, gere os arquivos em `frontend/dist`
+npm run build
 ```
 
 Para compilar o frontend em produção é necessário ter o Node.js instalado e a
 CLI do Vite disponível (`npm install -g vite`).
+
+Quando existir a pasta `frontend/dist`, o servidor Flask irá servir esses
+arquivos automaticamente.
 
 
 Após realizar login em `/admin/login`, utilize o menu de administração para

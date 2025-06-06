@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 
@@ -45,7 +44,6 @@ export default function LinkCard({ link }: { link: LinkData }) {
       {link.categoryColor && (
         <div className="h-1" style={{ backgroundColor: link.categoryColor }} />
       )}
-
     </motion.a>
   );
 }
