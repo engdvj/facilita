@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -28,7 +27,6 @@ export default function AdminLinks() {
     color: "",
     image_url: "",
   });
-
 
   useEffect(() => {
     refresh();
@@ -100,12 +98,10 @@ export default function AdminLinks() {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <h2 className="text-xl font-heading">Links</h2>
-
       <form
         onSubmit={handleCreate}
         className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded"
       >
-
         <input
           className="p-2 rounded text-black"
           placeholder="Título"
@@ -259,7 +255,6 @@ export default function AdminLinks() {
               </>
             )}
           </motion.li>
-
         ))}
       </motion.ul>
     </div>

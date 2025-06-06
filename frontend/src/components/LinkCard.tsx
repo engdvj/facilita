@@ -11,7 +11,6 @@ export interface LinkData {
   color?: string;
   imageUrl?: string;
   category?: string;
-
   categoryColor?: string;
 
 }

@@ -1,9 +1,7 @@
-
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import api from "../api";
-
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState<
@@ -69,6 +67,7 @@ export default function AdminCategories() {
     }
   };
 
+
   const remove = async (id: number) => {
     if (!confirm("Excluir categoria?")) return;
     await api.delete(`/categories/${id}`);
@@ -78,12 +77,10 @@ export default function AdminCategories() {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <h2 className="text-xl font-heading">Categorias</h2>
-
       <form
         onSubmit={handleCreate}
         className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded"
       >
-
         <input
           className="p-2 rounded text-black"
           placeholder="Nome"
@@ -195,7 +192,6 @@ export default function AdminCategories() {
               </>
             )}
           </motion.li>
-
         ))}
       </motion.ul>
     </div>

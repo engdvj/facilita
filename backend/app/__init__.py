@@ -35,8 +35,8 @@ def create_app(debug: bool = False):
     # ensure all tables exist so new models work without rerunning setup_db
     with app.app_context():
         db.create_all()
-    from .routes import bp as api_bp
-    app.register_blueprint(api_bp, url_prefix="/api")
+    from .routes import create_api_blueprint
+    app.register_blueprint(create_api_blueprint(), url_prefix="/api")
 
     @app.route("/api/ping")
     def ping():

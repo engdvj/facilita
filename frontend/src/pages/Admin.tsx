@@ -1,10 +1,8 @@
-
 import { useEffect } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Link2, Folder, Palette } from "lucide-react";
 import { motion } from "framer-motion";
 import Header from "../components/Header";
-
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -21,7 +19,6 @@ export default function Admin() {
     <div className="min-h-screen bg-slate-900 text-white">
       <Header />
       <motion.nav
-
         className="bg-slate-800 py-6 flex justify-center gap-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -46,7 +43,6 @@ export default function Admin() {
         </Link>
       </motion.nav>
       <div className="py-8 px-4 container mx-auto">
-
         <Outlet />
       </div>
     </div>
