@@ -14,9 +14,11 @@ def test_login(client):
 
 def test_create_and_list_link(client, app):
     login(client)
+
     res = client.post(
         "/api/links", json={"title": "Example", "url": "http://example.com"}
     )
+
     assert res.status_code == 201
     data = res.get_json()
     assert data["title"] == "Example"
@@ -41,6 +43,7 @@ def test_create_category_and_color(client, app):
 
     # create a color
     res = client.post("/api/colors", json={"value": "#ffffff"})
+
     assert res.status_code == 201
     color_id = res.get_json()["id"]
 
@@ -54,6 +57,7 @@ def test_create_category_and_color(client, app):
     res = client.post(
         "/api/categories",
         json={"name": "news", "color": "#ffffff", "icon": "home"},
+
     )
     assert res.status_code == 201
     cat_id = res.get_json()["id"]

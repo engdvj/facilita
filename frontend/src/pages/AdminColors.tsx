@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import api from "../api";
+
 
 export default function AdminColors() {
   const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
@@ -56,16 +58,19 @@ export default function AdminColors() {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <h2 className="text-xl font-heading">Cores</h2>
+
       <form
         onSubmit={handleCreate}
         className="flex items-center gap-2 bg-slate-800 p-4 rounded"
       >
+
         <input
           type="color"
           value={newColor}
           onChange={(e) => setNewColor(e.target.value)}
           className="w-20 h-10 p-0 border rounded"
         />
+
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>
@@ -117,6 +122,7 @@ export default function AdminColors() {
               </>
             )}
           </motion.li>
+
         ))}
       </motion.ul>
     </div>

@@ -1,8 +1,10 @@
+
 import { useEffect, useState } from "react";
 import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
 import Header from "../components/Header";
 import { motion } from "framer-motion";
+
 
 interface Category {
   id: number;
@@ -29,19 +31,23 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-900">
       <Header />
-      <motion.div
+
+        <motion.div
         className="max-w-5xl mx-auto p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
+
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <input
             value={search}
             onChange={(e: any) => setSearch(e.target.value)}
             type="text"
             placeholder="Buscar..."
+
             className="flex-1 rounded-md p-2 bg-slate-800 focus:bg-slate-700 transition-colors"
           />
+
           <select
             className="rounded-md p-2 bg-slate-800 text-white"
             value={categoryId}

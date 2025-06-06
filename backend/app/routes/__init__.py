@@ -10,14 +10,15 @@ bp = Blueprint("api", __name__)
 def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
+
         if not session.get("user_id"):
             return {"message": "Unauthorized"}, 401
         return func(*args, **kwargs)
 
     return wrapper
 
-
 @bp.post("/auth/login")
+
 def login():
     data = request.get_json() or {}
     username = data.get("username")
@@ -29,6 +30,7 @@ def login():
         session["user_id"] = user.id
         return {"message": "ok"}
     return {"message": "Invalid credentials"}, 401
+
 
 
 @bp.get("/links")
@@ -68,6 +70,7 @@ def create_link():
     return link.to_dict(), 201
 
 
+
 @bp.patch("/links/<int:link_id>")
 @login_required
 def update_link(link_id):
@@ -90,6 +93,7 @@ def delete_link(link_id):
 
 
 @bp.post("/categories")
+
 @login_required
 def create_category():
     data = request.get_json() or {}
@@ -149,6 +153,7 @@ def list_colors():
 
 
 @bp.post("/colors")
+
 @login_required
 def create_color():
     data = request.get_json() or {}

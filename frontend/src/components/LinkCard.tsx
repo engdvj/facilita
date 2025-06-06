@@ -1,5 +1,7 @@
+
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
+
 
 export interface LinkData {
   id: number;
@@ -18,7 +20,9 @@ export default function LinkCard({ link }: { link: LinkData }) {
       target="_blank"
       rel="noopener noreferrer"
       className="rounded-xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group"
+
       style={{ backgroundColor: link.color || "#1e293b" }}
+
     >
       {link.imageUrl && (
         <img src={link.imageUrl} alt="" className="h-32 w-full object-cover" />
