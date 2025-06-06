@@ -29,7 +29,6 @@ export default function AdminLinks() {
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
-
   useEffect(() => {
     refresh();
   }, []);
