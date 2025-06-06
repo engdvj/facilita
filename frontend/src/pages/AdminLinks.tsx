@@ -37,6 +37,16 @@ export default function AdminLinks() {
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
 
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   useEffect(() => {
     refresh();
   }, []);
@@ -207,6 +217,7 @@ export default function AdminLinks() {
               ? setEditLink({ ...editLink, color: e.target.value })
               : setNewLink({ ...newLink, color: e.target.value })
           }
+
         >
           <option value="">Cor do card</option>
           {colors.map((c) => (
@@ -223,6 +234,7 @@ export default function AdminLinks() {
               ? setEditImageType(e.target.value as "url" | "file")
               : setNewImageType(e.target.value as "url" | "file")
           }
+
         >
           <option value="url">URL</option>
           <option value="file">Upload</option>
@@ -236,6 +248,7 @@ export default function AdminLinks() {
               editingId
                 ? setEditLink({ ...editLink, image_url: e.target.value })
                 : setNewLink({ ...newLink, image_url: e.target.value })
+
             }
           />
         ) : (
@@ -267,6 +280,7 @@ export default function AdminLinks() {
             </button>
           )}
         </div>
+
       </form>
       <motion.ul
         className="space-y-2"
@@ -286,6 +300,7 @@ export default function AdminLinks() {
             <button onClick={() => remove(l.id)} className="text-sm text-red-400">
               Excluir
             </button>
+
           </motion.li>
         ))}
       </motion.ul>

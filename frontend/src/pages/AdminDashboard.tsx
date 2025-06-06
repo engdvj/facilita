@@ -9,7 +9,6 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
   const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
 
-
   const [editCatId, setEditCatId] = useState<number | null>(null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 

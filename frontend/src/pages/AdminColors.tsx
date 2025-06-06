@@ -62,6 +62,7 @@ export default function AdminColors() {
       <form
         onSubmit={handleCreate}
         className="flex items-center gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+
       >
         <input
           type="color"
@@ -80,6 +81,8 @@ export default function AdminColors() {
       >
         {colors.map((c) => (
           <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+
+
             {editingId === c.id ? (
               <>
                 <input
