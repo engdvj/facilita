@@ -11,6 +11,7 @@ export default function Admin() {
     const loggedIn = localStorage.getItem("loggedIn") === "true";
     if (!loggedIn) {
       navigate("/admin/login");
+
     }
   }, [navigate]);
 

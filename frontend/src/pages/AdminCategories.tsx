@@ -67,6 +67,7 @@ export default function AdminCategories() {
     }
   };
 
+
   const remove = async (id: number) => {
     if (!confirm("Excluir categoria?")) return;
     await api.delete(`/categories/${id}`);
@@ -116,6 +117,7 @@ export default function AdminCategories() {
             setNewCategory({ ...newCategory, icon: e.target.value })
           }
         />
+
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>

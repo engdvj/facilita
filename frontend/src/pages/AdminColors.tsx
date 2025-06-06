@@ -47,6 +47,7 @@ export default function AdminColors() {
     }
   };
 
+
   const remove = async (id: number) => {
     if (!confirm("Excluir cor?")) return;
     await api.delete(`/colors/${id}`);
@@ -66,6 +67,7 @@ export default function AdminColors() {
           onChange={(e) => setNewColor(e.target.value)}
           className="w-20 h-10 p-0 border rounded"
         />
+
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>

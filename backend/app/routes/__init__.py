@@ -4,7 +4,6 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import User, Link, Category, Color
 
-
 def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -13,8 +12,6 @@ def login_required(func):
         return func(*args, **kwargs)
 
     return wrapper
-
-
 def create_api_blueprint():
     bp = Blueprint("api", __name__)
 

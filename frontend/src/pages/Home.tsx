@@ -30,12 +30,12 @@ export default function Home() {
     setPage(1);
   }, [search, categoryId]);
 
+
   const filtered = links.filter((l: LinkData) => {
     const matchSearch = l.title.toLowerCase().includes(search.toLowerCase());
     const matchCat = categoryId === "all" || l.categoryId === categoryId;
     return matchSearch && matchCat;
   });
-
   const pageCount = Math.ceil(filtered.length / perPage) || 1;
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
@@ -44,7 +44,6 @@ export default function Home() {
     for (const c of categories) map[c.id] = c;
     return map;
   }, [categories]);
-
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
       <Header />
