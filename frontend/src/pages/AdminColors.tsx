@@ -9,6 +9,9 @@ export default function AdminColors() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("#ffffff");
 
+  const colorInputClass =
+    "p-0 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-slate-700";
+
   useEffect(() => {
     fetchColors();
   }, []);
@@ -64,7 +67,7 @@ export default function AdminColors() {
           type="color"
           value={newColor}
           onChange={(e) => setNewColor(e.target.value)}
-          className="w-20 h-10 p-0 border rounded"
+          className={`${colorInputClass} w-20 h-10`}
         />
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
@@ -87,7 +90,7 @@ export default function AdminColors() {
                   type="color"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-20 h-8 p-0 border rounded"
+                  className={`${colorInputClass} w-20 h-8`}
                 />
                 <button onClick={saveEdit} className="text-sm text-green-400">
                   Salvar

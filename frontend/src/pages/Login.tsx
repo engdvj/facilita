@@ -24,32 +24,37 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
       <Header />
-      <motion.form
-        onSubmit={handleSubmit}
-        className="bg-slate-800 p-6 rounded-lg flex flex-col gap-4 w-80"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-      >
-        <input
-          className="p-2 rounded"
-          placeholder="Usuário"
-          value={username}
-          onChange={(e: any) => setUsername(e.target.value)}
-        />
-        <input
-          type="password"
-          className="p-2 rounded"
-          placeholder="Senha"
-          value={password}
-          onChange={(e: any) => setPassword(e.target.value)}
-        />
-        <button type="submit" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors text-white py-2 rounded-md flex items-center justify-center gap-2">
-          <LogIn size={16} />
-          Entrar
-        </button>
-      </motion.form>
+      <div className="flex-1 flex items-center justify-center py-8">
+        <motion.form
+          onSubmit={handleSubmit}
+          className="bg-slate-800 p-6 rounded-lg flex flex-col gap-4 w-80"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <input
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700"
+            placeholder="Usuário"
+            value={username}
+            onChange={(e: any) => setUsername(e.target.value)}
+          />
+          <input
+            type="password"
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700"
+            placeholder="Senha"
+            value={password}
+            onChange={(e: any) => setPassword(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors text-white py-2 rounded-md flex items-center justify-center gap-2"
+          >
+            <LogIn size={16} />
+            Entrar
+          </button>
+        </motion.form>
+      </div>
     </div>
   )
 }
