@@ -1,5 +1,7 @@
+
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
+
 
 export interface LinkData {
   id: number;
@@ -9,7 +11,9 @@ export interface LinkData {
   color?: string;
   imageUrl?: string;
   category?: string;
+
   categoryColor?: string;
+
 }
 
 export default function LinkCard({ link }: { link: LinkData }) {
@@ -23,6 +27,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
         backgroundColor: link.color || "#1e293b",
         borderColor: link.categoryColor || "transparent",
       }}
+
     >
       {link.categoryColor && (
         <span

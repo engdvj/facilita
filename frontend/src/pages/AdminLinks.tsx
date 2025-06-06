@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -13,10 +14,12 @@ export default function AdminLinks() {
   const [newLink, setNewLink] = useState({
     title: "",
     url: "",
+
     category_id: null as number | null,
     color: "",
     image_url: "",
   });
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState({
     title: "",
@@ -25,6 +28,7 @@ export default function AdminLinks() {
     color: "",
     image_url: "",
   });
+
 
   useEffect(() => {
     refresh();
@@ -86,6 +90,7 @@ export default function AdminLinks() {
     }
   };
 
+
   const remove = async (id: number) => {
     if (!confirm("Excluir link?")) return;
     await api.delete(`/links/${id}`);
@@ -95,10 +100,12 @@ export default function AdminLinks() {
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <h2 className="text-xl font-heading">Links</h2>
+
       <form
         onSubmit={handleCreate}
         className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded"
       >
+
         <input
           className="p-2 rounded text-black"
           placeholder="Título"
@@ -155,6 +162,7 @@ export default function AdminLinks() {
             setNewLink({ ...newLink, image_url: e.target.value })
           }
         />
+
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>
@@ -251,6 +259,7 @@ export default function AdminLinks() {
               </>
             )}
           </motion.li>
+
         ))}
       </motion.ul>
     </div>

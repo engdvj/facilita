@@ -3,6 +3,7 @@ import { Home, Shield, Sun, Moon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
+
 export default function Header() {
   const [theme, setTheme] = useState('light')
 
@@ -39,6 +40,7 @@ export default function Header() {
           <button onClick={toggleTheme} className="ml-2">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+
         </nav>
       </div>
     </motion.header>
