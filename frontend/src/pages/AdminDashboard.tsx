@@ -9,18 +9,6 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
   const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
 
-  const [editLinkId, setEditLinkId] = useState<number | null>(null);
-  const [editLink, setEditLink] = useState({
-    title: "",
-    url: "",
-    category_id: null as number | null,
-    color: "",
-    image_url: "",
-  });
-  const [editImageType, setEditImageType] = useState<"url" | "file">("url");
-  const [editImageFile, setEditImageFile] = useState<File | null>(null);
-
-
   const [editCatId, setEditCatId] = useState<number | null>(null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
@@ -53,39 +41,6 @@ export default function AdminDashboard() {
     setColors(colorRes.data);
   };
 
-  const startEditLink = (l: LinkData) => {
-    setEditLinkId(l.id);
-    setEditLink({
-      title: l.title,
-      url: l.url,
-      category_id: l.categoryId ?? null,
-      color: l.color || "",
-      image_url: l.imageUrl || "",
-    });
-    setEditImageType("url");
-    setEditImageFile(null);
-
-  };
-
-  const saveLink = async () => {
-    if (editLinkId === null) return;
-    const payload = { ...editLink };
-    if (editImageType === "file" && editImageFile) {
-      const fd = new FormData();
-      fd.append("file", editImageFile);
-      const res = await api.post("/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      payload.image_url = res.data.url;
-    }
-    if (payload.category_id === null) delete (payload as any).category_id;
-    await api.patch(`/links/${editLinkId}`, payload);
-    setEditLinkId(null);
-    setEditImageFile(null);
-    setEditImageType("url");
-
-    await refresh();
-  };
 
   const removeLink = async (id: number) => {
     if (!confirm("Excluir link?")) return;
@@ -148,7 +103,6 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
-
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                 {editCatId === c.id ? (
                   <>
@@ -218,85 +172,19 @@ export default function AdminDashboard() {
           </div>
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedLinks.map((l) => (
-              <motion.li key={l.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+              <motion.li
+                key={l.id}
+                layout
+                className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white"
+              >
+                <span className="flex-1">{l.title}</span>
+                <Link to={`/admin/links/${l.id}`} className="text-sm text-blue-400">
+                  Editar
+                </Link>
+                <button onClick={() => removeLink(l.id)} className="text-sm text-red-400">
+                  Excluir
+                </button>
 
-                {editLinkId === l.id ? (
-                  <>
-                    <input
-                      className={`${fieldClass} flex-1`}
-                      value={editLink.title}
-                      onChange={(e) => setEditLink({ ...editLink, title: e.target.value })}
-                    />
-                    <input
-                      className={`${fieldClass} flex-1`}
-                      value={editLink.url}
-                      onChange={(e) => setEditLink({ ...editLink, url: e.target.value })}
-                      placeholder="URL"
-                    />
-                    <select
-                      className={fieldClass}
-                      value={editLink.category_id ?? ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditLink({
-                          ...editLink,
-                          category_id: val === "" ? null : parseInt(val),
-                        });
-                      }}
-                    >
-                      <option value="">Categoria</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className={fieldClass}
-                      value={editLink.color}
-                      onChange={(e) => setEditLink({ ...editLink, color: e.target.value })}
-                    >
-                      <option value="">Cor</option>
-                      {colors.map((c) => (
-                        <option key={c.id} value={c.value} style={{ color: c.value }}>
-                          {c.value}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className={fieldClass}
-                      value={editImageType}
-                      onChange={(e) => setEditImageType(e.target.value as "url" | "file")}
-                    >
-                      <option value="url">URL</option>
-                      <option value="file">Upload</option>
-                    </select>
-                    {editImageType === "url" ? (
-                      <input
-                        className={`${fieldClass} flex-1`}
-                        placeholder="Imagem"
-                        value={editLink.image_url}
-                        onChange={(e) => setEditLink({ ...editLink, image_url: e.target.value })}
-                      />
-                    ) : (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className={fieldClass}
-                        onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
-                      />
-                    )}
-
-                    <button onClick={saveLink} className="text-sm text-green-400">Salvar</button>
-                    <button onClick={() => setEditLinkId(null)} className="text-sm text-yellow-400">Cancelar</button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1">{l.title}</span>
-                    <button onClick={() => startEditLink(l)} className="text-sm text-blue-400">Editar</button>
-                    <button onClick={() => removeLink(l.id)} className="text-sm text-red-400">Excluir</button>
-                  </>
-                )}
               </motion.li>
             ))}
           </motion.ul>
@@ -331,7 +219,6 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
-
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
                   <>

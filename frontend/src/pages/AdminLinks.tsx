@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
 
 export default function AdminLinks() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     [],
@@ -33,12 +36,36 @@ export default function AdminLinks() {
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (id && links.length) {
+      const l = links.find((lnk) => lnk.id === parseInt(id));
+      if (l) {
+        setEditingId(l.id);
+        setEditLink({
+          title: l.title,
+          url: l.url,
+          category_id: l.categoryId ?? null,
+          color: l.color || "",
+          image_url: l.imageUrl || "",
+        });
+        setEditImageType("url");
+        setEditImageFile(null);
+      }
+    } else if (!id) {
+      setEditingId(null);
+    }
+  }, [id, links]);
 
   const refresh = async () => {
     const [linkRes, catRes, colorRes] = await Promise.all([
@@ -82,6 +109,7 @@ export default function AdminLinks() {
   };
 
   const startEdit = (link: LinkData) => {
+    navigate(`/admin/links/${link.id}`);
     setEditingId(link.id);
     setEditLink({
       title: link.title,
@@ -113,6 +141,7 @@ export default function AdminLinks() {
       setEditImageFile(null);
       setEditImageType("url");
       await refresh();
+      navigate("/admin/links");
     } catch {
       toast.error("Erro ao atualizar");
     }
@@ -128,31 +157,47 @@ export default function AdminLinks() {
     <div className="space-y-6 max-w-xl mx-auto">
       <h2 className="text-2xl font-heading text-center">Links</h2>
       <form
-        onSubmit={handleCreate}
+        onSubmit={editingId ? saveEdit : handleCreate}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
 
       >
         <input
           className={fieldClass}
           placeholder="Título"
-          value={newLink.title}
-          onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
+          value={editingId ? editLink.title : newLink.title}
+          onChange={(e) =>
+            editingId
+              ? setEditLink({ ...editLink, title: e.target.value })
+              : setNewLink({ ...newLink, title: e.target.value })
+          }
         />
         <input
           className={fieldClass}
           placeholder="URL"
-          value={newLink.url}
-          onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+          value={editingId ? editLink.url : newLink.url}
+          onChange={(e) =>
+            editingId
+              ? setEditLink({ ...editLink, url: e.target.value })
+              : setNewLink({ ...newLink, url: e.target.value })
+          }
         />
         <select
           className={fieldClass}
-          value={newLink.category_id ?? ""}
+          value={editingId ? editLink.category_id ?? "" : newLink.category_id ?? ""}
+
           onChange={(e) => {
             const val = e.target.value;
-            setNewLink({
-              ...newLink,
-              category_id: val === "" ? null : parseInt(val),
-            });
+            if (editingId) {
+              setEditLink({
+                ...editLink,
+                category_id: val === "" ? null : parseInt(val),
+              });
+            } else {
+              setNewLink({
+                ...newLink,
+                category_id: val === "" ? null : parseInt(val),
+              });
+            }
           }}
         >
           <option value="">Categoria</option>
@@ -164,8 +209,13 @@ export default function AdminLinks() {
         </select>
         <select
           className={fieldClass}
-          value={newLink.color}
-          onChange={(e) => setNewLink({ ...newLink, color: e.target.value })}
+          value={editingId ? editLink.color : newLink.color}
+          onChange={(e) =>
+            editingId
+              ? setEditLink({ ...editLink, color: e.target.value })
+              : setNewLink({ ...newLink, color: e.target.value })
+          }
+
         >
           <option value="">Cor do card</option>
           {colors.map((c) => (
@@ -176,19 +226,27 @@ export default function AdminLinks() {
         </select>
         <select
           className={fieldClass}
-          value={newImageType}
-          onChange={(e) => setNewImageType(e.target.value as "url" | "file")}
+          value={editingId ? editImageType : newImageType}
+          onChange={(e) =>
+            editingId
+              ? setEditImageType(e.target.value as "url" | "file")
+              : setNewImageType(e.target.value as "url" | "file")
+          }
+
         >
           <option value="url">URL</option>
           <option value="file">Upload</option>
         </select>
-        {newImageType === "url" ? (
+        { (editingId ? editImageType : newImageType) === "url" ? (
           <input
             className={fieldClass}
             placeholder="URL da imagem"
-            value={newLink.image_url}
+            value={editingId ? editLink.image_url : newLink.image_url}
             onChange={(e) =>
-              setNewLink({ ...newLink, image_url: e.target.value })
+              editingId
+                ? setEditLink({ ...editLink, image_url: e.target.value })
+                : setNewLink({ ...newLink, image_url: e.target.value })
+
             }
           />
         ) : (
@@ -196,13 +254,31 @@ export default function AdminLinks() {
             type="file"
             accept="image/*"
             className={fieldClass}
-            onChange={(e) => setNewImageFile(e.target.files?.[0] || null)}
+            onChange={(e) =>
+              editingId
+                ? setEditImageFile(e.target.files?.[0] || null)
+                : setNewImageFile(e.target.files?.[0] || null)
+            }
           />
         )}
+        <div className="flex gap-2">
+          <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
+            {editingId ? "Salvar" : "Adicionar"}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null);
+                navigate("/admin/links");
+              }}
+              className="px-4 py-2 rounded border"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
 
-        <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
-          Adicionar
-        </button>
       </form>
       <motion.ul
         className="space-y-2"
@@ -214,110 +290,15 @@ export default function AdminLinks() {
             key={l.id}
             layout
             className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white"
-
           >
-            {editingId === l.id ? (
-              <>
-                <input
-                  className={`${fieldClass} flex-1`}
-                  value={editLink.title}
-                  onChange={(e) =>
-                    setEditLink({ ...editLink, title: e.target.value })
-                  }
-                />
-                <input
-                  className={`${fieldClass} flex-1`}
-                  value={editLink.url}
-                  onChange={(e) =>
-                    setEditLink({ ...editLink, url: e.target.value })
-                  }
-                  placeholder="URL"
-                />
-                  <select
-                    className={fieldClass}
-                    value={editLink.category_id ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setEditLink({
-                      ...editLink,
-                      category_id: val === "" ? null : parseInt(val),
-                    });
-                  }}
-                >
-                  <option value="">Categoria</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                  <select
-                    className={fieldClass}
-                    value={editLink.color}
-                  onChange={(e) =>
-                    setEditLink({ ...editLink, color: e.target.value })
-                  }
-                >
-                  <option value="">Cor</option>
-                  {colors.map((c) => (
-                    <option key={c.id} value={c.value} style={{ color: c.value }}>
-                      {c.value}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className={fieldClass}
-                  value={editImageType}
-                  onChange={(e) => setEditImageType(e.target.value as "url" | "file")}
-                >
-                  <option value="url">URL</option>
-                  <option value="file">Upload</option>
-                </select>
-                {editImageType === "url" ? (
-                  <input
-                    className={`${fieldClass} flex-1`}
-                    placeholder="Imagem"
-                    value={editLink.image_url}
-                    onChange={(e) =>
-                      setEditLink({ ...editLink, image_url: e.target.value })
-                    }
-                  />
-                ) : (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className={fieldClass}
-                    onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
-                  />
-                )}
+            <span className="flex-1">{l.title}</span>
+            <button onClick={() => startEdit(l)} className="text-sm text-blue-400">
+              Editar
+            </button>
+            <button onClick={() => remove(l.id)} className="text-sm text-red-400">
+              Excluir
+            </button>
 
-                <button onClick={saveEdit} className="text-sm text-green-400">
-                  Salvar
-                </button>
-                <button
-                  onClick={() => setEditingId(null)}
-                  className="text-sm text-yellow-400"
-                >
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1">{l.title}</span>
-                <button
-                  onClick={() => startEdit(l)}
-                  className="text-sm text-blue-400"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => remove(l.id)}
-                  className="text-sm text-red-400"
-                >
-                  Excluir
-                </button>
-              </>
-            )}
           </motion.li>
         ))}
       </motion.ul>

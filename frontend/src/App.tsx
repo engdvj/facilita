@@ -16,7 +16,11 @@ export default function App() {
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin" element={<Admin />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="links" element={<AdminLinks />} />
+          <Route path="links">
+            <Route index element={<AdminLinks />} />
+            <Route path=":id" element={<AdminLinks />} />
+          </Route>
+
           <Route path="categories" element={<AdminCategories />} />
           <Route path="colors" element={<AdminColors />} />
         </Route>

@@ -30,7 +30,6 @@ export default function Login() {
         <motion.form
           onSubmit={handleSubmit}
           className="bg-white dark:bg-slate-800 p-6 rounded-lg flex flex-col gap-4 w-80 text-gray-900 dark:text-white"
-
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
