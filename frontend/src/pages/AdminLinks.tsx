@@ -17,6 +17,8 @@ export default function AdminLinks() {
     color: "",
     image_url: "",
   });
+  const [newImageType, setNewImageType] = useState<"url" | "file">("url");
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState({
     title: "",
@@ -25,6 +27,11 @@ export default function AdminLinks() {
     color: "",
     image_url: "",
   });
+  const [editImageType, setEditImageType] = useState<"url" | "file">("url");
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
@@ -48,6 +55,14 @@ export default function AdminLinks() {
     e.preventDefault();
     try {
       const payload = { ...newLink };
+      if (newImageType === "file" && newImageFile) {
+        const fd = new FormData();
+        fd.append("file", newImageFile);
+        const res = await api.post("/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        payload.image_url = res.data.url;
+      }
       if (payload.category_id === null) delete (payload as any).category_id;
       await api.post("/links", payload);
       await refresh();
@@ -58,6 +73,8 @@ export default function AdminLinks() {
         color: "",
         image_url: "",
       });
+      setNewImageFile(null);
+      setNewImageType("url");
       toast.success("Link criado");
     } catch {
       toast.error("Erro ao criar link");
@@ -73,16 +90,28 @@ export default function AdminLinks() {
       color: link.color || "",
       image_url: link.imageUrl || "",
     });
+    setEditImageType("url");
+    setEditImageFile(null);
   };
 
   const saveEdit = async () => {
     if (editingId === null) return;
     try {
       const payload = { ...editLink };
+      if (editImageType === "file" && editImageFile) {
+        const fd = new FormData();
+        fd.append("file", editImageFile);
+        const res = await api.post("/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        payload.image_url = res.data.url;
+      }
       if (payload.category_id === null) delete (payload as any).category_id;
       await api.patch(`/links/${editingId}`, payload);
       toast.success("Link atualizado");
       setEditingId(null);
+      setEditImageFile(null);
+      setEditImageType("url");
       await refresh();
     } catch {
       toast.error("Erro ao atualizar");
@@ -100,7 +129,8 @@ export default function AdminLinks() {
       <h2 className="text-2xl font-heading text-center">Links</h2>
       <form
         onSubmit={handleCreate}
-        className="flex flex-col gap-3 bg-slate-800 p-6 rounded"
+        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+
       >
         <input
           className={fieldClass}
@@ -144,14 +174,32 @@ export default function AdminLinks() {
             </option>
           ))}
         </select>
-        <input
+        <select
           className={fieldClass}
-          placeholder="URL da imagem"
-          value={newLink.image_url}
-          onChange={(e) =>
-            setNewLink({ ...newLink, image_url: e.target.value })
-          }
-        />
+          value={newImageType}
+          onChange={(e) => setNewImageType(e.target.value as "url" | "file")}
+        >
+          <option value="url">URL</option>
+          <option value="file">Upload</option>
+        </select>
+        {newImageType === "url" ? (
+          <input
+            className={fieldClass}
+            placeholder="URL da imagem"
+            value={newLink.image_url}
+            onChange={(e) =>
+              setNewLink({ ...newLink, image_url: e.target.value })
+            }
+          />
+        ) : (
+          <input
+            type="file"
+            accept="image/*"
+            className={fieldClass}
+            onChange={(e) => setNewImageFile(e.target.files?.[0] || null)}
+          />
+        )}
+
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
         </button>
@@ -165,7 +213,8 @@ export default function AdminLinks() {
           <motion.li
             key={l.id}
             layout
-            className="flex items-center gap-2 bg-slate-800 p-3 rounded"
+            className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white"
+
           >
             {editingId === l.id ? (
               <>
@@ -216,14 +265,32 @@ export default function AdminLinks() {
                     </option>
                   ))}
                 </select>
+                <select
+                  className={fieldClass}
+                  value={editImageType}
+                  onChange={(e) => setEditImageType(e.target.value as "url" | "file")}
+                >
+                  <option value="url">URL</option>
+                  <option value="file">Upload</option>
+                </select>
+                {editImageType === "url" ? (
                   <input
                     className={`${fieldClass} flex-1`}
                     placeholder="Imagem"
-                  value={editLink.image_url}
-                  onChange={(e) =>
-                    setEditLink({ ...editLink, image_url: e.target.value })
-                  }
-                />
+                    value={editLink.image_url}
+                    onChange={(e) =>
+                      setEditLink({ ...editLink, image_url: e.target.value })
+                    }
+                  />
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className={fieldClass}
+                    onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
+                  />
+                )}
+
                 <button onClick={saveEdit} className="text-sm text-green-400">
                   Salvar
                 </button>

@@ -81,7 +81,7 @@ export default function AdminCategories() {
       <h2 className="text-xl font-heading">Categorias</h2>
       <form
         onSubmit={handleCreate}
-        className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded"
+        className="flex flex-col gap-2 max-w-sm bg-white dark:bg-slate-800 p-4 rounded text-gray-900 dark:text-white"
       >
         <input
           className={inputClass}
@@ -129,7 +129,7 @@ export default function AdminCategories() {
         animate={{ opacity: 1 }}
       >
         {categories.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2">
+          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
             <span
               className="w-5 h-5 rounded"
               style={{ backgroundColor: c.color }}

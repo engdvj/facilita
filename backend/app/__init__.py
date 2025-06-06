@@ -9,6 +9,7 @@ from pathlib import Path
 load_dotenv(Path(__file__).resolve().parents[2] / '.env')
 ROOT = Path(__file__).resolve().parents[2]
 DIST_DIR = ROOT / "frontend" / "dist"
+UPLOAD_DIR = ROOT / "uploads"
 
 def create_app(debug: bool = False):
     static_folder = str(DIST_DIR) if DIST_DIR.exists() else None
@@ -20,6 +21,8 @@ def create_app(debug: bool = False):
         os.getenv("DATABASE_URL", "sqlite:///facilita.sqlite"),
     )
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+    app.config.setdefault("UPLOAD_FOLDER", str(UPLOAD_DIR))
+    UPLOAD_DIR.mkdir(exist_ok=True)
 
     secret = os.getenv("SECRET_KEY")
     if not secret:

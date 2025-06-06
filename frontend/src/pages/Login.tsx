@@ -29,7 +29,8 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center py-8">
         <motion.form
           onSubmit={handleSubmit}
-          className="bg-slate-800 p-6 rounded-lg flex flex-col gap-4 w-80"
+          className="bg-white dark:bg-slate-800 p-6 rounded-lg flex flex-col gap-4 w-80 text-gray-900 dark:text-white"
+
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
