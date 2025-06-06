@@ -13,6 +13,7 @@ export default function AdminLinks() {
   const [newLink, setNewLink] = useState({
     title: "",
     url: "",
+
     category_id: null as number | null,
     color: "",
     image_url: "",
@@ -85,6 +86,7 @@ export default function AdminLinks() {
       toast.error("Erro ao atualizar");
     }
   };
+
 
   const remove = async (id: number) => {
     if (!confirm("Excluir link?")) return;
