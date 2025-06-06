@@ -30,6 +30,7 @@ export default function AdminLinks() {
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
 
+
   useEffect(() => {
     refresh();
   }, []);
@@ -105,18 +106,21 @@ export default function AdminLinks() {
       >
         <input
           className={fieldClass}
+
           placeholder="Título"
           value={newLink.title}
           onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
         />
         <input
           className={fieldClass}
+
           placeholder="URL"
           value={newLink.url}
           onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
         />
         <select
           className={fieldClass}
+
           value={newLink.category_id ?? ""}
           onChange={(e) => {
             const val = e.target.value;
@@ -135,6 +139,7 @@ export default function AdminLinks() {
         </select>
         <select
           className={fieldClass}
+
           value={newLink.color}
           onChange={(e) => setNewLink({ ...newLink, color: e.target.value })}
         >
@@ -147,6 +152,7 @@ export default function AdminLinks() {
         </select>
         <input
           className={fieldClass}
+
           placeholder="URL da imagem"
           value={newLink.image_url}
           onChange={(e) =>
@@ -172,6 +178,7 @@ export default function AdminLinks() {
               <>
                 <input
                   className={`${fieldClass} flex-1`}
+
                   value={editLink.title}
                   onChange={(e) =>
                     setEditLink({ ...editLink, title: e.target.value })
@@ -179,6 +186,7 @@ export default function AdminLinks() {
                 />
                 <input
                   className={`${fieldClass} flex-1`}
+
                   value={editLink.url}
                   onChange={(e) =>
                     setEditLink({ ...editLink, url: e.target.value })
@@ -187,6 +195,7 @@ export default function AdminLinks() {
                 />
                   <select
                     className={fieldClass}
+
                     value={editLink.category_id ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -205,6 +214,7 @@ export default function AdminLinks() {
                 </select>
                   <select
                     className={fieldClass}
+
                     value={editLink.color}
                   onChange={(e) =>
                     setEditLink({ ...editLink, color: e.target.value })
@@ -219,6 +229,7 @@ export default function AdminLinks() {
                 </select>
                   <input
                     className={`${fieldClass} flex-1`}
+
                     placeholder="Imagem"
                   value={editLink.image_url}
                   onChange={(e) =>
