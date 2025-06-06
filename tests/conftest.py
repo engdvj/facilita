@@ -10,7 +10,7 @@ def app():
     db_fd, db_path = tempfile.mkstemp()
     os.close(db_fd)
     os.environ['DATABASE_URL'] = f'sqlite:///{db_path}'
-    os.environ['JWT_SECRET_KEY'] = 'test-secret'
+    os.environ['SECRET_KEY'] = 'test-secret'
     app = create_app()
     app.config.update({'TESTING': True})
 
