@@ -18,6 +18,7 @@ def login_required(func):
 
 
 @bp.post("/auth/login")
+
 def login():
     data = request.get_json() or {}
     username = data.get("username")
@@ -67,7 +68,6 @@ def create_link():
     db.session.commit()
     return link.to_dict(), 201
 
-
 @bp.patch("/links/<int:link_id>")
 @login_required
 def update_link(link_id):
@@ -90,6 +90,7 @@ def delete_link(link_id):
 
 
 @bp.post("/categories")
+
 @login_required
 def create_category():
     data = request.get_json() or {}
@@ -149,6 +150,7 @@ def list_colors():
 
 
 @bp.post("/colors")
+
 @login_required
 def create_color():
     data = request.get_json() or {}

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
@@ -6,11 +7,13 @@ import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Search } from "lucide-react";
 
+
 interface Category {
   id: number;
   name: string;
   color?: string;
   icon?: string;
+
 }
 
 export default function Home() {
@@ -79,6 +82,7 @@ export default function Home() {
               </button>
             );
           })}
+
         </div>
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filtered.map((link: LinkData) => (
