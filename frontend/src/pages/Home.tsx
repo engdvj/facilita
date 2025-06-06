@@ -44,19 +44,6 @@ export default function Home() {
     for (const c of categories) map[c.id] = c;
     return map;
   }, [categories]);
-
-
-  const categoryMap = useMemo(() => {
-    const map: Record<number, Category> = {};
-    for (const c of categories) map[c.id] = c;
-    return map;
-  }, [categories]);
-
-  const categoryMap = useMemo(() => {
-    const map: Record<number, Category> = {};
-    for (const c of categories) map[c.id] = c;
-    return map;
-  }, [categories]);
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
       <Header />
