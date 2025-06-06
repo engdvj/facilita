@@ -49,6 +49,7 @@ export default function AdminColors() {
     }
   };
 
+
   const remove = async (id: number) => {
     if (!confirm("Excluir cor?")) return;
     await api.delete(`/colors/${id}`);

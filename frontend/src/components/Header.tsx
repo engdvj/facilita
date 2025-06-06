@@ -1,8 +1,25 @@
 import { Link } from 'react-router-dom'
-import { Home, Shield } from 'lucide-react'
+import { Home, Shield, Sun, Moon } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+
 
 export default function Header() {
+  const [theme, setTheme] = useState('light')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('theme') || 'light'
+    setTheme(saved)
+    document.documentElement.classList.toggle('dark', saved === 'dark')
+  }, [])
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    document.documentElement.classList.toggle('dark', next === 'dark')
+  }
+
   return (
     <motion.header
       className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
@@ -20,6 +37,11 @@ export default function Header() {
             <Shield size={18} />
             Admin
           </Link>
+
+          <button onClick={toggleTheme} className="ml-2">
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
         </nav>
       </div>
     </motion.header>

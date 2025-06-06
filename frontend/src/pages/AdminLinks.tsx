@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
 
-
 export default function AdminLinks() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(

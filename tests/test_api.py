@@ -14,7 +14,6 @@ def test_login(client):
 
 def test_create_and_list_link(client, app):
     login(client)
-
     res = client.post(
         "/api/links", json={"title": "Example", "url": "http://example.com"}
     )
@@ -64,6 +63,7 @@ def test_create_category_and_color(client, app):
 
     res = client.patch(f"/api/categories/{cat_id}", json={"name": "tech"})
     assert res.status_code == 200
+
 
     res = client.delete(f"/api/categories/{cat_id}")
     assert res.status_code == 200

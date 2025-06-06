@@ -10,7 +10,6 @@ export default function Admin() {
   const navigate = useNavigate();
 
   useEffect(() => {
-
     const loggedIn = localStorage.getItem("loggedIn") === "true";
     if (!loggedIn) {
       navigate("/admin/login");

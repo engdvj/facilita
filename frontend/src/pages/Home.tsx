@@ -4,11 +4,16 @@ import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
 import Header from "../components/Header";
 import { motion } from "framer-motion";
+import * as Icons from "lucide-react";
+import { Search } from "lucide-react";
 
 
 interface Category {
   id: number;
   name: string;
+  color?: string;
+  icon?: string;
+
 }
 
 export default function Home() {
@@ -29,46 +34,61 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
       <Header />
-
-        <motion.div
-        className="max-w-5xl mx-auto p-4"
+      <motion.div
+        className="container py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <input
-            value={search}
-            onChange={(e: any) => setSearch(e.target.value)}
-            type="text"
-            placeholder="Buscar..."
-
-            className="flex-1 rounded-md p-2 bg-slate-800 focus:bg-slate-700 transition-colors"
-          />
-
-          <select
-            className="rounded-md p-2 bg-slate-800 text-white"
-            value={categoryId}
-            onChange={(e: any) => {
-              const val = e.target.value;
-              setCategoryId(val === "all" ? "all" : parseInt(val));
-            }}
+        <h1 className="text-3xl text-center font-heading mb-6">Links em destaque</h1>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e: any) => setSearch(e.target.value)}
+              type="text"
+              placeholder="Buscar..."
+              className="w-full pl-8 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 p-2"
+            />
+          </div>
+        </div>
+        <div className="flex overflow-x-auto gap-2 pb-4 mb-6">
+          <button
+            onClick={() => setCategoryId('all')}
+            className={`px-3 py-1 rounded-full border transition-colors whitespace-nowrap ${
+              categoryId === 'all'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white'
+            }`}
           >
-            <option value="all">Todas categorias</option>
-            {categories.map((c: Category) => (
-              <option key={c.id} value={c.id}>
+            Todos
+          </button>
+          {categories.map((c: Category) => {
+            const Icon = (Icons as any)[c.icon || 'Circle'];
+            return (
+              <button
+                key={c.id}
+                onClick={() => setCategoryId(c.id)}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full border transition-colors whitespace-nowrap ${
+                  categoryId === c.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white'
+                }`}
+              >
+                {Icon && <Icon size={16} />}
                 {c.name}
-              </option>
-            ))}
-          </select>
+              </button>
+            );
+          })}
+
         </div>
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filtered.map((link: LinkData) => (
-            <div key={link.id}>
+            <motion.div key={link.id} layout>
               <LinkCard link={link} />
-            </div>
+            </motion.div>
           ))}
         </div>
       </motion.div>
