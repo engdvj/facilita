@@ -16,6 +16,9 @@ export default function AdminCategories() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
+  const inputClass =
+    "p-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   useEffect(() => {
     refresh();
   }, []);
@@ -78,10 +81,10 @@ export default function AdminCategories() {
       <h2 className="text-xl font-heading">Categorias</h2>
       <form
         onSubmit={handleCreate}
-        className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded"
+        className="flex flex-col gap-2 max-w-sm bg-white dark:bg-slate-800 p-4 rounded text-gray-900 dark:text-white"
       >
         <input
-          className="p-2 rounded text-black"
+          className={inputClass}
           placeholder="Nome"
           value={newCategory.name}
           onChange={(e) =>
@@ -89,7 +92,7 @@ export default function AdminCategories() {
           }
         />
         <select
-          className="p-2 rounded text-black"
+          className={inputClass}
           value={newCategory.color}
           onChange={(e) =>
             setNewCategory({ ...newCategory, color: e.target.value })
@@ -109,7 +112,7 @@ export default function AdminCategories() {
           />
         )}
         <input
-          className="p-2 rounded text-black"
+          className={inputClass}
           placeholder="Ícone"
           value={newCategory.icon}
           onChange={(e) =>
@@ -126,23 +129,23 @@ export default function AdminCategories() {
         animate={{ opacity: 1 }}
       >
         {categories.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2">
+          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
             <span
               className="w-5 h-5 rounded"
               style={{ backgroundColor: c.color }}
             />
             {editingId === c.id ? (
               <>
-                <input
-                  className="p-2 rounded text-black flex-1"
-                  value={editCat.name}
+                  <input
+                    className={`${inputClass} flex-1`}
+                    value={editCat.name}
                   onChange={(e) =>
                     setEditCat({ ...editCat, name: e.target.value })
                   }
                 />
-                <select
-                  className="p-2 rounded text-black"
-                  value={editCat.color}
+                  <select
+                    className={inputClass}
+                    value={editCat.color}
                   onChange={(e) =>
                     setEditCat({ ...editCat, color: e.target.value })
                   }
@@ -154,9 +157,9 @@ export default function AdminCategories() {
                     </option>
                   ))}
                 </select>
-                <input
-                  className="p-2 rounded text-black"
-                  value={editCat.icon}
+                  <input
+                    className={inputClass}
+                    value={editCat.icon}
                   onChange={(e) =>
                     setEditCat({ ...editCat, icon: e.target.value })
                   }

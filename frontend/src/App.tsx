@@ -6,6 +6,7 @@ import Admin from './pages/Admin'
 import AdminLinks from './pages/AdminLinks'
 import AdminCategories from './pages/AdminCategories'
 import AdminColors from './pages/AdminColors'
+import AdminDashboard from './pages/AdminDashboard'
 
 export default function App() {
   return (
@@ -13,8 +14,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin/login" element={<Login />} />
-        <Route path="/admin" element={<Admin />}> 
-          <Route index element={<AdminLinks />} />
+        <Route path="/admin" element={<Admin />}>
+          <Route index element={<AdminDashboard />} />
           <Route path="links" element={<AdminLinks />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="colors" element={<AdminColors />} />
