@@ -1,4 +1,6 @@
+
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -33,9 +35,28 @@ export default function AdminLinks() {
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
+
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
   useEffect(() => {
     refresh();
@@ -153,12 +174,15 @@ export default function AdminLinks() {
       <form
         onSubmit={editingId ? saveEdit : handleCreate}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
+
       >
         <input
           className={fieldClass}
           placeholder="Título"
           value={editingId ? editLink.title : newLink.title}
+
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
+
             editingId
               ? setEditLink({ ...editLink, title: e.target.value })
               : setNewLink({ ...newLink, title: e.target.value })
@@ -168,7 +192,9 @@ export default function AdminLinks() {
           className={fieldClass}
           placeholder="URL"
           value={editingId ? editLink.url : newLink.url}
+
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
+
             editingId
               ? setEditLink({ ...editLink, url: e.target.value })
               : setNewLink({ ...newLink, url: e.target.value })
@@ -177,7 +203,9 @@ export default function AdminLinks() {
         <select
           className={fieldClass}
           value={editingId ? editLink.category_id ?? "" : newLink.category_id ?? ""}
+
           onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+
             const val = e.target.value;
             if (editingId) {
               setEditLink({
@@ -202,7 +230,9 @@ export default function AdminLinks() {
         <select
           className={fieldClass}
           value={editingId ? editLink.color : newLink.color}
+
           onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+
             editingId
               ? setEditLink({ ...editLink, color: e.target.value })
               : setNewLink({ ...newLink, color: e.target.value })
@@ -218,7 +248,9 @@ export default function AdminLinks() {
         <select
           className={fieldClass}
           value={editingId ? editImageType : newImageType}
+
           onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+
             editingId
               ? setEditImageType(e.target.value as "url" | "file")
               : setNewImageType(e.target.value as "url" | "file")
@@ -232,22 +264,26 @@ export default function AdminLinks() {
             className={fieldClass}
             placeholder="URL da imagem"
             value={editingId ? editLink.image_url : newLink.image_url}
+
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 editingId
                   ? setEditLink({ ...editLink, image_url: e.target.value })
                   : setNewLink({ ...newLink, image_url: e.target.value })
               }
+
           />
         ) : (
           <input
             type="file"
             accept="image/*"
             className={fieldClass}
+
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 editingId
                   ? setEditImageFile(e.target.files?.[0] || null)
                   : setNewImageFile(e.target.files?.[0] || null)
               }
+
           />
         )}
         <div className="flex gap-2">
@@ -267,6 +303,7 @@ export default function AdminLinks() {
             </button>
           )}
         </div>
+
       </form>
       <motion.ul
         className="space-y-2"
@@ -278,6 +315,7 @@ export default function AdminLinks() {
             key={l.id}
             layout
             className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
+
           >
             <span className="flex-1">{l.title}</span>
             <button onClick={() => startEdit(l)} className="text-sm text-blue-400">
@@ -286,6 +324,7 @@ export default function AdminLinks() {
             <button onClick={() => remove(l.id)} className="text-sm text-red-400">
               Excluir
             </button>
+
           </motion.li>
         ))}
       </motion.ul>

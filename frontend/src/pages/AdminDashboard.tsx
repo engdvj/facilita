@@ -1,4 +1,6 @@
+
 import { ChangeEvent, useEffect, useState } from "react";
+
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api";
@@ -8,8 +10,6 @@ export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
   const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
-
-
   const [editCatId, setEditCatId] = useState<number | null>(null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
@@ -110,14 +110,18 @@ export default function AdminDashboard() {
                     <input
                       className={`${fieldClass} flex-1`}
                       value={editCat.name}
+
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditCat({ ...editCat, name: e.target.value })}
+
                     />
                     <select
                       className={fieldClass}
                       value={editCat.color}
+
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                         setEditCat({ ...editCat, color: e.target.value })}
+
                     >
                       <option value="">Cor</option>
                       {colors.map((col) => (
@@ -131,6 +135,7 @@ export default function AdminDashboard() {
                       value={editCat.icon}
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditCat({ ...editCat, icon: e.target.value })}
+
                       placeholder="Icone"
                     />
                     <button onClick={saveCat} className="text-sm text-green-400">Salvar</button>
@@ -150,7 +155,9 @@ export default function AdminDashboard() {
             <div className="flex justify-center gap-2 mt-2">
               <button
                 disabled={catPage === 1}
+
                 onClick={() => setCatPage((p: number) => Math.max(1, p - 1))}
+
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Anterior
@@ -161,6 +168,7 @@ export default function AdminDashboard() {
               <button
                 disabled={catPage === catPageCount}
                 onClick={() => setCatPage((p: number) => Math.min(catPageCount, p + 1))}
+
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Próxima
@@ -196,6 +204,7 @@ export default function AdminDashboard() {
               <button
                 disabled={linkPage === 1}
                 onClick={() => setLinkPage((p: number) => Math.max(1, p - 1))}
+
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Anterior
@@ -206,6 +215,7 @@ export default function AdminDashboard() {
               <button
                 disabled={linkPage === linkPageCount}
                 onClick={() => setLinkPage((p: number) => Math.min(linkPageCount, p + 1))}
+
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Próxima
@@ -222,14 +232,17 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
                   <>
                     <input
                       type="color"
                       value={editColor}
+
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditColor(e.target.value)}
+
                       className={`${colorInputClass} w-20 h-8`}
                     />
                     <button onClick={saveColor} className="text-sm text-green-400">Salvar</button>
@@ -249,7 +262,9 @@ export default function AdminDashboard() {
             <div className="flex justify-center gap-2 mt-2">
               <button
                 disabled={colorPage === 1}
+
                 onClick={() => setColorPage((p: number) => Math.max(1, p - 1))}
+
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Anterior
@@ -259,7 +274,9 @@ export default function AdminDashboard() {
               </span>
               <button
                 disabled={colorPage === colorPageCount}
+
                 onClick={() => setColorPage((p: number) => Math.min(colorPageCount, p + 1))}
+
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Próxima

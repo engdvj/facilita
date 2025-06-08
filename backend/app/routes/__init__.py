@@ -200,6 +200,7 @@ def create_api_blueprint():
         file.save(target)
         return {"url": f"/api/uploads/{filename}"}
 
+
     @bp.route("/uploads/<path:filename>")
     def serve_upload(filename: str):
         upload_dir = Path(current_app.config["UPLOAD_FOLDER"])
