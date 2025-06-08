@@ -20,6 +20,7 @@ export default function AdminColors() {
   const colorInputClass =
     "p-0 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-slate-700";
 
+
   useEffect(() => {
     fetchColors();
   }, []);
@@ -89,32 +90,32 @@ export default function AdminColors() {
       <div className="grid gap-8 md:grid-cols-2">
         <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
-          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row items-center gap-3">
+          <form onSubmit={handleCreate} className="flex items-center gap-4">
             <input
-              type="text"
-              placeholder="Cor (#fff, rgb..., hsl..., cmyk...)"
+              type="color"
               value={newColor}
               onChange={(e) => setNewColor(e.target.value)}
-
-              className={`${colorInputClass} w-12 h-10`}
+              className="w-8 h-8 rounded border border-white/20"
             />
             <input
               type="text"
               placeholder="#RRGGBB"
               value={newColor}
               onChange={(e) => setNewColor(e.target.value)}
-              className={`${colorInputClass} w-32 h-10 px-2 font-mono`}
-
+              className="rounded-md px-3 py-2 bg-slate-800 text-white font-mono"
+            />
+            <div
+              className="w-8 h-8 rounded border border-white/20"
+              style={{ backgroundColor: newColor }}
             />
             <input
               type="text"
               placeholder="Nome (opcional)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className={`${colorInputClass} w-40 h-10 px-2`}
-
+              className="rounded-md px-3 py-2 bg-slate-800 text-white"
             />
-            <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
+            <button className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl transition hover:brightness-110 px-4 py-2 text-white">
               Adicionar
             </button>
           </form>
