@@ -18,13 +18,13 @@ export default function Admin() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gray-100 dark:bg-[#0e1320] flex flex-col">
 
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
 
-          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
+          className="bg-indigo-100 dark:bg-[#1c2233] text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
 
           initial={false}
           animate={{ x: open ? 0 : -256 }}

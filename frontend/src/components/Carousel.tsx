@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function Carousel({ children }: { children: React.ReactNode[] }) {
   const [pos, setPos] = useState(0)
+
   const [visible, setVisible] = useState(4)
   const items = Array.isArray(children) ? children : [children]
   const count = items.length
@@ -35,6 +36,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     setPos((p) => p + 1)
   }
 
+
   if (count <= visible) {
     return (
       <div className="flex justify-center gap-4">
@@ -54,6 +56,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
   ]
   const total = extended.length
 
+
   const handleEnd = () => {
     if (pos < 0) {
       setSkip(true)
@@ -72,14 +75,17 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         style={{
           width: `calc(${total} * 100% / ${visible})`,
           transform: `translateX(-${((pos + visible) * 100) / total}%)`,
+
         }}
       >
         {extended.map((child, i) => (
           <div
             key={i}
             className="px-2 flex-none"
+
             style={{ width: `calc(100% / ${total})` }}
           >
+
             {child}
           </div>
         ))}

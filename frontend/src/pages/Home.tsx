@@ -42,7 +42,6 @@ export default function Home() {
   });
 
   const paginated = filtered;
-
   const categoryMap = useMemo(() => {
     const map: Record<number, Category> = {};
     for (const c of categories) map[c.id] = c;

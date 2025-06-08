@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -11,6 +11,7 @@ import { LinkData } from "../components/LinkCard";
 interface Category {
   id: number;
   name: string;
+  color: string;
 }
 interface Color {
   id: number;
@@ -56,9 +57,18 @@ export default function AdminLinks() {
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
+  const [page, setPage] = useState(1);
+  const perPage = 4;
+
   /* --------- classe reutilizável de input ------------------------- */
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+  const categoryMap = useMemo(() => {
+    const map: Record<number, Category> = {};
+    for (const c of categories) map[c.id] = c;
+    return map;
+  }, [categories]);
 
   /* ---------------------------------------------------------------- */
   const refresh = async () => {
@@ -179,57 +189,60 @@ export default function AdminLinks() {
     await refresh();
   };
 
+  const pageCount = Math.ceil(links.length / perPage) || 1;
+  const paginatedLinks = links.slice((page - 1) * perPage, page * perPage);
+
   /* ---------------------------------------------------------------- */
   return (
-    <div className="space-y-6 max-w-xl mx-auto p-4">
-      <h2 className="text-2xl font-heading text-center">Links</h2>
+    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
+      <div className="grid gap-8 md:grid-cols-2">
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6">
+          <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar Link" : "Novo Link"}</h2>
+          <form
+            onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
+            className="flex flex-col gap-3"
+          >
+            <input
+              className={fieldClass}
+              placeholder="Título"
+              value={editingId ? editLink.title : newLink.title}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                editingId
+                  ? setEditLink({ ...editLink, title: e.target.value })
+                  : setNewLink({ ...newLink, title: e.target.value })
+              }
+            />
 
-      {/* FORM --------------------------------------------------------- */}
-      <form
-        onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
-        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
-      >
-        <input
-          className={fieldClass}
-          placeholder="Título"
-          value={editingId ? editLink.title : newLink.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            editingId
-              ? setEditLink({ ...editLink, title: e.target.value })
-              : setNewLink({ ...newLink, title: e.target.value })
-          }
-        />
+            <input
+              className={fieldClass}
+              placeholder="URL"
+              value={editingId ? editLink.url : newLink.url}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                editingId
+                  ? setEditLink({ ...editLink, url: e.target.value })
+                  : setNewLink({ ...newLink, url: e.target.value })
+              }
+            />
 
-        <input
-          className={fieldClass}
-          placeholder="URL"
-          value={editingId ? editLink.url : newLink.url}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            editingId
-              ? setEditLink({ ...editLink, url: e.target.value })
-              : setNewLink({ ...newLink, url: e.target.value })
-          }
-        />
-
-        <select
-          className={fieldClass}
-          value={
-            editingId ? editLink.category_id ?? "" : newLink.category_id ?? ""
-          }
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-            const parsed = e.target.value === "" ? null : Number(e.target.value);
-            editingId
-              ? setEditLink({ ...editLink, category_id: parsed })
-              : setNewLink({ ...newLink, category_id: parsed });
-          }}
-        >
-          <option value="">Categoria</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+            <select
+              className={fieldClass}
+              value={
+                editingId ? editLink.category_id ?? "" : newLink.category_id ?? ""
+              }
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                const parsed = e.target.value === "" ? null : Number(e.target.value);
+                editingId
+                  ? setEditLink({ ...editLink, category_id: parsed })
+                  : setNewLink({ ...newLink, category_id: parsed });
+              }}
+            >
+              <option value="">Categoria</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
 
         <select
           className={fieldClass}
@@ -284,58 +297,76 @@ export default function AdminLinks() {
           />
         )}
 
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white"
-          >
-            {editingId ? "Salvar" : "Adicionar"}
-          </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white"
+              >
+                {editingId ? "Salvar" : "Adicionar"}
+              </button>
 
-          {editingId && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                navigate("/admin/links");
-              }}
-              className="px-4 py-2 rounded border"
-            >
-              Cancelar
-            </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    navigate("/admin/links");
+                  }}
+                  className="px-4 py-2 rounded border"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </section>
+
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+          <h2 className="text-lg font-semibold mb-4">Links ({links.length})</h2>
+          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {paginatedLinks.map((l) => (
+              <motion.li
+                key={l.id}
+                layout
+                className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
+              >
+                <span
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
+                />
+                <span className="flex-1">{l.title}</span>
+                <button onClick={() => startEdit(l)} className="text-sm text-blue-400">
+                  Editar
+                </button>
+                <button onClick={() => remove(l.id)} className="text-sm text-red-400">
+                  Excluir
+                </button>
+              </motion.li>
+            ))}
+          </motion.ul>
+          {pageCount > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="self-center">
+                {page} / {pageCount}
+              </span>
+              <button
+                disabled={page === pageCount}
+                onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Próxima
+              </button>
+            </div>
           )}
-        </div>
-      </form>
-
-      {/* LISTA -------------------------------------------------------- */}
-      <motion.ul
-        className="space-y-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {links.map((l) => (
-          <motion.li
-            key={l.id}
-            layout
-            className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
-          >
-            <span className="flex-1">{l.title}</span>
-
-            <button
-              onClick={() => startEdit(l)}
-              className="text-sm text-blue-400"
-            >
-              Editar
-            </button>
-            <button
-              onClick={() => remove(l.id)}
-              className="text-sm text-red-400"
-            >
-              Excluir
-            </button>
-          </motion.li>
-        ))}
-      </motion.ul>
+        </section>
+      </div>
     </div>
   );
 }
