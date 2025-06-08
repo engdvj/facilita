@@ -3,7 +3,14 @@ import { ChangeEvent, useEffect, useState, useMemo } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Pencil, Trash2, Plus, Search, ChevronDown } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  Search,
+  ChevronDown,
+} from "lucide-react";
+import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
 
@@ -19,6 +26,11 @@ export default function AdminDashboard() {
   const [linkQuery, setLinkQuery] = useState("");
   const [catQuery, setCatQuery] = useState("");
   const [colorQuery, setColorQuery] = useState("");
+
+  const perPage = 5;
+  const [linkPage, setLinkPage] = useState(1);
+  const [catPage, setCatPage] = useState(1);
+  const [colorPage, setColorPage] = useState(1);
 
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
@@ -85,6 +97,23 @@ export default function AdminDashboard() {
     c.value.toLowerCase().includes(colorQuery.toLowerCase())
   );
 
+  const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
+  const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
+  const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
+
+  const paginatedLinks = filteredLinks.slice(
+    (linkPage - 1) * perPage,
+    linkPage * perPage
+  );
+  const paginatedCats = filteredCats.slice(
+    (catPage - 1) * perPage,
+    catPage * perPage
+  );
+  const paginatedColors = filteredColors.slice(
+    (colorPage - 1) * perPage,
+    colorPage * perPage
+  );
+
   const categoryMap = useMemo(() => {
     const map: Record<number, { id: number; name: string; color: string; icon: string }> = {};
     for (const c of categories) map[c.id] = c;
@@ -124,37 +153,63 @@ export default function AdminDashboard() {
           </div>
 
           <motion.ul
-            className="flex gap-4 pb-2 overflow-x-auto snap-x"
+            className="space-y-2 flex-1 overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-
-            {filteredLinks.map((l) => (
-              <motion.li
-                key={l.id}
-                layout
-                className="min-w-[14rem] flex items-center gap-2 bg-[#1c2233] text-white p-3 rounded-2xl shadow-md hover:shadow-xl snap-start"
-              >
-                <span
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: categoryMap[l.categoryId || 0]?.color }}
-                />
-                <span className="flex-1">{l.title}</span>
-                <Link
-                  to={`/admin/links/${l.id}`}
-                  className="p-1 hover:text-[#7c3aed]"
+            {paginatedLinks.map((l) => {
+              const CatIcon = (Icons as any)[
+                categoryMap[l.categoryId || 0]?.icon || "Link2"
+              ];
+              return (
+                <motion.li
+                  key={l.id}
+                  layout
+                  className="flex items-center gap-2 bg-[#1c2233] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
                 >
-                  <Pencil size={16} />
-                </Link>
-                <button
-                  onClick={() => removeLink(l.id)}
-                  className="p-1 hover:text-red-400"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </motion.li>
-            ))}
+                  <span
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: categoryMap[l.categoryId || 0]?.color }}
+                  />
+                  {CatIcon && <CatIcon size={16} className="opacity-70" />}
+                  <span className="flex-1">{l.title}</span>
+                  <Link
+                    to={`/admin/links/${l.id}`}
+                    className="p-1 hover:text-[#7c3aed]"
+                  >
+                    <Pencil size={16} />
+                  </Link>
+                  <button
+                    onClick={() => removeLink(l.id)}
+                    className="p-1 hover:text-red-400"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </motion.li>
+              );
+            })}
           </motion.ul>
+          {linkPageCount > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                disabled={linkPage === 1}
+                onClick={() => setLinkPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="self-center">
+                {linkPage} / {linkPageCount}
+              </span>
+              <button
+                disabled={linkPage === linkPageCount}
+                onClick={() => setLinkPage((p) => Math.min(linkPageCount, p + 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Próxima
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
@@ -183,28 +238,52 @@ export default function AdminDashboard() {
           </div>
 
           <motion.ul
-            className="flex gap-4 pb-2 overflow-x-auto snap-x"
+            className="space-y-2 flex-1 overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-
-            {filteredCats.map((c) => (
-              <motion.li
-                key={c.id}
-                layout
-                className="min-w-[14rem] flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl shadow-md hover:shadow-xl snap-start"
-              >
-                <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
-                <span className="flex-1">{c.name}</span>
-                <button onClick={() => startEditCat(c)} className="p-1 hover:text-[#7c3aed]">
-                  <Pencil size={16} />
-                </button>
-                <button onClick={() => removeCat(c.id)} className="p-1 hover:text-red-400">
-                  <Trash2 size={16} />
-                </button>
-              </motion.li>
-            ))}
+            {paginatedCats.map((c) => {
+              const Icon = (Icons as any)[c.icon || "Folder"];
+              return (
+                <motion.li
+                  key={c.id}
+                  layout
+                  className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                >
+                  <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
+                  {Icon && <Icon size={16} className="opacity-70" />}
+                  <span className="flex-1">{c.name}</span>
+                  <button onClick={() => startEditCat(c)} className="p-1 hover:text-[#7c3aed]">
+                    <Pencil size={16} />
+                  </button>
+                  <button onClick={() => removeCat(c.id)} className="p-1 hover:text-red-400">
+                    <Trash2 size={16} />
+                  </button>
+                </motion.li>
+              );
+            })}
           </motion.ul>
+          {catPageCount > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                disabled={catPage === 1}
+                onClick={() => setCatPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="self-center">
+                {catPage} / {catPageCount}
+              </span>
+              <button
+                disabled={catPage === catPageCount}
+                onClick={() => setCatPage((p) => Math.min(catPageCount, p + 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Próxima
+              </button>
+            </div>
+          )}
         </section>
 
 
@@ -236,15 +315,15 @@ export default function AdminDashboard() {
           </div>
 
           <motion.ul
-            className="flex gap-4 pb-2 overflow-x-auto snap-x"
+            className="space-y-2 flex-1 overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            {filteredColors.map((c) => (
+            {paginatedColors.map((c) => (
               <motion.li
                 key={c.id}
                 layout
-                className="min-w-[14rem] flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl shadow-md hover:shadow-xl snap-start"
+                className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl shadow-md hover:shadow-xl text-white"
               >
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
@@ -277,6 +356,27 @@ export default function AdminDashboard() {
               </motion.li>
             ))}
           </motion.ul>
+          {colorPageCount > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                disabled={colorPage === 1}
+                onClick={() => setColorPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="self-center">
+                {colorPage} / {colorPageCount}
+              </span>
+              <button
+                disabled={colorPage === colorPageCount}
+                onClick={() => setColorPage((p) => Math.min(colorPageCount, p + 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Próxima
+              </button>
+            </div>
+          )}
         </section>
       </div>
     </div>
