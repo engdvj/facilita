@@ -3,7 +3,9 @@ import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
+
 import Carousel from "../components/Carousel";
+
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Search } from "lucide-react";
@@ -57,7 +59,9 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
+
         {/* intentionally left blank to remove the old heading */}
+
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -110,7 +114,9 @@ export default function Home() {
           })}
         </div>
         {paginated.length ? (
+
           <Carousel>
+
             {paginated.map((link: LinkData) => (
               <motion.div key={link.id} layout>
                 <LinkCard
@@ -121,9 +127,10 @@ export default function Home() {
                 />
               </motion.div>
             ))}
-          </Carousel>
+         </Carousel>
         ) : (
           <p className="text-center text-gray-500 dark:text-gray-400 py-10">Nenhum link encontrado.</p>
+
         )}
         
       </motion.div>
