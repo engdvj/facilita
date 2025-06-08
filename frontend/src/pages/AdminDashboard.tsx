@@ -93,79 +93,14 @@ export default function AdminDashboard() {
 
   return (
 
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-12 text-gray-900 dark:text-white">
-      <h1 className="text-3xl font-heading text-center">Painel de Controle</h1>
-      <div className="grid gap-6 sm:grid-cols-3">
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md px-6 py-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Links</p>
-          <p className="text-2xl font-bold">{links.length}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md px-6 py-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Categorias</p>
-          <p className="text-2xl font-bold">{categories.length}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md px-6 py-4 text-center">
-
-          <p className="text-sm text-gray-500 dark:text-gray-400">Cores</p>
-          <p className="text-2xl font-bold">{colors.length}</p>
-        </div>
-      </div>
-
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 text-gray-900 dark:text-white">
+      <div className="space-y-8">
         <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
           <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-            <h2 className="text-lg font-semibold">Categorias</h2>
-            <Link
-              to="/admin/categories"
-              className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
-
-            >
-              Novo
-            </Link>
-          </div>
-          <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {paginatedCats.map((c) => (
-              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
-                <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
-                <span className="flex-1">{c.name}</span>
-                <button onClick={() => startEditCat(c)} className="text-sm text-blue-400">Editar</button>
-                <button onClick={() => removeCat(c.id)} className="text-sm text-red-400">Excluir</button>
-              </motion.li>
-            ))}
-          </motion.ul>
-          {catPageCount > 1 && (
-            <div className="flex justify-center gap-2 mt-2">
-              <button
-                disabled={catPage === 1}
-
-                onClick={() => setCatPage((p: number) => Math.max(1, p - 1))}
-
-                className="px-3 py-1 rounded border disabled:opacity-50"
-              >
-                Anterior
-              </button>
-              <span className="self-center">
-                {catPage} / {catPageCount}
-              </span>
-              <button
-                disabled={catPage === catPageCount}
-                onClick={() => setCatPage((p: number) => Math.min(catPageCount, p + 1))}
-
-                className="px-3 py-1 rounded border disabled:opacity-50"
-              >
-                Próxima
-              </button>
-            </div>
-          )}
-        </section>
-
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
-          <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-            <h2 className="text-lg font-semibold">Links</h2>
+            <h2 className="text-lg font-semibold">Links ({links.length})</h2>
             <Link
               to="/admin/links"
               className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
-
             >
               Novo
             </Link>
@@ -196,7 +131,6 @@ export default function AdminDashboard() {
               <button
                 disabled={linkPage === 1}
                 onClick={() => setLinkPage((p: number) => Math.max(1, p - 1))}
-
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Anterior
@@ -207,7 +141,6 @@ export default function AdminDashboard() {
               <button
                 disabled={linkPage === linkPageCount}
                 onClick={() => setLinkPage((p: number) => Math.min(linkPageCount, p + 1))}
-
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Próxima
@@ -216,14 +149,55 @@ export default function AdminDashboard() {
           )}
         </section>
 
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
+          <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+            <h2 className="text-lg font-semibold">Categorias ({categories.length})</h2>
+            <Link
+              to="/admin/categories"
+              className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+            >
+              Novo
+            </Link>
+          </div>
+          <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {paginatedCats.map((c) => (
+              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
+                <span className="flex-1">{c.name}</span>
+                <button onClick={() => startEditCat(c)} className="text-sm text-blue-400">Editar</button>
+                <button onClick={() => removeCat(c.id)} className="text-sm text-red-400">Excluir</button>
+              </motion.li>
+            ))}
+          </motion.ul>
+          {catPageCount > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                disabled={catPage === 1}
+                onClick={() => setCatPage((p: number) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="self-center">
+                {catPage} / {catPageCount}
+              </span>
+              <button
+                disabled={catPage === catPageCount}
+                onClick={() => setCatPage((p: number) => Math.min(catPageCount, p + 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Próxima
+              </button>
+            </div>
+          )}
+        </section>
 
         <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
           <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-            <h2 className="text-lg font-semibold">Cores</h2>
+            <h2 className="text-lg font-semibold">Cores ({colors.length})</h2>
             <Link
               to="/admin/colors"
               className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
-
             >
               Novo
             </Link>
@@ -231,17 +205,14 @@ export default function AdminDashboard() {
           <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
-
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
                   <>
                     <input
                       type="color"
                       value={editColor}
-
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditColor(e.target.value)}
-
                       className={`${colorInputClass} w-20 h-8`}
                     />
                     <button onClick={saveColor} className="text-sm text-green-400">Salvar</button>
@@ -261,9 +232,7 @@ export default function AdminDashboard() {
             <div className="flex justify-center gap-2 mt-2">
               <button
                 disabled={colorPage === 1}
-
                 onClick={() => setColorPage((p: number) => Math.max(1, p - 1))}
-
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Anterior
@@ -273,9 +242,7 @@ export default function AdminDashboard() {
               </span>
               <button
                 disabled={colorPage === colorPageCount}
-
                 onClick={() => setColorPage((p: number) => Math.min(colorPageCount, p + 1))}
-
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
                 Próxima
