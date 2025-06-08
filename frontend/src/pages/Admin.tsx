@@ -75,7 +75,9 @@ export default function Admin() {
             </NavLink>
           </nav>
         </motion.aside>
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 text-gray-900 dark:text-white">
+        <main
+          className={`flex-1 p-4 md:p-8 text-gray-900 dark:text-white transform transition-transform md:translate-x-0 ${open ? "translate-x-64" : ""}`}
+        >
           <Outlet />
         </main>
       </div>
