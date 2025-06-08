@@ -48,7 +48,10 @@ export default function Home() {
     return map;
   }, [categories]);
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+    >
       <Header />
       <Hero />
       <motion.div

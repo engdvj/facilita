@@ -149,7 +149,7 @@ export default function AdminCategories() {
           <div className="flex gap-2">
             <button
               type="submit"
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white"
+              className="btn-primary px-4 py-2 rounded"
             >
               {editingId ? "Salvar" : "Adicionar"}
             </button>
