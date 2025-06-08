@@ -33,7 +33,13 @@ export default function LinkCard({ link }: { link: LinkData }) {
       )}
       {link.imageUrl && (
         <img
-          src={link.imageUrl.startsWith('/uploads/') ? `/api${link.imageUrl}` : link.imageUrl}
+          src={
+            link.imageUrl.startsWith("/api/")
+              ? link.imageUrl
+              : link.imageUrl.startsWith("/uploads/")
+              ? `/api${link.imageUrl}`
+              : link.imageUrl
+          }
           alt=""
           className="h-32 w-full object-cover"
         />
