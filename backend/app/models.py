@@ -45,3 +45,4 @@ class Link(db.Model):
 class Color(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), unique=True, nullable=False)
+    name = db.Column(db.String(50))
