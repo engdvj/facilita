@@ -36,7 +36,7 @@ export default function Header() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="container mx-auto p-4 flex justify-between items-center">
+      <div className="w-full p-4 flex justify-between items-center">
         <Link to="/" className="text-2xl font-heading font-bold">FACILITA CHVC</Link>
         <nav className="space-x-4 flex items-center">
           <Link to="/" className="hover:underline flex items-center gap-1">
