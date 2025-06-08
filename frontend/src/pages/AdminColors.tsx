@@ -90,24 +90,26 @@ export default function AdminColors() {
       <div className="grid gap-8 md:grid-cols-2">
         <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
-          <form onSubmit={handleCreate} className="flex items-center gap-4">
-            <input
-              type="color"
-              value={newColor}
-              onChange={(e) => setNewColor(e.target.value)}
-              className="w-8 h-8 rounded border border-white/20"
-            />
-            <input
-              type="text"
-              placeholder="#RRGGBB"
-              value={newColor}
-              onChange={(e) => setNewColor(e.target.value)}
-              className="rounded-md px-3 py-2 bg-slate-800 text-white font-mono"
-            />
-            <div
-              className="w-8 h-8 rounded border border-white/20"
-              style={{ backgroundColor: newColor }}
-            />
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={newColor}
+                onChange={(e) => setNewColor(e.target.value)}
+                className="w-8 h-8 rounded border border-white/20"
+              />
+              <input
+                type="text"
+                placeholder="#RRGGBB"
+                value={newColor}
+                onChange={(e) => setNewColor(e.target.value)}
+                className="rounded-md px-3 py-2 bg-slate-800 text-white font-mono"
+              />
+              <div
+                className="w-8 h-8 rounded border border-white/20"
+                style={{ backgroundColor: newColor }}
+              />
+            </div>
             <input
               type="text"
               placeholder="Nome (opcional)"
@@ -115,7 +117,8 @@ export default function AdminColors() {
               onChange={(e) => setNewName(e.target.value)}
               className="rounded-md px-3 py-2 bg-slate-800 text-white"
             />
-            <button className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl transition hover:brightness-110 px-4 py-2 text-white">
+            <button className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl transition hover:brightness-110 px-4 py-2 text-white self-start">
+
               Adicionar
             </button>
           </form>
