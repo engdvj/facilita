@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import * as Icons from "lucide-react";
 import api from "../api";
 
 export default function AdminCategories() {
@@ -11,7 +13,9 @@ export default function AdminCategories() {
   const [categories, setCategories] = useState<
     { id: number; name: string; color: string; icon: string }[]
   >([]);
-  const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
+  const [colors, setColors] = useState<
+    { id: number; value: string; name?: string; type?: string }[]
+  >([]);
   const [newCategory, setNewCategory] = useState({
     name: "",
     color: "",
@@ -21,7 +25,7 @@ export default function AdminCategories() {
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
   const [page, setPage] = useState(1);
-  const perPage = 4;
+  const perPage = 5;
 
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
@@ -92,7 +96,7 @@ export default function AdminCategories() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6">
+        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar" : "Nova"} Categoria</h2>
           <form
             onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
@@ -119,8 +123,12 @@ export default function AdminCategories() {
         >
             <option value="">Selecione a cor</option>
             {colors.map((c) => (
-              <option key={c.id} value={c.value} style={{ color: c.value }}>
-                {c.value}
+              <option
+                key={c.id}
+                value={c.value}
+                style={{ backgroundColor: c.value, color: "#000" }}
+              >
+                {c.name ? `${c.name} (${c.type})` : `${c.value} (${c.type})`}
               </option>
             ))}
           </select>
@@ -157,25 +165,29 @@ export default function AdminCategories() {
           </form>
         </section>
 
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Categorias ({categories.length})</h2>
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {paginatedCats.map((c) => (
-              <motion.li
-                key={c.id}
-                layout
-                className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
-              >
-                <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
-                <span className="flex-1">{c.name}</span>
-                <button onClick={() => startEdit(c)} className="text-sm text-blue-400">
-                  Editar
-                </button>
-                <button onClick={() => remove(c.id)} className="text-sm text-red-400">
-                  Excluir
-                </button>
-              </motion.li>
-            ))}
+            {paginatedCats.map((c) => {
+              const Icon = (Icons as any)[c.icon || "Folder"];
+              return (
+                <motion.li
+                  key={c.id}
+                  layout
+                  className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                >
+                  <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
+                  {Icon && <Icon size={16} className="opacity-70" />}
+                  <span className="flex-1">{c.name}</span>
+                  <button onClick={() => startEdit(c)} className="p-1 hover:text-[#7c3aed]">
+                    <Pencil size={16} />
+                  </button>
+                  <button onClick={() => remove(c.id)} className="p-1 hover:text-red-400">
+                    <Trash2 size={16} />
+                  </button>
+                </motion.li>
+              );
+            })}
           </motion.ul>
           {pageCount > 1 && (
             <div className="flex justify-center gap-2 mt-2">
@@ -184,7 +196,7 @@ export default function AdminCategories() {
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {page} / {pageCount}
@@ -194,7 +206,7 @@ export default function AdminCategories() {
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}
