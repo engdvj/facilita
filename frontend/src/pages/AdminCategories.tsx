@@ -16,6 +16,9 @@ export default function AdminCategories() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   useEffect(() => {
     refresh();
   }, []);
@@ -74,14 +77,14 @@ export default function AdminCategories() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto">
-      <h2 className="text-xl font-heading">Categorias</h2>
+    <div className="space-y-6 max-w-xl mx-auto">
+      <h2 className="text-2xl font-heading text-center">Categorias</h2>
       <form
         onSubmit={handleCreate}
-        className="flex flex-col gap-2 max-w-sm bg-slate-800 p-4 rounded"
+        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
       >
         <input
-          className="p-2 rounded text-black"
+          className={fieldClass}
           placeholder="Nome"
           value={newCategory.name}
           onChange={(e) =>
@@ -89,7 +92,7 @@ export default function AdminCategories() {
           }
         />
         <select
-          className="p-2 rounded text-black"
+          className={fieldClass}
           value={newCategory.color}
           onChange={(e) =>
             setNewCategory({ ...newCategory, color: e.target.value })
@@ -97,19 +100,13 @@ export default function AdminCategories() {
         >
           <option value="">Selecione a cor</option>
           {colors.map((c) => (
-            <option key={c.id} value={c.value}>
+            <option key={c.id} value={c.value} style={{ color: c.value }}>
               {c.value}
             </option>
           ))}
         </select>
-        {newCategory.color && (
-          <div
-            className="w-6 h-6 rounded border"
-            style={{ backgroundColor: newCategory.color }}
-          />
-        )}
         <input
-          className="p-2 rounded text-black"
+          className={fieldClass}
           placeholder="Ícone"
           value={newCategory.icon}
           onChange={(e) =>
@@ -126,37 +123,33 @@ export default function AdminCategories() {
         animate={{ opacity: 1 }}
       >
         {categories.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2">
-            <span
-              className="w-5 h-5 rounded"
-              style={{ backgroundColor: c.color }}
-            />
+          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
             {editingId === c.id ? (
               <>
-                <input
-                  className="p-2 rounded text-black flex-1"
-                  value={editCat.name}
+                  <input
+                    className={`${fieldClass} flex-1`}
+                    value={editCat.name}
                   onChange={(e) =>
                     setEditCat({ ...editCat, name: e.target.value })
                   }
                 />
-                <select
-                  className="p-2 rounded text-black"
-                  value={editCat.color}
+                  <select
+                    className={fieldClass}
+                    value={editCat.color}
                   onChange={(e) =>
                     setEditCat({ ...editCat, color: e.target.value })
                   }
                 >
                   <option value="">Cor</option>
                   {colors.map((col) => (
-                    <option key={col.id} value={col.value}>
+                    <option key={col.id} value={col.value} style={{ color: col.value }}>
                       {col.value}
                     </option>
                   ))}
                 </select>
-                <input
-                  className="p-2 rounded text-black"
-                  value={editCat.icon}
+                  <input
+                    className={fieldClass}
+                    value={editCat.icon}
                   onChange={(e) =>
                     setEditCat({ ...editCat, icon: e.target.value })
                   }
@@ -175,6 +168,9 @@ export default function AdminCategories() {
             ) : (
               <>
                 <span className="flex-1">{c.name}</span>
+                <span className="ml-2 text-sm font-mono" style={{ color: c.color }}>
+                  {c.color}
+                </span>
                 <button
                   onClick={() => startEdit(c)}
                   className="text-sm text-blue-400"

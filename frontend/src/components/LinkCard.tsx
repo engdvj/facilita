@@ -32,7 +32,11 @@ export default function LinkCard({ link }: { link: LinkData }) {
         />
       )}
       {link.imageUrl && (
-        <img src={link.imageUrl} alt="" className="h-32 w-full object-cover" />
+        <img
+          src={link.imageUrl.startsWith('/uploads/') ? `/api${link.imageUrl}` : link.imageUrl}
+          alt=""
+          className="h-32 w-full object-cover"
+        />
       )}
       <div className="p-4 text-white backdrop-blur-sm bg-black/20">
         <h3 className="font-semibold">{link.title}</h3>

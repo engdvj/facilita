@@ -15,10 +15,10 @@ export default function Admin() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
       <Header />
       <motion.nav
-        className="bg-slate-800 py-6 flex justify-center gap-8"
+        className="bg-indigo-100 dark:bg-slate-800 py-6 flex justify-center gap-8 text-gray-900 dark:text-white"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -41,7 +41,7 @@ export default function Admin() {
           <Palette size={18} /> Cores
         </Link>
       </motion.nav>
-      <div className="py-8 px-4 container mx-auto">
+      <div className="py-8 px-4 container mx-auto flex-1 text-gray-900 dark:text-white">
         <Outlet />
       </div>
     </div>

@@ -9,6 +9,9 @@ export default function AdminColors() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("#ffffff");
 
+  const colorInputClass =
+    "p-0 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-slate-700";
+
   useEffect(() => {
     fetchColors();
   }, []);
@@ -54,17 +57,17 @@ export default function AdminColors() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto">
-      <h2 className="text-xl font-heading">Cores</h2>
+    <div className="space-y-6 max-w-xl mx-auto">
+      <h2 className="text-2xl font-heading text-center">Cores</h2>
       <form
         onSubmit={handleCreate}
-        className="flex items-center gap-2 bg-slate-800 p-4 rounded"
+        className="flex items-center gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
       >
         <input
           type="color"
           value={newColor}
           onChange={(e) => setNewColor(e.target.value)}
-          className="w-20 h-10 p-0 border rounded"
+          className={`${colorInputClass} w-20 h-10`}
         />
         <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
           Adicionar
@@ -76,18 +79,14 @@ export default function AdminColors() {
         animate={{ opacity: 1 }}
       >
         {colors.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2">
-            <span
-              className="w-5 h-5 rounded"
-              style={{ backgroundColor: c.value }}
-            />
+          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
             {editingId === c.id ? (
               <>
                 <input
                   type="color"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-20 h-8 p-0 border rounded"
+                  className={`${colorInputClass} w-20 h-8`}
                 />
                 <button onClick={saveEdit} className="text-sm text-green-400">
                   Salvar
@@ -101,7 +100,9 @@ export default function AdminColors() {
               </>
             ) : (
               <>
-                <span className="flex-1">{c.value}</span>
+                <span className="flex-1 font-mono" style={{ color: c.value }}>
+                  {c.value}
+                </span>
                 <button
                   onClick={() => startEdit(c)}
                   className="text-sm text-blue-400"

@@ -44,19 +44,6 @@ export default function Home() {
     for (const c of categories) map[c.id] = c;
     return map;
   }, [categories]);
-
-
-  const categoryMap = useMemo(() => {
-    const map: Record<number, Category> = {};
-    for (const c of categories) map[c.id] = c;
-    return map;
-  }, [categories]);
-
-  const categoryMap = useMemo(() => {
-    const map: Record<number, Category> = {};
-    for (const c of categories) map[c.id] = c;
-    return map;
-  }, [categories]);
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
       <Header />
@@ -87,7 +74,7 @@ export default function Home() {
             className={`px-3 py-1 rounded-full border transition-colors whitespace-nowrap ${
               categoryId === 'all'
                 ? 'bg-indigo-600 text-white'
-                : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white'
+                : 'bg-indigo-100 dark:bg-slate-700 text-gray-900 dark:text-white'
             }`}
           >
             Todos
@@ -105,7 +92,7 @@ export default function Home() {
                 className={`flex items-center gap-1 px-3 py-1 rounded-full border transition-colors whitespace-nowrap ${
                   active
                     ? 'text-white'
-                    : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white'
+                    : 'bg-indigo-100 dark:bg-slate-700 text-gray-900 dark:text-white'
                 }`}
                 style={
                   active
