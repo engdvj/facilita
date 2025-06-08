@@ -46,15 +46,6 @@ export default function Home() {
   const paginated = filtered;
 
 
-  const groups = useMemo(() => {
-    const result: LinkData[][] = [];
-    for (let i = 0; i < paginated.length; i += 4) {
-      result.push(paginated.slice(i, i + 4));
-    }
-    return result;
-  }, [paginated]);
-
-
   const categoryMap = useMemo(() => {
     const map: Record<number, Category> = {};
     for (const c of categories) map[c.id] = c;
@@ -126,19 +117,16 @@ export default function Home() {
         {paginated.length ? (
 
           <Carousel>
-            {groups.map((group, gi) => (
-              <div key={gi} className="flex justify-center gap-4 px-4">
-                {group.map((link: LinkData) => (
-                  <motion.div key={link.id} layout className="w-64">
-                    <LinkCard
-                      link={{
-                        ...link,
-                        categoryColor: categoryMap[link.categoryId || 0]?.color,
-                      }}
-                    />
-                  </motion.div>
-                ))}
-              </div>
+            {paginated.map((link: LinkData) => (
+              <motion.div key={link.id} layout className="max-w-xs mx-auto">
+                <LinkCard
+                  link={{
+                    ...link,
+                    categoryColor: categoryMap[link.categoryId || 0]?.color,
+                  }}
+                />
+              </motion.div>
+
             ))}
           </Carousel>
         ) : (
