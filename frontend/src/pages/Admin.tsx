@@ -1,11 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { Link2, Folder, Palette, Home } from "lucide-react";
+import { Link2, Folder, Palette, Home, Menu, X } from "lucide-react";
 import { motion } from "framer-motion";
 import Header from "../components/Header";
 
 export default function Admin() {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const loggedIn = localStorage.getItem("loggedIn") === "true";
@@ -17,28 +18,36 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
       <Header />
-      <motion.nav
-        className="bg-indigo-100 dark:bg-slate-800 py-6"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        <div className="container mx-auto flex justify-evenly text-gray-900 dark:text-white">
-          <Link to="/admin" className="hover:underline flex items-center gap-1">
-            <Home size={18} /> Dashboard
-          </Link>
-          <Link to="/admin/categories" className="hover:underline flex items-center gap-1">
-            <Folder size={18} /> Categorias
-          </Link>
-          <Link to="/admin/links" className="hover:underline flex items-center gap-1">
-            <Link2 size={18} /> Links
-          </Link>
-          <Link to="/admin/colors" className="hover:underline flex items-center gap-1">
-            <Palette size={18} /> Cores
-          </Link>
-        </div>
-      </motion.nav>
-      <div className="py-8 px-4 container mx-auto flex-1 text-gray-900 dark:text-white">
-        <Outlet />
+      <div className="flex flex-1 overflow-hidden relative">
+        <motion.aside
+          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform md:translate-x-0 fixed md:relative h-full z-20"
+          initial={false}
+          animate={{ x: open ? 0 : -256 }}
+        >
+          <button className="md:hidden mb-4" onClick={() => setOpen(false)}>
+            <X size={20} />
+          </button>
+          <nav className="flex flex-col gap-2">
+            <Link to="/admin" className="hover:underline flex items-center gap-1">
+              <Home size={18} /> Dashboard
+            </Link>
+            <Link to="/admin/categories" className="hover:underline flex items-center gap-1">
+              <Folder size={18} /> Categorias
+            </Link>
+            <Link to="/admin/links" className="hover:underline flex items-center gap-1">
+              <Link2 size={18} /> Links
+            </Link>
+            <Link to="/admin/colors" className="hover:underline flex items-center gap-1">
+              <Palette size={18} /> Cores
+            </Link>
+          </nav>
+        </motion.aside>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 text-gray-900 dark:text-white">
+          <button className="md:hidden mb-4" onClick={() => setOpen(true)}>
+            <Menu size={20} />
+          </button>
+          <Outlet />
+        </main>
       </div>
     </div>
   );
