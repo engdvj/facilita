@@ -12,7 +12,7 @@ Projeto monorepo contendo o frontend em React e o backend em Flask descritos em 
 ### Backend
 
 ```bash
-cp .env.example .env  # gere o arquivo de configuracao na raiz do projeto
+copy .env.example .env  # gere o arquivo de configuracao na raiz do projeto
 cd backend
 python -m venv venv
 source venv/bin/activate ou venv\Scripts\activate
