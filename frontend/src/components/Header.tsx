@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Home, Shield, Sun, Moon, LogOut, Menu, X } from 'lucide-react'
+import { Home, Shield, LogOut, Menu, X, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import api from '../api'
@@ -9,23 +9,51 @@ interface HeaderProps {
   sidebarOpen?: boolean
 }
 
+const defaultTheme = {
+  '--background-main': '#f3f4f6',
+  '--text-color': '#111827',
+  '--link-bar-background': '#4f46e5',
+  '--link-bar-text': '#ffffff',
+  '--button-primary': '#6366f1',
+  '--hover-effect': '#4338ca'
+}
+
 export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
-  const [theme, setTheme] = useState('light')
   const [loggedIn, setLoggedIn] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [theme, setTheme] = useState(defaultTheme)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme') || 'light'
-    setTheme(saved)
-    document.documentElement.classList.toggle('dark', saved === 'dark')
     setLoggedIn(localStorage.getItem('loggedIn') === 'true')
   }, [])
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    localStorage.setItem('theme', next)
-    document.documentElement.classList.toggle('dark', next === 'dark')
+  const openModal = () => {
+    const styles = getComputedStyle(document.documentElement)
+    const current: Record<string, string> = {}
+    Object.keys(defaultTheme).forEach((k) => {
+      current[k] = styles.getPropertyValue(k).trim()
+    })
+    setTheme(current)
+    setOpen(true)
+  }
+
+  const applyTheme = (t: Record<string, string>) => {
+    Object.entries(t).forEach(([k, v]) => {
+      document.documentElement.style.setProperty(k, v)
+    })
+  }
+
+  const saveTheme = () => {
+    applyTheme(theme)
+    localStorage.setItem('theme-custom', JSON.stringify(theme))
+    setOpen(false)
+  }
+
+  const resetTheme = () => {
+    applyTheme(defaultTheme)
+    localStorage.removeItem('theme-custom')
+    setTheme(defaultTheme)
   }
 
   const logout = async () => {
@@ -37,14 +65,15 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
 
   return (
     <motion.header
-      className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+      className="shadow-md"
+      style={{ backgroundColor: 'var(--link-bar-background)', color: 'var(--link-bar-text)' }}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
     >
       <div className="w-full p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           {onMenuClick && (
-            <button onClick={onMenuClick}>
+            <button onClick={onMenuClick} className="hover:bg-[var(--hover-effect)] p-1 rounded">
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           )}
@@ -72,11 +101,39 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               <LogOut size={18} /> Sair
             </button>
           )}
-          <button onClick={toggleTheme} className="ml-2">
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          {loggedIn && (
+            <button onClick={openModal} className="ml-2 hover:bg-[var(--hover-effect)] p-1 rounded">
+              <Palette size={18} />
+            </button>
+          )}
         </nav>
       </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg text-gray-900 space-y-4">
+            <h2 className="text-lg font-semibold mb-2">Personalizar Aparência</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(theme).map(([key, value]) => (
+                <label key={key} className="flex items-center gap-2">
+                  <span className="flex-1 text-sm">{key.replace(/--/,'')}</span>
+                  <input
+                    type="color"
+                    value={value}
+                    onChange={(e) => setTheme({ ...theme, [key]: e.target.value })}
+                  />
+                  <span className="w-5 h-5 border rounded" style={{ backgroundColor: value }} />
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={resetTheme} className="px-3 py-1 rounded border">Resetar para padrão</button>
+              <button onClick={() => setOpen(false)} className="px-3 py-1 rounded border">Cancelar</button>
+              <button onClick={saveTheme} className="btn-primary px-3 py-1 rounded">Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.header>
   )
 }
