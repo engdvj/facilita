@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
 import Header from "../components/Header";
@@ -56,9 +56,10 @@ export default function Home() {
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
+              <input
+                value={search}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSearch(e.target.value)}
               type="text"
               placeholder="Buscar..."
               className="w-full pl-8 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 p-2"
@@ -120,9 +121,9 @@ export default function Home() {
         </div>
         {pageCount > 1 && (
           <div className="flex justify-center gap-4 mt-6">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
               className="px-3 py-1 rounded border disabled:opacity-50"
             >
               Anterior
@@ -130,9 +131,9 @@ export default function Home() {
             <span className="self-center">
               {page} / {pageCount}
             </span>
-            <button
-              disabled={page === pageCount}
-              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              <button
+                disabled={page === pageCount}
+                onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
               className="px-3 py-1 rounded border disabled:opacity-50"
             >
               Próxima
