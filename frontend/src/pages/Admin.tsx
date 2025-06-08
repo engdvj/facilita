@@ -23,8 +23,7 @@ export default function Admin() {
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
-          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed inset-y-0 md:relative h-full md:min-h-screen z-20"
-
+          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
@@ -76,7 +75,9 @@ export default function Admin() {
           </nav>
         </motion.aside>
         <main
-          className={`flex-1 p-4 md:p-8 text-gray-900 dark:text-white transform transition-transform md:translate-x-0 ${open ? "translate-x-64" : ""}`}
+          className={`flex-1 p-4 md:p-8 text-gray-900 dark:text-white transition-all ${
+            open ? "translate-x-64 md:translate-x-0 md:ml-64" : "md:ml-0"
+          }`}
         >
           <Outlet />
         </main>

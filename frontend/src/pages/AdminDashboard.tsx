@@ -1,5 +1,5 @@
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState, useMemo } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -84,6 +84,12 @@ export default function AdminDashboard() {
   const paginatedLinks = links.slice((linkPage - 1) * perPage, linkPage * perPage);
   const paginatedCats = categories.slice((catPage - 1) * perPage, catPage * perPage);
   const paginatedColors = colors.slice((colorPage - 1) * perPage, colorPage * perPage);
+
+  const categoryMap = useMemo(() => {
+    const map: Record<number, { id: number; name: string; color: string; icon: string }> = {};
+    for (const c of categories) map[c.id] = c;
+    return map;
+  }, [categories]);
 
   return (
 
@@ -171,6 +177,10 @@ export default function AdminDashboard() {
                 layout
                 className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
               >
+                <span
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: categoryMap[l.categoryId || 0]?.color }}
+                />
                 <span className="flex-1">{l.title}</span>
                 <Link to={`/admin/links/${l.id}`} className="text-sm text-blue-400">
                   Editar
