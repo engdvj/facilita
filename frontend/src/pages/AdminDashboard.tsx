@@ -86,29 +86,33 @@ export default function AdminDashboard() {
   const paginatedColors = colors.slice((colorPage - 1) * perPage, colorPage * perPage);
 
   return (
-    <div className="space-y-10 max-w-5xl mx-auto p-4 py-8 text-center overflow-hidden">
-      <h1 className="text-3xl font-heading mb-4">Dashboard</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
+
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-12 text-gray-900 dark:text-white">
+      <h1 className="text-3xl font-heading text-center">Painel de Controle</h1>
+      <div className="grid gap-6 sm:grid-cols-3">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md px-6 py-4 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">Links</p>
           <p className="text-2xl font-bold">{links.length}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md px-6 py-4 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">Categorias</p>
           <p className="text-2xl font-bold">{categories.length}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md px-6 py-4 text-center">
+
           <p className="text-sm text-gray-500 dark:text-gray-400">Cores</p>
           <p className="text-2xl font-bold">{colors.length}</p>
         </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <section className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-heading">Categorias</h2>
+
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
+          <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+            <h2 className="text-lg font-semibold">Categorias</h2>
             <Link
               to="/admin/categories"
-              className="px-3 py-1 rounded-full bg-indigo-500 text-white text-sm hover:bg-indigo-600"
+              className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+
             >
               Novo
             </Link>
@@ -149,12 +153,13 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-heading">Links</h2>
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
+          <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+            <h2 className="text-lg font-semibold">Links</h2>
             <Link
               to="/admin/links"
-              className="px-3 py-1 rounded-full bg-indigo-500 text-white text-sm hover:bg-indigo-600"
+              className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+
             >
               Novo
             </Link>
@@ -201,12 +206,14 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-heading">Cores</h2>
+
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col p-6">
+          <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+            <h2 className="text-lg font-semibold">Cores</h2>
             <Link
               to="/admin/colors"
-              className="px-3 py-1 rounded-full bg-indigo-500 text-white text-sm hover:bg-indigo-600"
+              className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+
             >
               Novo
             </Link>
