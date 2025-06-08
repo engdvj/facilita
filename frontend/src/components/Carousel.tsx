@@ -1,4 +1,6 @@
+
 import { useEffect, useState } from 'react'
+
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function Carousel({ children }: { children: React.ReactNode[] }) {
@@ -19,6 +21,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
+
 
   const prev = () => setIndex((index - 1 + count) % count)
   const next = () => setIndex((index + 1) % count)
@@ -46,6 +49,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     <div className="relative overflow-hidden">
       <div
         className="flex transition-transform duration-500 ease-out"
+
         style={{
           width: `calc(${total} * 100% / ${visible})`,
           transform: `translateX(-${((index + visible) * 100) / total}%)`,
@@ -55,8 +59,10 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
           <div
             key={i}
             className="px-2 flex-none"
+
             style={{ width: `calc(100% / ${total})` }}
           >
+
             {child}
           </div>
         ))}
