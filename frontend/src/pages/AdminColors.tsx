@@ -68,6 +68,7 @@ export default function AdminColors() {
       setEditingId(null);
       setEditName("");
       setEditType("hex");
+
       await fetchColors();
     } catch {
       toast.error("Erro ao atualizar");

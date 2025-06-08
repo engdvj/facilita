@@ -145,6 +145,7 @@ def create_api_blueprint():
         return jsonify([
             {"id": c.id, "value": c.value, "name": c.name, "type": c.type}
             for c in colors
+
         ])
 
     @bp.post("/colors")

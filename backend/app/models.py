@@ -47,3 +47,4 @@ class Color(db.Model):
     value = db.Column(db.String(30), unique=True, nullable=False)
     name = db.Column(db.String(50))
     type = db.Column(db.String(10))
+
