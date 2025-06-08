@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import toast from 'react-hot-toast'
@@ -10,6 +10,13 @@ export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('loggedIn') === 'true'
+    if (loggedIn) {
+      navigate('/admin')
+    }
+  }, [navigate])
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
