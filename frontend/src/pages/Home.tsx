@@ -22,7 +22,15 @@ export default function Home() {
   const perPage = 8;
 
   useEffect(() => {
-    api.get("/links").then((res: any) => setLinks(res.data));
+    api.get("/links").then((res: any) => {
+      const data = (res.data as LinkData[]).map((l) => {
+        if (l.imageUrl && l.imageUrl.startsWith("/uploads/")) {
+          return { ...l, imageUrl: `/api${l.imageUrl}` };
+        }
+        return l;
+      });
+      setLinks(data);
+    });
     api.get("/categories").then((res: any) => setCategories(res.data));
   }, []);
 
