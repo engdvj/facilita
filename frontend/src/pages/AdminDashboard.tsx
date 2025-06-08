@@ -19,7 +19,8 @@ export default function AdminDashboard() {
   const [catPage, setCatPage] = useState(1);
   const [colorPage, setColorPage] = useState(1);
 
-  const perPage = 5;
+  // show a maximum of 4 items per page to avoid scrolling
+  const perPage = 4;
 
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
@@ -85,14 +86,34 @@ export default function AdminDashboard() {
   const paginatedColors = colors.slice((colorPage - 1) * perPage, colorPage * perPage);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto p-4">
-      <div className="grid md:grid-cols-3 gap-8">
-        <section>
-          <div className="flex justify-between items-center mb-2">
+    <div className="space-y-10 max-w-5xl mx-auto p-4 py-8 text-center overflow-hidden">
+      <h1 className="text-3xl font-heading mb-4">Dashboard</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Links</p>
+          <p className="text-2xl font-bold">{links.length}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Categorias</p>
+          <p className="text-2xl font-bold">{categories.length}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Cores</p>
+          <p className="text-2xl font-bold">{colors.length}</p>
+        </div>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <section className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow flex flex-col">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-heading">Categorias</h2>
-            <Link to="/admin/categories" className="text-sm text-blue-400">Novo</Link>
+            <Link
+              to="/admin/categories"
+              className="px-3 py-1 rounded-full bg-indigo-500 text-white text-sm hover:bg-indigo-600"
+            >
+              Novo
+            </Link>
           </div>
-          <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
@@ -128,12 +149,17 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section>
-          <div className="flex justify-between items-center mb-2">
+        <section className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow flex flex-col">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-heading">Links</h2>
-            <Link to="/admin/links" className="text-sm text-blue-400">Novo</Link>
+            <Link
+              to="/admin/links"
+              className="px-3 py-1 rounded-full bg-indigo-500 text-white text-sm hover:bg-indigo-600"
+            >
+              Novo
+            </Link>
           </div>
-          <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedLinks.map((l) => (
               <motion.li
                 key={l.id}
@@ -175,12 +201,17 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section>
-          <div className="flex justify-between items-center mb-2">
+        <section className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow flex flex-col">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-heading">Cores</h2>
-            <Link to="/admin/colors" className="text-sm text-blue-400">Novo</Link>
+            <Link
+              to="/admin/colors"
+              className="px-3 py-1 rounded-full bg-indigo-500 text-white text-sm hover:bg-indigo-600"
+            >
+              Novo
+            </Link>
           </div>
-          <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
 
