@@ -118,6 +118,7 @@ export default function AdminColors() {
               className="rounded-md px-3 py-2 bg-slate-800 text-white"
             />
             <button className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl transition hover:brightness-110 px-4 py-2 text-white self-start">
+
               Adicionar
             </button>
           </form>
