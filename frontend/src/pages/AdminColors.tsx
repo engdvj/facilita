@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { Pencil, Trash2, ChevronDown } from "lucide-react";
 import api from "../api";
 
 export default function AdminColors() {
@@ -65,7 +66,7 @@ export default function AdminColors() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6">
+        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
           <form onSubmit={handleCreate} className="flex items-center gap-3">
             <input
@@ -80,11 +81,11 @@ export default function AdminColors() {
           </form>
         </section>
 
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Cores ({colors.length})</h2>
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
-              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+              <motion.li key={c.id} layout className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl">
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editingId === c.id ? (
                   <>
@@ -94,14 +95,22 @@ export default function AdminColors() {
                       onChange={(e) => setEditValue(e.target.value)}
                       className={`${colorInputClass} w-20 h-8`}
                     />
-                    <button onClick={saveEdit} className="text-sm text-green-400">Salvar</button>
-                    <button onClick={() => setEditingId(null)} className="text-sm text-yellow-400">Cancelar</button>
+                    <button onClick={saveEdit} className="p-1 text-green-400">
+                      <ChevronDown size={16} />
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="p-1 text-yellow-400">
+                      <ChevronDown size={16} className="rotate-180" />
+                    </button>
                   </>
                 ) : (
                   <>
                     <span className="flex-1 font-mono">{c.value}</span>
-                    <button onClick={() => startEdit(c)} className="text-sm text-blue-400">Editar</button>
-                    <button onClick={() => remove(c.id)} className="text-sm text-red-400">Excluir</button>
+                    <button onClick={() => startEdit(c)} className="p-1 hover:text-[#7c3aed]">
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => remove(c.id)} className="p-1 hover:text-red-400">
+                      <Trash2 size={16} />
+                    </button>
                   </>
                 )}
               </motion.li>
