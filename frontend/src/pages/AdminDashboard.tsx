@@ -9,6 +9,8 @@ import {
   Plus,
   Search,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
@@ -17,11 +19,12 @@ import { LinkData } from "../components/LinkCard";
 export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
-  const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
+  const [colors, setColors] = useState<{ id: number; value: string; name?: string }[]>([]);
   const navigate = useNavigate();
 
   const [editColorId, setEditColorId] = useState<number | null>(null);
-  const [editColor, setEditColor] = useState("#ffffff");
+  const [editColor, setEditColor] = useState("");
+  const [editColorName, setEditColorName] = useState("");
 
   const [linkQuery, setLinkQuery] = useState("");
   const [catQuery, setCatQuery] = useState("");
@@ -69,15 +72,20 @@ export default function AdminDashboard() {
     await refresh();
   };
 
-  const startEditColor = (c: { id: number; value: string }) => {
+  const startEditColor = (c: { id: number; value: string; name?: string }) => {
     setEditColorId(c.id);
     setEditColor(c.value);
+    setEditColorName(c.name || "");
   };
 
   const saveColor = async () => {
     if (editColorId === null) return;
-    await api.patch(`/colors/${editColorId}`, { value: editColor });
+    await api.patch(`/colors/${editColorId}`, {
+      value: editColor,
+      name: editColorName || undefined,
+    });
     setEditColorId(null);
+    setEditColorName("");
     await refresh();
   };
 
@@ -94,7 +102,25 @@ export default function AdminDashboard() {
     c.name.toLowerCase().includes(catQuery.toLowerCase())
   );
   const filteredColors = colors.filter((c) =>
-    c.value.toLowerCase().includes(colorQuery.toLowerCase())
+    c.value.toLowerCase().includes(colorQuery.toLowerCase()) ||
+    (c.name || "").toLowerCase().includes(colorQuery.toLowerCase())
+  );
+
+  const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
+  const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
+  const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
+
+  const paginatedLinks = filteredLinks.slice(
+    (linkPage - 1) * perPage,
+    linkPage * perPage
+  );
+  const paginatedCats = filteredCats.slice(
+    (catPage - 1) * perPage,
+    catPage * perPage
+  );
+  const paginatedColors = filteredColors.slice(
+    (colorPage - 1) * perPage,
+    colorPage * perPage
   );
 
   const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
@@ -196,7 +222,7 @@ export default function AdminDashboard() {
                 onClick={() => setLinkPage((p) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {linkPage} / {linkPageCount}
@@ -206,7 +232,7 @@ export default function AdminDashboard() {
                 onClick={() => setLinkPage((p) => Math.min(linkPageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}
@@ -270,7 +296,7 @@ export default function AdminDashboard() {
                 onClick={() => setCatPage((p) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {catPage} / {catPageCount}
@@ -280,7 +306,7 @@ export default function AdminDashboard() {
                 onClick={() => setCatPage((p) => Math.min(catPageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}
@@ -329,11 +355,18 @@ export default function AdminDashboard() {
                 {editColorId === c.id ? (
                   <>
                     <input
-                      type="color"
+                      type="text"
                       value={editColor}
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditColor(e.target.value)}
-                      className={`${colorInputClass} w-20 h-8`}
+                      className={`${colorInputClass} w-32 h-8 px-2`}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Nome"
+                      value={editColorName}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setEditColorName(e.target.value)}
+                      className={`${colorInputClass} w-28 h-8 px-2`}
                     />
                     <button onClick={saveColor} className="p-1 text-green-400">
                       <ChevronDown size={16} />
@@ -344,7 +377,7 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 font-mono">{c.value}</span>
+                    <span className="flex-1 font-mono">{c.value}{c.name ? ` - ${c.name}` : ""}</span>
                     <button onClick={() => startEditColor(c)} className="p-1 hover:text-[#7c3aed]">
                       <Pencil size={16} />
                     </button>
@@ -363,7 +396,7 @@ export default function AdminDashboard() {
                 onClick={() => setColorPage((p) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {colorPage} / {colorPageCount}
@@ -373,7 +406,7 @@ export default function AdminDashboard() {
                 onClick={() => setColorPage((p) => Math.min(colorPageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}

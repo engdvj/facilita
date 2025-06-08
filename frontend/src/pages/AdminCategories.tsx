@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
 
@@ -23,7 +23,7 @@ export default function AdminCategories() {
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
   const [page, setPage] = useState(1);
-  const perPage = 4;
+  const perPage = 5;
 
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
@@ -190,7 +190,7 @@ export default function AdminCategories() {
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {page} / {pageCount}
@@ -200,7 +200,7 @@ export default function AdminCategories() {
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}

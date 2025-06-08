@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
@@ -60,7 +60,7 @@ export default function AdminLinks() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
   const [page, setPage] = useState(1);
-  const perPage = 4;
+  const perPage = 5;
 
   /* --------- classe reutilizável de input ------------------------- */
   const fieldClass =
@@ -357,7 +357,7 @@ export default function AdminLinks() {
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {page} / {pageCount}
@@ -367,7 +367,7 @@ export default function AdminLinks() {
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}
