@@ -18,13 +18,17 @@ export default function Admin() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-[#0e1320] flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+    >
 
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
 
-          className="bg-indigo-100 dark:bg-[#1c2233] text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
+          className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
+          style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
 
           initial={false}
           animate={{ x: open ? 0 : -256 }}
@@ -38,8 +42,11 @@ export default function Admin() {
               to="/admin"
               className={({ isActive }) =>
                 `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
-                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
+                  isActive ? "" : ""}
                 `
+              }
+              style={({ isActive }) =>
+                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
               }
             >
               <Home size={18} /> Dashboard
@@ -47,9 +54,10 @@ export default function Admin() {
             <NavLink
               to="/admin/links"
               className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
-                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
-                `
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+              }
+              style={({ isActive }) =>
+                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
               }
             >
               <Link2 size={18} /> Links
@@ -57,9 +65,10 @@ export default function Admin() {
             <NavLink
               to="/admin/categories"
               className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
-                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
-                `
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+              }
+              style={({ isActive }) =>
+                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
               }
             >
               <Folder size={18} /> Categorias
@@ -67,9 +76,10 @@ export default function Admin() {
             <NavLink
               to="/admin/colors"
               className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
-                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
-                `
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+              }
+              style={({ isActive }) =>
+                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
               }
             >
               <Palette size={18} /> Cores
@@ -78,9 +88,10 @@ export default function Admin() {
         </motion.aside>
         <main
 
-          className={`flex-1 p-4 md:p-8 text-gray-900 dark:text-white transition-all ${
+          className={`flex-1 p-4 md:p-8 transition-all ${
             open ? "translate-x-64 md:translate-x-0 md:ml-64" : "md:ml-0"
           }`}
+          style={{ color: 'var(--text-color)' }}
 
         >
           <Outlet />

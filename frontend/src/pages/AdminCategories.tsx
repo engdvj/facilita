@@ -96,9 +96,9 @@ export default function AdminCategories() {
   const paginatedCats = categories.slice((page - 1) * perPage, page * perPage);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
+    <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar" : "Nova"} Categoria</h2>
           <form
             onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
@@ -149,7 +149,7 @@ export default function AdminCategories() {
           <div className="flex gap-2">
             <button
               type="submit"
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white"
+              className="btn-primary px-4 py-2 rounded"
             >
               {editingId ? "Salvar" : "Adicionar"}
             </button>
@@ -169,7 +169,7 @@ export default function AdminCategories() {
           </form>
         </section>
 
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Categorias ({categories.length})</h2>
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => {
@@ -178,12 +178,12 @@ export default function AdminCategories() {
                 <motion.li
                   key={c.id}
                   layout
-                  className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                  className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
                 >
                   <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                   {Icon && <Icon size={16} className="opacity-70" />}
                   <span className="flex-1">{c.name}</span>
-                  <button onClick={() => startEdit(c)} className="p-1 hover:text-[#7c3aed]">
+                  <button onClick={() => startEdit(c)} className="p-1 hover:text-[var(--accent-color)]">
                     <Pencil size={16} />
                   </button>
                   <button onClick={() => remove(c.id)} className="p-1 hover:text-red-400">

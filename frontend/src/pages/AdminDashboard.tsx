@@ -166,20 +166,20 @@ export default function AdminDashboard() {
   return (
 
 
-    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white overflow-x-hidden">
+    <div className="max-w-7xl mx-auto px-4 py-8 overflow-x-hidden" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-3">
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
 
           <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               Links
-              <span className="bg-[#7c3aed] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+              <span className="bg-[var(--accent-color)] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                 {links.length}
               </span>
             </h2>
             <Link
               to="/admin/links"
-              className="px-3 py-1.5 rounded-md bg-[#7c3aed] text-white text-sm hover:bg-purple-700 flex items-center gap-1"
+              className="px-3 py-1.5 rounded-md bg-[var(--accent-color)] text-white text-sm hover:bg-[var(--hover-effect)] flex items-center gap-1"
             >
               <Plus size={16} /> Novo
             </Link>
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
               <motion.li
                 key={l.id}
                 layout
-                className="flex items-center gap-2 bg-[#1c2233] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
+                className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
               >
                   <span
                     className="w-4 h-4 rounded"
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
                   <span className="flex-1">{l.title}</span>
                   <Link
                     to={`/admin/links/${l.id}`}
-                    className="p-1 hover:text-[#7c3aed]"
+                    className="p-1 hover:text-[var(--accent-color)]"
                   >
                     <Pencil size={16} />
                   </Link>
@@ -255,17 +255,17 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
           <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               Categorias
-              <span className="bg-[#7c3aed] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+              <span className="bg-[var(--accent-color)] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                 {categories.length}
               </span>
             </h2>
             <Link
               to="/admin/categories"
-              className="px-3 py-1.5 rounded-md bg-[#7c3aed] text-white text-sm hover:bg-purple-700 flex items-center gap-1"
+              className="px-3 py-1.5 rounded-md bg-[var(--accent-color)] text-white text-sm hover:bg-[var(--hover-effect)] flex items-center gap-1"
             >
               <Plus size={16} /> Novo
             </Link>
@@ -291,12 +291,12 @@ export default function AdminDashboard() {
                 <motion.li
                   key={c.id}
                   layout
-                  className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
+                  className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
                 >
                   <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                   {Icon && <Icon size={16} className="opacity-70" />}
                   <span className="flex-1">{c.name}</span>
-                  <button onClick={() => startEditCat(c)} className="p-1 hover:text-[#7c3aed]">
+                  <button onClick={() => startEditCat(c)} className="p-1 hover:text-[var(--accent-color)]">
                     <Pencil size={16} />
                   </button>
                   <button onClick={() => removeCat(c.id)} className="p-1 hover:text-red-400">
@@ -330,18 +330,18 @@ export default function AdminDashboard() {
         </section>
 
 
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
 
           <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               Cores
-              <span className="bg-[#7c3aed] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+              <span className="bg-[var(--accent-color)] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                 {colors.length}
               </span>
             </h2>
             <Link
               to="/admin/colors"
-              className="px-3 py-1.5 rounded-md bg-[#7c3aed] text-white text-sm hover:bg-purple-700 flex items-center gap-1"
+              className="px-3 py-1.5 rounded-md bg-[var(--accent-color)] text-white text-sm hover:bg-[var(--hover-effect)] flex items-center gap-1"
             >
               <Plus size={16} /> Novo
             </Link>
@@ -366,7 +366,7 @@ export default function AdminDashboard() {
               <motion.li
                 key={c.id}
                 layout
-                className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl shadow-md hover:shadow-xl text-white w-full"
+                className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl shadow-md hover:shadow-xl text-white w-full"
               >
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
@@ -416,7 +416,7 @@ export default function AdminDashboard() {
                       {c.name ? ` - ${c.name}` : ""}
 
                     </span>
-                    <button onClick={() => startEditColor(c)} className="p-1 hover:text-[#7c3aed]">
+                    <button onClick={() => startEditColor(c)} className="p-1 hover:text-[var(--accent-color)]">
                       <Pencil size={16} />
                     </button>
                     <button onClick={() => removeColor(c.id)} className="p-1 hover:text-red-400">
