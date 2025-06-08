@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from 'react'
-
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function Carousel({ children }: { children: React.ReactNode[] }) {
-  const [index, setIndex] = useState(0)
+  const [pos, setPos] = useState(0)
+
   const [visible, setVisible] = useState(4)
   const items = Array.isArray(children) ? children : [children]
   const count = items.length
@@ -22,9 +21,21 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     return () => window.removeEventListener('resize', update)
   }, [])
 
+  useEffect(() => {
+    setPos(0)
+  }, [visible, count])
 
-  const prev = () => setIndex((index - 1 + count) % count)
-  const next = () => setIndex((index + 1) % count)
+  const [skip, setSkip] = useState(false)
+
+  const prev = () => {
+    setSkip(false)
+    setPos((p) => p - 1)
+  }
+  const next = () => {
+    setSkip(false)
+    setPos((p) => p + 1)
+  }
+
 
   if (count <= visible) {
     return (
@@ -45,14 +56,26 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
   ]
   const total = extended.length
 
+
+  const handleEnd = () => {
+    if (pos < 0) {
+      setSkip(true)
+      setPos(pos + count)
+    } else if (pos >= count) {
+      setSkip(true)
+      setPos(pos - count)
+    }
+  }
+
   return (
     <div className="relative overflow-hidden">
       <div
-        className="flex transition-transform duration-500 ease-out"
-
+        onTransitionEnd={handleEnd}
+        className={`flex ${skip ? '' : 'transition-transform duration-500 ease-out'}`}
         style={{
           width: `calc(${total} * 100% / ${visible})`,
-          transform: `translateX(-${((index + visible) * 100) / total}%)`,
+          transform: `translateX(-${((pos + visible) * 100) / total}%)`,
+
         }}
       >
         {extended.map((child, i) => (
@@ -82,3 +105,4 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     </div>
   )
 }
+
