@@ -1,4 +1,6 @@
-import { Link, useNavigate } from 'react-router-dom'
+
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+
 import { Home, Shield, LogOut, Menu, X, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
@@ -15,7 +17,10 @@ const defaultTheme = {
   '--link-bar-background': '#4f46e5',
   '--link-bar-text': '#ffffff',
   '--button-primary': '#6366f1',
-  '--hover-effect': '#4338ca'
+  '--hover-effect': '#4338ca',
+  '--card-background': '#1c2233',
+  '--accent-color': '#7c3aed'
+
 }
 
 export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
@@ -23,6 +28,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState(defaultTheme)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     setLoggedIn(localStorage.getItem('loggedIn') === 'true')
@@ -111,21 +117,49 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
 
       {open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-lg text-gray-900 space-y-4">
+
+          <div className="bg-white p-6 rounded-lg w-full max-w-3xl text-gray-900 space-y-4 overflow-y-auto max-h-[90vh]">
             <h2 className="text-lg font-semibold mb-2">Personalizar Aparência</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {Object.entries(theme).map(([key, value]) => (
-                <label key={key} className="flex items-center gap-2">
-                  <span className="flex-1 text-sm">{key.replace(/--/,'')}</span>
-                  <input
-                    type="color"
-                    value={value}
-                    onChange={(e) => setTheme({ ...theme, [key]: e.target.value })}
-                  />
-                  <span className="w-5 h-5 border rounded" style={{ backgroundColor: value }} />
-                </label>
-              ))}
-            </div>
+            {(() => {
+              const groups: { label: string; vars: string[] }[] = [
+                {
+                  label: 'Geral',
+                  vars: [
+                    '--background-main',
+                    '--text-color',
+                    '--link-bar-background',
+                    '--link-bar-text',
+                    '--button-primary',
+                    '--hover-effect'
+                  ]
+                }
+              ]
+              if (location.pathname.startsWith('/admin')) {
+                groups.push({
+                  label: 'Admin',
+                  vars: ['--card-background', '--accent-color']
+                })
+              }
+              return groups.map((g) => (
+                <div key={g.label} className="border-t pt-4 first:border-t-0 first:pt-0">
+                  <h3 className="font-semibold mb-2 text-sm">{g.label}</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {g.vars.map((key) => (
+                      <label key={key} className="flex items-center gap-2">
+                        <span className="flex-1 text-xs md:text-sm">{key.replace('--', '')}</span>
+                        <input
+                          type="color"
+                          value={theme[key]}
+                          onChange={(e) => setTheme({ ...theme, [key]: e.target.value })}
+                        />
+                        <span className="w-5 h-5 border rounded" style={{ backgroundColor: theme[key] }} />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))
+            })()}
+
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={resetTheme} className="px-3 py-1 rounded border">Resetar para padrão</button>
               <button onClick={() => setOpen(false)} className="px-3 py-1 rounded border">Cancelar</button>

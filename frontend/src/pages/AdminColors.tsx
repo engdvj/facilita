@@ -87,10 +87,10 @@ export default function AdminColors() {
 
   /* --------------------------------- UI ---------------------------------- */
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
+    <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-2">
         {/* ------------------------------ NOVA COR ----------------------------- */}
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
 
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
@@ -129,7 +129,7 @@ export default function AdminColors() {
         </section>
 
         {/* --------------------------- LISTA / EDIÇÃO -------------------------- */}
-        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Cores ({colors.length})</h2>
 
           <motion.ul
@@ -141,7 +141,7 @@ export default function AdminColors() {
               <motion.li
                 key={c.id}
                 layout
-                className="flex flex-wrap items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                className="flex flex-wrap items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
               >
                 {/* mini-preview na lista (mantido) */}
                 <span
@@ -186,7 +186,7 @@ export default function AdminColors() {
                     </span>
                     <button
                       onClick={() => startEdit(c)}
-                      className="p-1 hover:text-[#7c3aed]"
+                      className="p-1 hover:text-[var(--accent-color)]"
                     >
                       <Pencil size={16} />
                     </button>
