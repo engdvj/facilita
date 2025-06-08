@@ -9,6 +9,9 @@ export default function AdminColors() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("#ffffff");
 
+  const [page, setPage] = useState(1);
+  const perPage = 4;
+
   const colorInputClass =
     "p-0 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-slate-700";
 
@@ -56,72 +59,77 @@ export default function AdminColors() {
     await fetchColors();
   };
 
+  const pageCount = Math.ceil(colors.length / perPage) || 1;
+  const paginatedColors = colors.slice((page - 1) * perPage, page * perPage);
+
   return (
-    <div className="space-y-6 max-w-xl mx-auto p-4">
-      <h2 className="text-2xl font-heading text-center">Cores</h2>
-      <form
-        onSubmit={handleCreate}
-        className="flex items-center gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
+    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
+      <div className="grid gap-8 md:grid-cols-2">
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6">
+          <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
+          <form onSubmit={handleCreate} className="flex items-center gap-3">
+            <input
+              type="color"
+              value={newColor}
+              onChange={(e) => setNewColor(e.target.value)}
+              className={`${colorInputClass} w-20 h-10`}
+            />
+            <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
+              Adicionar
+            </button>
+          </form>
+        </section>
 
-      >
-        <input
-          type="color"
-          value={newColor}
-          onChange={(e) => setNewColor(e.target.value)}
-          className={`${colorInputClass} w-20 h-10`}
-        />
-        <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
-          Adicionar
-        </button>
-      </form>
-      <motion.ul
-        className="space-y-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {colors.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
-
-            {editingId === c.id ? (
-              <>
-                <input
-                  type="color"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className={`${colorInputClass} w-20 h-8`}
-                />
-                <button onClick={saveEdit} className="text-sm text-green-400">
-                  Salvar
-                </button>
-                <button
-                  onClick={() => setEditingId(null)}
-                  className="text-sm text-yellow-400"
-                >
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 font-mono" style={{ color: c.value }}>
-                  {c.value}
-                </span>
-                <button
-                  onClick={() => startEdit(c)}
-                  className="text-sm text-blue-400"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => remove(c.id)}
-                  className="text-sm text-red-400"
-                >
-                  Excluir
-                </button>
-              </>
-            )}
-          </motion.li>
-        ))}
-      </motion.ul>
+        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+          <h2 className="text-lg font-semibold mb-4">Cores ({colors.length})</h2>
+          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {paginatedColors.map((c) => (
+              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+                <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
+                {editingId === c.id ? (
+                  <>
+                    <input
+                      type="color"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className={`${colorInputClass} w-20 h-8`}
+                    />
+                    <button onClick={saveEdit} className="text-sm text-green-400">Salvar</button>
+                    <button onClick={() => setEditingId(null)} className="text-sm text-yellow-400">Cancelar</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 font-mono">{c.value}</span>
+                    <button onClick={() => startEdit(c)} className="text-sm text-blue-400">Editar</button>
+                    <button onClick={() => remove(c.id)} className="text-sm text-red-400">Excluir</button>
+                  </>
+                )}
+              </motion.li>
+            ))}
+          </motion.ul>
+          {pageCount > 1 && (
+            <div className="flex justify-center gap-2 mt-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="self-center">
+                {page} / {pageCount}
+              </span>
+              <button
+                disabled={page === pageCount}
+                onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Próxima
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
