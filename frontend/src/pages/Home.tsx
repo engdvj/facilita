@@ -3,6 +3,9 @@ import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
+
+import Carousel from "../components/Carousel";
+
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Search } from "lucide-react";
@@ -19,8 +22,6 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<number | "all">("all");
-  const [page, setPage] = useState(1);
-  const perPage = 8;
 
   useEffect(() => {
     api.get("/links").then((res: any) => {
@@ -35,9 +36,6 @@ export default function Home() {
     api.get("/categories").then((res: any) => setCategories(res.data));
   }, []);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, categoryId]);
 
   const filtered = links.filter((l: LinkData) => {
     const matchSearch = l.title.toLowerCase().includes(search.toLowerCase());
@@ -45,8 +43,7 @@ export default function Home() {
     return matchSearch && matchCat;
   });
 
-  const pageCount = Math.ceil(filtered.length / perPage) || 1;
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const paginated = filtered;
 
   const categoryMap = useMemo(() => {
     const map: Record<number, Category> = {};
@@ -62,7 +59,9 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <h2 className="text-2xl text-center font-heading mb-6">Links em destaque</h2>
+
+        {/* intentionally left blank to remove the old heading */}
+
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -79,7 +78,6 @@ export default function Home() {
           <button
             onClick={() => {
               setCategoryId('all');
-              setPage(1);
             }}
             className={`px-3 py-1 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
               categoryId === 'all'
@@ -97,7 +95,6 @@ export default function Home() {
                 key={c.id}
                 onClick={() => {
                   setCategoryId(c.id);
-                  setPage(1);
                 }}
                 className={`flex items-center gap-1 px-3 py-1 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
                   active
@@ -117,7 +114,9 @@ export default function Home() {
           })}
         </div>
         {paginated.length ? (
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+
+          <Carousel>
+
             {paginated.map((link: LinkData) => (
               <motion.div key={link.id} layout>
                 <LinkCard
@@ -128,31 +127,12 @@ export default function Home() {
                 />
               </motion.div>
             ))}
-          </div>
+         </Carousel>
         ) : (
           <p className="text-center text-gray-500 dark:text-gray-400 py-10">Nenhum link encontrado.</p>
+
         )}
-        {pageCount > 1 && (
-          <div className="flex justify-center gap-4 mt-6">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-              className="px-3 py-1 rounded border disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="self-center">
-              {page} / {pageCount}
-            </span>
-              <button
-                disabled={page === pageCount}
-                onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
-              className="px-3 py-1 rounded border disabled:opacity-50"
-            >
-              Próxima
-            </button>
-          </div>
-        )}
+        
       </motion.div>
     </div>
   );
