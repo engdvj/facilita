@@ -61,7 +61,7 @@ export default function AdminColors() {
       <h2 className="text-2xl font-heading text-center">Cores</h2>
       <form
         onSubmit={handleCreate}
-        className="flex items-center gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+        className="flex items-center gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
 
       >
         <input
@@ -80,8 +80,7 @@ export default function AdminColors() {
         animate={{ opacity: 1 }}
       >
         {colors.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
-
+          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
 
             {editingId === c.id ? (
               <>

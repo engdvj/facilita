@@ -102,7 +102,8 @@ export default function AdminDashboard() {
           </div>
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => (
-              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                 {editCatId === c.id ? (
                   <>
@@ -175,7 +176,8 @@ export default function AdminDashboard() {
               <motion.li
                 key={l.id}
                 layout
-                className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white"
+                className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
+
               >
                 <span className="flex-1">{l.title}</span>
                 <Link to={`/admin/links/${l.id}`} className="text-sm text-blue-400">
@@ -217,7 +219,8 @@ export default function AdminDashboard() {
           </div>
           <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
-              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+              <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
                   <>

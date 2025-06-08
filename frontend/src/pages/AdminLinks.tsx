@@ -44,6 +44,10 @@ export default function AdminLinks() {
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
@@ -162,7 +166,8 @@ export default function AdminLinks() {
       <h2 className="text-2xl font-heading text-center">Links</h2>
       <form
         onSubmit={editingId ? saveEdit : handleCreate}
-        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
+
       >
         <input
           className={fieldClass}
@@ -217,7 +222,6 @@ export default function AdminLinks() {
               ? setEditLink({ ...editLink, color: e.target.value })
               : setNewLink({ ...newLink, color: e.target.value })
           }
-
         >
           <option value="">Cor do card</option>
           {colors.map((c) => (
@@ -234,7 +238,6 @@ export default function AdminLinks() {
               ? setEditImageType(e.target.value as "url" | "file")
               : setNewImageType(e.target.value as "url" | "file")
           }
-
         >
           <option value="url">URL</option>
           <option value="file">Upload</option>
@@ -248,7 +251,6 @@ export default function AdminLinks() {
               editingId
                 ? setEditLink({ ...editLink, image_url: e.target.value })
                 : setNewLink({ ...newLink, image_url: e.target.value })
-
             }
           />
         ) : (
@@ -291,7 +293,8 @@ export default function AdminLinks() {
           <motion.li
             key={l.id}
             layout
-            className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white"
+            className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
+
           >
             <span className="flex-1">{l.title}</span>
             <button onClick={() => startEdit(l)} className="text-sm text-blue-400">

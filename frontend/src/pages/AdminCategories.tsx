@@ -19,7 +19,6 @@ export default function AdminCategories() {
   const fieldClass =
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
-
   useEffect(() => {
     refresh();
   }, []);
@@ -82,7 +81,7 @@ export default function AdminCategories() {
       <h2 className="text-2xl font-heading text-center">Categorias</h2>
       <form
         onSubmit={handleCreate}
-        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded text-gray-900 dark:text-white"
+        className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
       >
         <input
           className={fieldClass}
@@ -110,7 +109,6 @@ export default function AdminCategories() {
         </select>
         <input
           className={fieldClass}
-
           placeholder="Ícone"
           value={newCategory.icon}
           onChange={(e) =>
@@ -127,7 +125,7 @@ export default function AdminCategories() {
         animate={{ opacity: 1 }}
       >
         {categories.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-white">
+          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
 
             {editingId === c.id ? (
               <>
@@ -141,7 +139,6 @@ export default function AdminCategories() {
                 />
                   <select
                     className={fieldClass}
-
                     value={editCat.color}
                   onChange={(e) =>
                     setEditCat({ ...editCat, color: e.target.value })

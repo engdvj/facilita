@@ -198,7 +198,8 @@ def create_api_blueprint():
             filename = f"{stem}_{i}{suffix}"
             target = upload_dir / filename
         file.save(target)
-        return {"url": f"/uploads/{filename}"}
+        return {"url": f"/api/uploads/{filename}"}
+
 
     @bp.route("/uploads/<path:filename>")
     def serve_upload(filename: str):

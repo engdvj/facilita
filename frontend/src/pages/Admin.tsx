@@ -18,7 +18,8 @@ export default function Admin() {
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
       <Header />
       <motion.nav
-        className="bg-gray-200 dark:bg-slate-800 py-6 flex justify-center gap-8 text-gray-900 dark:text-white"
+        className="bg-indigo-100 dark:bg-slate-800 py-6 flex justify-center gap-8 text-gray-900 dark:text-white"
+
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
