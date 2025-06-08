@@ -57,7 +57,7 @@ export default function AdminColors() {
   };
 
   return (
-    <div className="space-y-6 max-w-xl mx-auto">
+    <div className="space-y-6 max-w-xl mx-auto p-4">
       <h2 className="text-2xl font-heading text-center">Cores</h2>
       <form
         onSubmit={handleCreate}

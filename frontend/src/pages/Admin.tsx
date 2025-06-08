@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { Link2, Folder, Palette, Home, Menu, X } from "lucide-react";
+import { Link2, Folder, Palette, Home, X } from "lucide-react";
+
 import { motion } from "framer-motion";
 import Header from "../components/Header";
 
@@ -17,14 +18,16 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
-      <Header />
+
+      <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
-          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform md:translate-x-0 fixed md:relative h-full z-20"
+          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed md:relative h-full z-20"
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
-          <button className="md:hidden mb-4" onClick={() => setOpen(false)}>
+          <button className="mb-4" onClick={() => setOpen(false)}>
+
             <X size={20} />
           </button>
           <nav className="flex flex-col gap-2">
@@ -43,9 +46,6 @@ export default function Admin() {
           </nav>
         </motion.aside>
         <main className="flex-1 overflow-y-auto p-4 md:p-8 text-gray-900 dark:text-white">
-          <button className="md:hidden mb-4" onClick={() => setOpen(true)}>
-            <Menu size={20} />
-          </button>
           <Outlet />
         </main>
       </div>
