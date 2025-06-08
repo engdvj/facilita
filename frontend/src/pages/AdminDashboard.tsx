@@ -123,6 +123,23 @@ export default function AdminDashboard() {
     colorPage * perPage
   );
 
+  const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
+  const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
+  const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
+
+  const paginatedLinks = filteredLinks.slice(
+    (linkPage - 1) * perPage,
+    linkPage * perPage
+  );
+  const paginatedCats = filteredCats.slice(
+    (catPage - 1) * perPage,
+    catPage * perPage
+  );
+  const paginatedColors = filteredColors.slice(
+    (colorPage - 1) * perPage,
+    colorPage * perPage
+  );
+
   const categoryMap = useMemo(() => {
     const map: Record<number, { id: number; name: string; color: string; icon: string }> = {};
     for (const c of categories) map[c.id] = c;
