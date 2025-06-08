@@ -91,7 +91,7 @@ export default function AdminColors() {
         <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
 
               <input
                 type="color"
@@ -104,14 +104,21 @@ export default function AdminColors() {
                 placeholder="#RRGGBB"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
-                className="rounded-md px-3 py-2 bg-slate-800 text-white font-mono"
+
+                className="w-32 rounded-md px-3 py-2 bg-slate-800 text-white font-mono"
+              />
+              <span
+                className="w-8 h-8 rounded border border-white/20"
+                style={{ backgroundColor: newColor }}
+
               />
               <input
                 type="text"
                 placeholder="Nome (opcional)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="rounded-md px-3 py-2 bg-slate-800 text-white"
+
+                className="flex-1 min-w-[150px] rounded-md px-3 py-2 bg-slate-800 text-white"
               />
             </div>
             <button className="self-end bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl transition hover:brightness-110 px-4 py-2 text-white">
@@ -125,7 +132,11 @@ export default function AdminColors() {
           <h2 className="text-lg font-semibold mb-4">Cores ({colors.length})</h2>
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
-              <motion.li key={c.id} layout className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl">
+              <motion.li
+                key={c.id}
+                layout
+                className="flex flex-wrap items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+              >
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editingId === c.id ? (
                   <>
