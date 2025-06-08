@@ -145,7 +145,8 @@ export default function AdminLinks() {
     setEditImageFile(null);
   };
 
-  const saveEdit = async () => {
+  const saveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (editingId === null) return;
     try {
       const payload: LinkFormData = { ...editLink };
@@ -185,7 +186,7 @@ export default function AdminLinks() {
 
       {/* FORM --------------------------------------------------------- */}
       <form
-        onSubmit={editingId ? saveEdit : handleCreate}
+        onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
       >
         <input
