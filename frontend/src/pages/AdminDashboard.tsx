@@ -93,9 +93,11 @@ export default function AdminDashboard() {
 
   return (
 
+
     <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
       <div className="grid gap-8 md:grid-cols-3">
         <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+
           <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
             <h2 className="text-lg font-semibold">Links ({links.length})</h2>
             <Link
@@ -105,7 +107,9 @@ export default function AdminDashboard() {
               Novo
             </Link>
           </div>
+
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+
             {paginatedLinks.map((l) => (
               <motion.li
                 key={l.id}
@@ -159,7 +163,9 @@ export default function AdminDashboard() {
               Novo
             </Link>
           </div>
+
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+
             {paginatedCats.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
@@ -192,7 +198,9 @@ export default function AdminDashboard() {
           )}
         </section>
 
+
         <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+
           <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
             <h2 className="text-lg font-semibold">Cores ({colors.length})</h2>
             <Link
