@@ -29,23 +29,26 @@ export default function LinkCard({ link }: { link: LinkData }) {
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-3xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group bg-white dark:bg-slate-800"
+      className="rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all relative group bg-white dark:bg-slate-800"
     >
       {link.imageUrl && (
-        <img
-          src={
-            link.imageUrl.startsWith("/api/")
-              ? link.imageUrl
-              : link.imageUrl.startsWith("/uploads/")
-              ? `/api${link.imageUrl}`
-              : link.imageUrl
-          }
-          alt=""
-          className="h-32 w-full object-cover"
-        />
+        <div className="relative">
+          <img
+            src={
+              link.imageUrl.startsWith("/api/")
+                ? link.imageUrl
+                : link.imageUrl.startsWith("/uploads/")
+                ? `/api${link.imageUrl}`
+                : link.imageUrl
+            }
+            alt=""
+            className="h-40 w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        </div>
       )}
-      <div className="p-4 backdrop-blur-sm bg-black/70" style={{ color: textColor }}>
-        <h3 className="font-semibold">{link.title}</h3>
+      <div className="p-4" style={{ color: textColor }}>
+        <h3 className="font-semibold text-lg">{link.title}</h3>
         {link.category && <p className="text-sm opacity-80">{link.category}</p>}
       </div>
       <div
@@ -60,7 +63,6 @@ export default function LinkCard({ link }: { link: LinkData }) {
           style={{ backgroundColor: link.categoryColor }}
         />
       )}
-
     </motion.a>
   );
 }
