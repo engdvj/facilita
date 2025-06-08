@@ -88,6 +88,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-10 max-w-5xl mx-auto p-4 py-8 text-center">
       <h1 className="text-3xl font-heading mb-4">Dashboard</h1>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">Links</p>
@@ -112,6 +113,7 @@ export default function AdminDashboard() {
             >
               Novo
             </Link>
+
           </div>
           <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => (
@@ -158,6 +160,7 @@ export default function AdminDashboard() {
             >
               Novo
             </Link>
+
           </div>
           <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedLinks.map((l) => (
@@ -210,6 +213,7 @@ export default function AdminDashboard() {
             >
               Novo
             </Link>
+
           </div>
           <motion.ul className="space-y-2 flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedColors.map((c) => (
