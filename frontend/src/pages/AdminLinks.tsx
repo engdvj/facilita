@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
 
@@ -16,6 +18,7 @@ interface Category {
 interface Color {
   id: number;
   value: string;
+  name?: string;
 }
 interface LinkFormData {
   title: string;
@@ -58,7 +61,7 @@ export default function AdminLinks() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
   const [page, setPage] = useState(1);
-  const perPage = 4;
+  const perPage = 5;
 
   /* --------- classe reutilizável de input ------------------------- */
   const fieldClass =
@@ -196,7 +199,7 @@ export default function AdminLinks() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6">
+        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar Link" : "Novo Link"}</h2>
           <form
             onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
@@ -255,8 +258,12 @@ export default function AdminLinks() {
         >
           <option value="">Cor do card</option>
           {colors.map((c) => (
-            <option key={c.id} value={c.value} style={{ color: c.value }}>
-              {c.value}
+            <option
+              key={c.id}
+              value={c.value}
+              style={{ backgroundColor: c.value, color: "#000" }}
+            >
+              {c.name ? `${c.name} - ${c.value}` : c.value}
             </option>
           ))}
         </select>
@@ -321,28 +328,32 @@ export default function AdminLinks() {
           </form>
         </section>
 
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col p-6 overflow-hidden">
+        <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Links ({links.length})</h2>
           <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {paginatedLinks.map((l) => (
-              <motion.li
-                key={l.id}
-                layout
-                className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
-              >
-                <span
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
-                />
-                <span className="flex-1">{l.title}</span>
-                <button onClick={() => startEdit(l)} className="text-sm text-blue-400">
-                  Editar
-                </button>
-                <button onClick={() => remove(l.id)} className="text-sm text-red-400">
-                  Excluir
-                </button>
-              </motion.li>
-            ))}
+            {paginatedLinks.map((l) => {
+              const Icon = (Icons as any)[categoryMap[l.categoryId || 0]?.icon || "Link2"];
+              return (
+                <motion.li
+                  key={l.id}
+                  layout
+                  className="flex items-center gap-2 bg-[#1c2233] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
+                >
+                  <span
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
+                  />
+                  {Icon && <Icon size={16} className="opacity-70" />}
+                  <span className="flex-1">{l.title}</span>
+                  <button onClick={() => startEdit(l)} className="p-1 hover:text-[#7c3aed]">
+                    <Pencil size={16} />
+                  </button>
+                  <button onClick={() => remove(l.id)} className="p-1 hover:text-red-400">
+                    <Trash2 size={16} />
+                  </button>
+                </motion.li>
+              );
+            })}
           </motion.ul>
           {pageCount > 1 && (
             <div className="flex justify-center gap-2 mt-2">
@@ -351,7 +362,7 @@ export default function AdminLinks() {
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Anterior
+                <ChevronLeft size={16} />
               </button>
               <span className="self-center">
                 {page} / {pageCount}
@@ -361,7 +372,7 @@ export default function AdminLinks() {
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
                 className="px-3 py-1 rounded border disabled:opacity-50"
               >
-                Próxima
+                <ChevronRight size={16} />
               </button>
             </div>
           )}

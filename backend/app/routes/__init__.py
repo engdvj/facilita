@@ -142,7 +142,10 @@ def create_api_blueprint():
     @bp.get("/colors")
     def list_colors():
         colors = Color.query.all()
-        return jsonify([{"id": c.id, "value": c.value} for c in colors])
+        return jsonify([
+            {"id": c.id, "value": c.value, "name": c.name}
+            for c in colors
+        ])
 
     @bp.post("/colors")
     @login_required
@@ -151,14 +154,18 @@ def create_api_blueprint():
         value = data.get("value")
         if not value:
             return {"message": "Missing value"}, 400
-        color = Color(value=value)
+        color = Color(value=value, name=data.get("name"))
         db.session.add(color)
         try:
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
             return {"message": "Color already exists"}, 400
-        return {"id": color.id, "value": color.value}, 201
+        return {
+            "id": color.id,
+            "value": color.value,
+            "name": color.name,
+        }, 201
 
     @bp.patch("/colors/<int:color_id>")
     @login_required
@@ -167,12 +174,18 @@ def create_api_blueprint():
         data = request.get_json() or {}
         if "value" in data:
             color.value = data["value"]
+        if "name" in data:
+            color.name = data["name"]
         try:
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
             return {"message": "Color already exists"}, 400
-        return {"id": color.id, "value": color.value}
+        return {
+            "id": color.id,
+            "value": color.value,
+            "name": color.name,
+        }
 
     @bp.delete("/colors/<int:color_id>")
     @login_required
