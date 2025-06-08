@@ -20,14 +20,16 @@ export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
   const [colors, setColors] = useState<
-    { id: number; value: string; name?: string; type?: string }[]
+
+    { id: number; value: string; name?: string }[]
+
   >([]);
   const navigate = useNavigate();
 
   const [editColorId, setEditColorId] = useState<number | null>(null);
-  const [editColor, setEditColor] = useState("");
+  const [editColor, setEditColor] = useState("#000000");
   const [editColorName, setEditColorName] = useState("");
-  const [editColorType, setEditColorType] = useState("hex");
+
 
   const [linkQuery, setLinkQuery] = useState("");
   const [catQuery, setCatQuery] = useState("");
@@ -76,12 +78,14 @@ export default function AdminDashboard() {
   };
 
   const startEditColor = (
-    c: { id: number; value: string; name?: string; type?: string }
+
+    c: { id: number; value: string; name?: string }
+
   ) => {
     setEditColorId(c.id);
     setEditColor(c.value);
     setEditColorName(c.name || "");
-    setEditColorType(c.type || "hex");
+
   };
 
   const saveColor = async () => {
@@ -89,11 +93,12 @@ export default function AdminDashboard() {
     await api.patch(`/colors/${editColorId}`, {
       value: editColor,
       name: editColorName || undefined,
-      type: editColorType,
+
     });
     setEditColorId(null);
     setEditColorName("");
-    setEditColorType("hex");
+    setEditColor("#000000");
+
     await refresh();
   };
 
@@ -112,7 +117,27 @@ export default function AdminDashboard() {
   const filteredColors = colors.filter((c) =>
     c.value.toLowerCase().includes(colorQuery.toLowerCase()) ||
     (c.name || "").toLowerCase().includes(colorQuery.toLowerCase())
+
   );
+
+  const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
+  const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
+  const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
+
+  const paginatedLinks = filteredLinks.slice(
+    (linkPage - 1) * perPage,
+    linkPage * perPage
+  );
+  const paginatedCats = filteredCats.slice(
+    (catPage - 1) * perPage,
+    catPage * perPage
+
+  );
+  const paginatedColors = filteredColors.slice(
+    (colorPage - 1) * perPage,
+    colorPage * perPage
+  );
+
 
   const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
   const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
@@ -352,7 +377,17 @@ export default function AdminDashboard() {
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditColor(e.target.value)
                       }
-                      className={`${colorInputClass} w-32 h-8 px-2`}
+
+                      className={`${colorInputClass} w-12 h-8`}
+                    />
+                    <input
+                      type="text"
+                      value={editColor}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setEditColor(e.target.value)
+                      }
+                      className={`${colorInputClass} w-24 h-8 px-2 font-mono`}
+
                     />
                     <input
                       type="text"
@@ -363,16 +398,6 @@ export default function AdminDashboard() {
                       }
                       className={`${colorInputClass} w-28 h-8 px-2`}
                     />
-                    <select
-                      value={editColorType}
-                      onChange={(e) => setEditColorType(e.target.value)}
-                      className={`${colorInputClass} h-8 px-2`}
-                    >
-                      <option value="hex">HEX</option>
-                      <option value="rgb">RGB</option>
-                      <option value="hsl">HSL</option>
-                      <option value="cmyk">CMYK</option>
-                    </select>
                     <span
                       className="w-6 h-6 rounded border"
                       style={{ backgroundColor: editColor || "transparent" }}
@@ -388,7 +413,8 @@ export default function AdminDashboard() {
                   <>
                     <span className="flex-1 font-mono">
                       {c.value}
-                      {c.name ? ` - ${c.name}` : ""} ({c.type})
+                      {c.name ? ` - ${c.name}` : ""}
+
                     </span>
                     <button onClick={() => startEditColor(c)} className="p-1 hover:text-[#7c3aed]">
                       <Pencil size={16} />

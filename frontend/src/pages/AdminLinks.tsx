@@ -19,7 +19,7 @@ interface Color {
   id: number;
   value: string;
   name?: string;
-  type?: string;
+
 }
 interface LinkFormData {
   title: string;
@@ -264,7 +264,8 @@ export default function AdminLinks() {
               value={c.value}
               style={{ backgroundColor: c.value, color: "#000" }}
             >
-              {c.name ? `${c.name} (${c.type})` : `${c.value} (${c.type})`}
+              {c.name ? `${c.name} - ${c.value}` : c.value}
+
             </option>
           ))}
         </select>
