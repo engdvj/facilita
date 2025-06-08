@@ -31,7 +31,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+    >
       <Header />
       <div className="flex-1 flex items-center justify-center py-8">
         <motion.form
@@ -55,7 +58,7 @@ export default function Login() {
           />
           <button
             type="submit"
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors text-white py-2 rounded-md flex items-center justify-center gap-2"
+            className="btn-primary py-2 rounded-md flex items-center justify-center gap-2"
           >
             <LogIn size={16} />
             Entrar

@@ -18,7 +18,10 @@ export default function Admin() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-[#0e1320] flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+    >
 
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
