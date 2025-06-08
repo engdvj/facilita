@@ -30,7 +30,6 @@ export default function LinkCard({ link }: { link: LinkData }) {
       target="_blank"
       rel="noopener noreferrer"
       className="rounded-3xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group bg-white dark:bg-slate-800"
-
     >
       {link.imageUrl && (
         <img

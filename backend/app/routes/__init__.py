@@ -34,6 +34,11 @@ def create_api_blueprint():
             return {"message": "ok"}
         return {"message": "Invalid credentials"}, 401
 
+    @bp.post("/auth/logout")
+    def logout():
+        session.pop("user_id", None)
+        return {"message": "ok"}
+
     @bp.get("/links")
     def list_links():
         links = Link.query.all()
