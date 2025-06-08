@@ -1,4 +1,5 @@
 from flask import Flask, send_from_directory
+from sqlalchemy import inspect
 
 from .extensions import db, cors
 import os
@@ -41,9 +42,14 @@ def create_app(debug: bool = False):
 
     from . import models
 
-    # ensure all tables exist so new models work without rerunning setup_db
+    # ensure all tables exist and add new columns if missing
     with app.app_context():
         db.create_all()
+        inspector = inspect(db.engine)
+        color_cols = [c["name"] for c in inspector.get_columns("color")]
+        if "name" not in color_cols:
+            # simple migration for the optional name column
+            db.engine.execute("ALTER TABLE color ADD COLUMN name VARCHAR(50)")
     from .routes import create_api_blueprint
     app.register_blueprint(create_api_blueprint(), url_prefix="/api")
 
