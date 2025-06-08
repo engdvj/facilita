@@ -1,7 +1,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
@@ -10,8 +10,7 @@ export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
   const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
-  const [editCatId, setEditCatId] = useState<number | null>(null);
-  const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
+  const navigate = useNavigate();
 
   const [editColorId, setEditColorId] = useState<number | null>(null);
   const [editColor, setEditColor] = useState("#ffffff");
@@ -49,16 +48,8 @@ export default function AdminDashboard() {
     await refresh();
   };
 
-  const startEditCat = (c: { id: number; name: string; color: string; icon: string }) => {
-    setEditCatId(c.id);
-    setEditCat({ name: c.name, color: c.color || "", icon: c.icon || "" });
-  };
-
-  const saveCat = async () => {
-    if (editCatId === null) return;
-    await api.patch(`/categories/${editCatId}`, editCat);
-    setEditCatId(null);
-    await refresh();
+  const startEditCat = (c: { id: number }) => {
+    navigate(`/admin/categories/${c.id}`);
   };
 
   const removeCat = async (id: number) => {
@@ -94,7 +85,7 @@ export default function AdminDashboard() {
   const paginatedColors = colors.slice((colorPage - 1) * perPage, colorPage * perPage);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-4xl mx-auto p-4">
       <div className="grid md:grid-cols-3 gap-8">
         <section>
           <div className="flex justify-between items-center mb-2">
@@ -105,49 +96,9 @@ export default function AdminDashboard() {
             {paginatedCats.map((c) => (
               <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
-                {editCatId === c.id ? (
-                  <>
-                    <input
-                      className={`${fieldClass} flex-1`}
-                      value={editCat.name}
-
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        setEditCat({ ...editCat, name: e.target.value })}
-
-                    />
-                    <select
-                      className={fieldClass}
-                      value={editCat.color}
-
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setEditCat({ ...editCat, color: e.target.value })}
-
-                    >
-                      <option value="">Cor</option>
-                      {colors.map((col) => (
-                        <option key={col.id} value={col.value} style={{ color: col.value }}>
-                          {col.value}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      className={fieldClass}
-                      value={editCat.icon}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        setEditCat({ ...editCat, icon: e.target.value })}
-
-                      placeholder="Icone"
-                    />
-                    <button onClick={saveCat} className="text-sm text-green-400">Salvar</button>
-                    <button onClick={() => setEditCatId(null)} className="text-sm text-yellow-400">Cancelar</button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1">{c.name}</span>
-                    <button onClick={() => startEditCat(c)} className="text-sm text-blue-400">Editar</button>
-                    <button onClick={() => removeCat(c.id)} className="text-sm text-red-400">Excluir</button>
-                  </>
-                )}
+                <span className="flex-1">{c.name}</span>
+                <button onClick={() => startEditCat(c)} className="text-sm text-blue-400">Editar</button>
+                <button onClick={() => removeCat(c.id)} className="text-sm text-red-400">Excluir</button>
               </motion.li>
             ))}
           </motion.ul>

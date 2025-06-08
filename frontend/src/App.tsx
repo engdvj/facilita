@@ -20,7 +20,10 @@ export default function App() {
             <Route index element={<AdminLinks />} />
             <Route path=":id" element={<AdminLinks />} />
           </Route>
-          <Route path="categories" element={<AdminCategories />} />
+          <Route path="categories">
+            <Route index element={<AdminCategories />} />
+            <Route path=":id" element={<AdminCategories />} />
+          </Route>
           <Route path="colors" element={<AdminColors />} />
         </Route>
       </Routes>

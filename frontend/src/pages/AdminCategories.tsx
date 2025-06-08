@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import api from "../api";
 
 export default function AdminCategories() {
+  const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+
   const [categories, setCategories] = useState<
     { id: number; name: string; color: string; icon: string }[]
   >([]);
@@ -13,7 +17,7 @@ export default function AdminCategories() {
     color: "",
     icon: "",
   });
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(id ? Number(id) : null);
   const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
 
   const fieldClass =
@@ -22,6 +26,18 @@ export default function AdminCategories() {
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (id && categories.length) {
+      const cat = categories.find((c) => c.id === Number(id));
+      if (cat) {
+        setEditingId(cat.id);
+        setEditCat({ name: cat.name, color: cat.color || "", icon: cat.icon || "" });
+      }
+    } else {
+      setEditingId(null);
+    }
+  }, [id, categories]);
 
   const refresh = async () => {
     const [catRes, colorRes] = await Promise.all([
@@ -32,7 +48,7 @@ export default function AdminCategories() {
     setColors(colorRes.data);
   };
 
-  const handleCreate = async (e: any) => {
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       await api.post("/categories", newCategory);
@@ -44,21 +60,12 @@ export default function AdminCategories() {
     }
   };
 
-  const startEdit = (cat: {
-    id: number;
-    name: string;
-    color: string;
-    icon: string;
-  }) => {
-    setEditingId(cat.id);
-    setEditCat({
-      name: cat.name,
-      color: cat.color || "",
-      icon: cat.icon || "",
-    });
+  const startEdit = (cat: { id: number }) => {
+    navigate(`/admin/categories/${cat.id}`);
   };
 
-  const saveEdit = async () => {
+  const saveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (editingId === null) return;
     try {
       await api.patch(`/categories/${editingId}`, editCat);
@@ -77,27 +84,29 @@ export default function AdminCategories() {
   };
 
   return (
-    <div className="space-y-6 max-w-xl mx-auto">
+    <div className="space-y-6 max-w-xl mx-auto p-4">
       <h2 className="text-2xl font-heading text-center">Categorias</h2>
       <form
-        onSubmit={handleCreate}
+        onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
       >
         <input
           className={fieldClass}
-
           placeholder="Nome"
-          value={newCategory.name}
+          value={editingId ? editCat.name : newCategory.name}
           onChange={(e) =>
-            setNewCategory({ ...newCategory, name: e.target.value })
+            editingId
+              ? setEditCat({ ...editCat, name: e.target.value })
+              : setNewCategory({ ...newCategory, name: e.target.value })
           }
         />
         <select
           className={fieldClass}
-
-          value={newCategory.color}
+          value={editingId ? editCat.color : newCategory.color}
           onChange={(e) =>
-            setNewCategory({ ...newCategory, color: e.target.value })
+            editingId
+              ? setEditCat({ ...editCat, color: e.target.value })
+              : setNewCategory({ ...newCategory, color: e.target.value })
           }
         >
           <option value="">Selecione a cor</option>
@@ -110,86 +119,51 @@ export default function AdminCategories() {
         <input
           className={fieldClass}
           placeholder="Ícone"
-          value={newCategory.icon}
+          value={editingId ? editCat.icon : newCategory.icon}
           onChange={(e) =>
-            setNewCategory({ ...newCategory, icon: e.target.value })
+            editingId
+              ? setEditCat({ ...editCat, icon: e.target.value })
+              : setNewCategory({ ...newCategory, icon: e.target.value })
           }
         />
-        <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
-          Adicionar
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white"
+          >
+            {editingId ? "Salvar" : "Adicionar"}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null);
+                navigate("/admin/categories");
+              }}
+              className="px-4 py-2 rounded border"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
       </form>
-      <motion.ul
-        className="space-y-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
+      <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         {categories.map((c) => (
-          <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
-
-            {editingId === c.id ? (
-              <>
-                  <input
-                    className={`${fieldClass} flex-1`}
-
-                    value={editCat.name}
-                  onChange={(e) =>
-                    setEditCat({ ...editCat, name: e.target.value })
-                  }
-                />
-                  <select
-                    className={fieldClass}
-                    value={editCat.color}
-                  onChange={(e) =>
-                    setEditCat({ ...editCat, color: e.target.value })
-                  }
-                >
-                  <option value="">Cor</option>
-                  {colors.map((col) => (
-                    <option key={col.id} value={col.value} style={{ color: col.value }}>
-                      {col.value}
-                    </option>
-                  ))}
-                </select>
-                  <input
-                    className={fieldClass}
-
-                    value={editCat.icon}
-                  onChange={(e) =>
-                    setEditCat({ ...editCat, icon: e.target.value })
-                  }
-                  placeholder="Icone"
-                />
-                <button onClick={saveEdit} className="text-sm text-green-400">
-                  Salvar
-                </button>
-                <button
-                  onClick={() => setEditingId(null)}
-                  className="text-sm text-yellow-400"
-                >
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1">{c.name}</span>
-                <span className="ml-2 text-sm font-mono" style={{ color: c.color }}>
-                  {c.color}
-                </span>
-                <button
-                  onClick={() => startEdit(c)}
-                  className="text-sm text-blue-400"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => remove(c.id)}
-                  className="text-sm text-red-400"
-                >
-                  Excluir
-                </button>
-              </>
-            )}
+          <motion.li
+            key={c.id}
+            layout
+            className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
+          >
+            <span className="flex-1">{c.name}</span>
+            <span className="ml-2 text-sm font-mono" style={{ color: c.color }}>
+              {c.color}
+            </span>
+            <button onClick={() => startEdit(c)} className="text-sm text-blue-400">
+              Editar
+            </button>
+            <button onClick={() => remove(c.id)} className="text-sm text-red-400">
+              Excluir
+            </button>
           </motion.li>
         ))}
       </motion.ul>
