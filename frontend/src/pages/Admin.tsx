@@ -36,6 +36,7 @@ export default function Admin() {
             <Palette size={18} /> Cores
           </Link>
         </div>
+
       </motion.nav>
       <div className="py-8 px-4 container mx-auto flex-1 text-gray-900 dark:text-white">
         <Outlet />
