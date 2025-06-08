@@ -48,7 +48,12 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           )}
-          <Link to="/" className="text-2xl font-heading font-bold">FACILITA CHVC</Link>
+          <Link
+            to="/"
+            className="text-xl sm:text-2xl font-heading font-bold whitespace-nowrap"
+          >
+            FACILITA CHVC
+          </Link>
         </div>
         <nav className="space-x-4 flex items-center">
           <Link to="/" className="hover:underline flex items-center gap-1">

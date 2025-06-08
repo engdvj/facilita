@@ -77,7 +77,11 @@ export default function Admin() {
           </nav>
         </motion.aside>
         <main
-          className={`flex-1 p-4 md:p-8 text-gray-900 dark:text-white transform transition-transform ${open ? "translate-x-64" : ""}`}
+
+          className={`flex-1 p-4 md:p-8 text-gray-900 dark:text-white transition-all ${
+            open ? "translate-x-64 md:translate-x-0 md:ml-64" : "md:ml-0"
+          }`}
+
         >
           <Outlet />
         </main>
