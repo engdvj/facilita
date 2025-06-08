@@ -42,6 +42,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
       animate={{ opacity: 1, y: 0 }}
     >
       <div className="w-full p-4 flex justify-between items-center">
+
         <div className="flex items-center gap-2">
           {onMenuClick && (
             <button onClick={onMenuClick}>
@@ -50,6 +51,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
           )}
           <Link to="/" className="text-2xl font-heading font-bold">FACILITA CHVC</Link>
         </div>
+
         <nav className="space-x-4 flex items-center">
           <Link to="/" className="hover:underline flex items-center gap-1">
             <Home size={18} />
