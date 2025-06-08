@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Link2, Folder, Palette, Home, X } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -22,27 +23,56 @@ export default function Admin() {
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
-          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed md:relative h-full z-20"
+          className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed inset-y-0 md:relative h-full z-20"
+
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
           <button className="mb-4" onClick={() => setOpen(false)}>
-
             <X size={20} />
           </button>
           <nav className="flex flex-col gap-2">
-            <Link to="/admin" className="hover:underline flex items-center gap-1">
+            <NavLink
+              end
+              to="/admin"
+              className={({ isActive }) =>
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
+                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
+                `
+              }
+            >
               <Home size={18} /> Dashboard
-            </Link>
-            <Link to="/admin/categories" className="hover:underline flex items-center gap-1">
-              <Folder size={18} /> Categorias
-            </Link>
-            <Link to="/admin/links" className="hover:underline flex items-center gap-1">
+            </NavLink>
+            <NavLink
+              to="/admin/links"
+              className={({ isActive }) =>
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
+                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
+                `
+              }
+            >
               <Link2 size={18} /> Links
-            </Link>
-            <Link to="/admin/colors" className="hover:underline flex items-center gap-1">
+            </NavLink>
+            <NavLink
+              to="/admin/categories"
+              className={({ isActive }) =>
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
+                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
+                `
+              }
+            >
+              <Folder size={18} /> Categorias
+            </NavLink>
+            <NavLink
+              to="/admin/colors"
+              className={({ isActive }) =>
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
+                  isActive ? "bg-indigo-200 dark:bg-slate-700" : ""}
+                `
+              }
+            >
               <Palette size={18} /> Cores
-            </Link>
+            </NavLink>
           </nav>
         </motion.aside>
         <main className="flex-1 overflow-y-auto p-4 md:p-8 text-gray-900 dark:text-white">
