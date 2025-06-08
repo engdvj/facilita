@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Link2, Folder, Palette, Home, X } from "lucide-react";
+
 import { motion } from "framer-motion";
 import Header from "../components/Header";
 
@@ -17,10 +19,12 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900 flex flex-col">
+
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
           className="bg-indigo-100 dark:bg-slate-800 text-gray-900 dark:text-white w-64 p-6 space-y-4 transform transition-transform fixed inset-y-0 md:relative h-full z-20"
+
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
