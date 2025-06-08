@@ -94,7 +94,7 @@ export default function AdminDashboard() {
   const paginatedColors = colors.slice((colorPage - 1) * perPage, colorPage * perPage);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-4xl mx-auto p-4">
       <div className="grid md:grid-cols-3 gap-8">
         <section>
           <div className="flex justify-between items-center mb-2">
