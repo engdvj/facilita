@@ -35,20 +35,24 @@ export default function AdminColors() {
       await api.post("/colors", {
         value: newColor,
         name: newName || undefined,
+
       });
       await fetchColors();
       setNewColor("#000000");
       setNewName("");
+
       toast.success("Cor criada");
     } catch {
       toast.error("Erro ao criar cor");
     }
   };
 
+
   const startEdit = (c: { id: number; value: string; name?: string }) => {
     setEditingId(c.id);
     setEditValue(c.value);
     setEditName(c.name || "");
+
   };
 
   const saveEdit = async () => {
@@ -57,11 +61,14 @@ export default function AdminColors() {
       await api.patch(`/colors/${editingId}`, {
         value: editValue,
         name: editName || undefined,
+
       });
       toast.success("Cor atualizada");
       setEditingId(null);
       setEditName("");
+
       setEditValue("#000000");
+
       await fetchColors();
     } catch {
       toast.error("Erro ao atualizar");
@@ -84,9 +91,11 @@ export default function AdminColors() {
           <h2 className="text-lg font-semibold mb-4">Nova Cor</h2>
           <form onSubmit={handleCreate} className="flex flex-col sm:flex-row items-center gap-3">
             <input
-              type="color"
+              type="text"
+              placeholder="Cor (#fff, rgb..., hsl..., cmyk...)"
               value={newColor}
               onChange={(e) => setNewColor(e.target.value)}
+
               className={`${colorInputClass} w-12 h-10`}
             />
             <input
@@ -95,6 +104,7 @@ export default function AdminColors() {
               value={newColor}
               onChange={(e) => setNewColor(e.target.value)}
               className={`${colorInputClass} w-32 h-10 px-2 font-mono`}
+
             />
             <input
               type="text"
@@ -102,6 +112,7 @@ export default function AdminColors() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className={`${colorInputClass} w-40 h-10 px-2`}
+
             />
             <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
               Adicionar
@@ -118,9 +129,10 @@ export default function AdminColors() {
                 {editingId === c.id ? (
                   <>
                     <input
-                      type="color"
+                      type="text"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
+
                       className={`${colorInputClass} w-12 h-8`}
                     />
                     <input
@@ -128,6 +140,7 @@ export default function AdminColors() {
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       className={`${colorInputClass} w-28 h-8 px-2 font-mono`}
+
                     />
                     <input
                       type="text"
@@ -136,6 +149,7 @@ export default function AdminColors() {
                       onChange={(e) => setEditName(e.target.value)}
                       className={`${colorInputClass} w-28 h-8 px-2`}
                     />
+
                     <span
                       className="w-6 h-6 rounded border"
                       style={{ backgroundColor: editValue || "transparent" }}
@@ -151,7 +165,9 @@ export default function AdminColors() {
                   <>
                     <span className="flex-1 font-mono">
                       {c.value}
+
                       {c.name ? ` - ${c.name}` : ""}
+
                     </span>
                     <button onClick={() => startEdit(c)} className="p-1 hover:text-[#7c3aed]">
                       <Pencil size={16} />

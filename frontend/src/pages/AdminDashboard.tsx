@@ -20,13 +20,16 @@ export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
   const [colors, setColors] = useState<
+
     { id: number; value: string; name?: string }[]
+
   >([]);
   const navigate = useNavigate();
 
   const [editColorId, setEditColorId] = useState<number | null>(null);
   const [editColor, setEditColor] = useState("#000000");
   const [editColorName, setEditColorName] = useState("");
+
 
   const [linkQuery, setLinkQuery] = useState("");
   const [catQuery, setCatQuery] = useState("");
@@ -75,11 +78,14 @@ export default function AdminDashboard() {
   };
 
   const startEditColor = (
+
     c: { id: number; value: string; name?: string }
+
   ) => {
     setEditColorId(c.id);
     setEditColor(c.value);
     setEditColorName(c.name || "");
+
   };
 
   const saveColor = async () => {
@@ -87,10 +93,12 @@ export default function AdminDashboard() {
     await api.patch(`/colors/${editColorId}`, {
       value: editColor,
       name: editColorName || undefined,
+
     });
     setEditColorId(null);
     setEditColorName("");
     setEditColor("#000000");
+
     await refresh();
   };
 
@@ -109,7 +117,27 @@ export default function AdminDashboard() {
   const filteredColors = colors.filter((c) =>
     c.value.toLowerCase().includes(colorQuery.toLowerCase()) ||
     (c.name || "").toLowerCase().includes(colorQuery.toLowerCase())
+
   );
+
+  const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
+  const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
+  const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
+
+  const paginatedLinks = filteredLinks.slice(
+    (linkPage - 1) * perPage,
+    linkPage * perPage
+  );
+  const paginatedCats = filteredCats.slice(
+    (catPage - 1) * perPage,
+    catPage * perPage
+
+  );
+  const paginatedColors = filteredColors.slice(
+    (colorPage - 1) * perPage,
+    colorPage * perPage
+  );
+
 
   const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
   const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
@@ -344,11 +372,12 @@ export default function AdminDashboard() {
                 {editColorId === c.id ? (
                   <>
                     <input
-                      type="color"
+                      type="text"
                       value={editColor}
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setEditColor(e.target.value)
                       }
+
                       className={`${colorInputClass} w-12 h-8`}
                     />
                     <input
@@ -358,6 +387,7 @@ export default function AdminDashboard() {
                         setEditColor(e.target.value)
                       }
                       className={`${colorInputClass} w-24 h-8 px-2 font-mono`}
+
                     />
                     <input
                       type="text"
@@ -384,6 +414,7 @@ export default function AdminDashboard() {
                     <span className="flex-1 font-mono">
                       {c.value}
                       {c.name ? ` - ${c.name}` : ""}
+
                     </span>
                     <button onClick={() => startEditColor(c)} className="p-1 hover:text-[#7c3aed]">
                       <Pencil size={16} />

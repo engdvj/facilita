@@ -143,8 +143,10 @@ def create_api_blueprint():
     def list_colors():
         colors = Color.query.all()
         return jsonify([
+
             {"id": c.id, "value": c.value, "name": c.name}
             for c in colors
+
         ])
 
     @bp.post("/colors")
@@ -154,7 +156,9 @@ def create_api_blueprint():
         value = data.get("value")
         if not value:
             return {"message": "Missing value"}, 400
+
         color = Color(value=value, name=data.get("name"))
+
         db.session.add(color)
         try:
             db.session.commit()
@@ -165,6 +169,7 @@ def create_api_blueprint():
             "id": color.id,
             "value": color.value,
             "name": color.name,
+
         }, 201
 
     @bp.patch("/colors/<int:color_id>")
@@ -176,6 +181,7 @@ def create_api_blueprint():
             color.value = data["value"]
         if "name" in data:
             color.name = data["name"]
+
         try:
             db.session.commit()
         except IntegrityError:
@@ -185,6 +191,7 @@ def create_api_blueprint():
             "id": color.id,
             "value": color.value,
             "name": color.name,
+
         }
 
     @bp.delete("/colors/<int:color_id>")

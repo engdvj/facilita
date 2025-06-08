@@ -14,7 +14,9 @@ export default function AdminCategories() {
     { id: number; name: string; color: string; icon: string }[]
   >([]);
   const [colors, setColors] = useState<
+
     { id: number; value: string; name?: string }[]
+
   >([]);
   const [newCategory, setNewCategory] = useState({
     name: "",
@@ -128,7 +130,9 @@ export default function AdminCategories() {
                 value={c.value}
                 style={{ backgroundColor: c.value, color: "#000" }}
               >
+
                 {c.name ? `${c.name} - ${c.value}` : c.value}
+
               </option>
             ))}
           </select>
