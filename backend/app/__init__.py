@@ -1,5 +1,5 @@
 from flask import Flask, send_from_directory
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from .extensions import db, cors
 import os
@@ -49,7 +49,8 @@ def create_app(debug: bool = False):
         color_cols = [c["name"] for c in inspector.get_columns("color")]
         if "name" not in color_cols:
             # simple migration for the optional name column
-            db.engine.execute("ALTER TABLE color ADD COLUMN name VARCHAR(50)")
+            db.session.execute(text("ALTER TABLE color ADD COLUMN name VARCHAR(50)"))
+            db.session.commit()
     from .routes import create_api_blueprint
     app.register_blueprint(create_api_blueprint(), url_prefix="/api")
 
