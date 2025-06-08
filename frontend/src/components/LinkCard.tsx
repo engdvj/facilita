@@ -23,16 +23,15 @@ export interface LinkData {
 }
 
 export default function LinkCard({ link }: { link: LinkData }) {
-  const bg = link.color || "#1e293b";
-  const light = isLight(bg);
-  const textClass = light ? "text-gray-900" : "text-white";
+  const textColor = link.color || "#1e293b";
+
   return (
     <motion.a
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-3xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group border border-black/10 dark:border-white/10"
-      style={{ backgroundColor: bg }}
+      className="rounded-3xl overflow-hidden shadow-lg transform transition-all hover:scale-105 relative group border border-black/10 dark:border-white/10 bg-white dark:bg-slate-800"
+
     >
       {link.categoryColor && (
         <span
@@ -53,16 +52,18 @@ export default function LinkCard({ link }: { link: LinkData }) {
           className="h-32 w-full object-cover"
         />
       )}
-      <div className={`p-4 backdrop-blur-sm bg-black/30 ${textClass}`}> 
+      <div className="p-4 backdrop-blur-sm bg-black/70" style={{ color: textColor }}>
         <h3 className="font-semibold">{link.title}</h3>
         {link.category && <p className="text-sm opacity-80">{link.category}</p>}
       </div>
-      <div className={`absolute top-2 right-2 ${textClass} opacity-0 group-hover:opacity-100 transition-opacity`}>
+      <div
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ color: textColor }}
+      >
+
         <ArrowUpRight size={18} />
       </div>
-      {link.categoryColor && (
-        <div className="h-1" style={{ backgroundColor: link.categoryColor }} />
-      )}
+      <span className="h-1 block bg-black" />
     </motion.a>
   );
 }
