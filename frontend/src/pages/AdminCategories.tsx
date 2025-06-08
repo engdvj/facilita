@@ -13,7 +13,9 @@ export default function AdminCategories() {
   const [categories, setCategories] = useState<
     { id: number; name: string; color: string; icon: string }[]
   >([]);
-  const [colors, setColors] = useState<{ id: number; value: string }[]>([]);
+  const [colors, setColors] = useState<
+    { id: number; value: string; name?: string; type?: string }[]
+  >([]);
   const [newCategory, setNewCategory] = useState({
     name: "",
     color: "",
@@ -121,8 +123,12 @@ export default function AdminCategories() {
         >
             <option value="">Selecione a cor</option>
             {colors.map((c) => (
-              <option key={c.id} value={c.value} style={{ color: c.value }}>
-                {c.value}
+              <option
+                key={c.id}
+                value={c.value}
+                style={{ backgroundColor: c.value, color: "#000" }}
+              >
+                {c.name ? `${c.name} (${c.type})` : `${c.value} (${c.type})`}
               </option>
             ))}
           </select>

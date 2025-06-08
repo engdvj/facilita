@@ -18,6 +18,8 @@ interface Category {
 interface Color {
   id: number;
   value: string;
+  name?: string;
+  type?: string;
 }
 interface LinkFormData {
   title: string;
@@ -257,8 +259,12 @@ export default function AdminLinks() {
         >
           <option value="">Cor do card</option>
           {colors.map((c) => (
-            <option key={c.id} value={c.value} style={{ color: c.value }}>
-              {c.value}
+            <option
+              key={c.id}
+              value={c.value}
+              style={{ backgroundColor: c.value, color: "#000" }}
+            >
+              {c.name ? `${c.name} (${c.type})` : `${c.value} (${c.type})`}
             </option>
           ))}
         </select>

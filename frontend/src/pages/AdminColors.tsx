@@ -5,12 +5,16 @@ import { Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-r
 import api from "../api";
 
 export default function AdminColors() {
-  const [colors, setColors] = useState<{ id: number; value: string; name?: string }[]>([]);
+  const [colors, setColors] = useState<
+    { id: number; value: string; name?: string; type?: string }[]
+  >([]);
   const [newColor, setNewColor] = useState("");
   const [newName, setNewName] = useState("");
+  const [newType, setNewType] = useState("hex");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState("hex");
 
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -30,20 +34,26 @@ export default function AdminColors() {
   const handleCreate = async (e: any) => {
     e.preventDefault();
     try {
-      await api.post("/colors", { value: newColor, name: newName || undefined });
+      await api.post("/colors", {
+        value: newColor,
+        name: newName || undefined,
+        type: newType,
+      });
       await fetchColors();
       setNewColor("");
       setNewName("");
+      setNewType("hex");
       toast.success("Cor criada");
     } catch {
       toast.error("Erro ao criar cor");
     }
   };
 
-  const startEdit = (c: { id: number; value: string; name?: string }) => {
+  const startEdit = (c: { id: number; value: string; name?: string; type?: string }) => {
     setEditingId(c.id);
     setEditValue(c.value);
     setEditName(c.name || "");
+    setEditType(c.type || "hex");
   };
 
   const saveEdit = async () => {
@@ -52,10 +62,13 @@ export default function AdminColors() {
       await api.patch(`/colors/${editingId}`, {
         value: editValue,
         name: editName || undefined,
+        type: editType,
       });
       toast.success("Cor atualizada");
       setEditingId(null);
       setEditName("");
+      setEditType("hex");
+
       await fetchColors();
     } catch {
       toast.error("Erro ao atualizar");
@@ -91,6 +104,20 @@ export default function AdminColors() {
               onChange={(e) => setNewName(e.target.value)}
               className={`${colorInputClass} w-40 h-10 px-2`}
             />
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              className={`${colorInputClass} h-10 px-2`}
+            >
+              <option value="hex">HEX</option>
+              <option value="rgb">RGB</option>
+              <option value="hsl">HSL</option>
+              <option value="cmyk">CMYK</option>
+            </select>
+            <span
+              className="w-8 h-8 rounded border"
+              style={{ backgroundColor: newColor || "transparent" }}
+            />
             <button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-colors px-4 py-2 rounded text-white">
               Adicionar
             </button>
@@ -118,6 +145,20 @@ export default function AdminColors() {
                       onChange={(e) => setEditName(e.target.value)}
                       className={`${colorInputClass} w-28 h-8 px-2`}
                     />
+                    <select
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value)}
+                      className={`${colorInputClass} h-8 px-2`}
+                    >
+                      <option value="hex">HEX</option>
+                      <option value="rgb">RGB</option>
+                      <option value="hsl">HSL</option>
+                      <option value="cmyk">CMYK</option>
+                    </select>
+                    <span
+                      className="w-6 h-6 rounded border"
+                      style={{ backgroundColor: editValue || "transparent" }}
+                    />
                     <button onClick={saveEdit} className="p-1 text-green-400">
                       <ChevronDown size={16} />
                     </button>
@@ -127,7 +168,10 @@ export default function AdminColors() {
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 font-mono">{c.value}{c.name ? ` - ${c.name}` : ""}</span>
+                    <span className="flex-1 font-mono">
+                      {c.value}
+                      {c.name ? ` - ${c.name}` : ""} ({c.type})
+                    </span>
                     <button onClick={() => startEdit(c)} className="p-1 hover:text-[#7c3aed]">
                       <Pencil size={16} />
                     </button>

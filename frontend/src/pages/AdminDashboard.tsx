@@ -19,12 +19,15 @@ import { LinkData } from "../components/LinkCard";
 export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string; color: string; icon: string }[]>([]);
-  const [colors, setColors] = useState<{ id: number; value: string; name?: string }[]>([]);
+  const [colors, setColors] = useState<
+    { id: number; value: string; name?: string; type?: string }[]
+  >([]);
   const navigate = useNavigate();
 
   const [editColorId, setEditColorId] = useState<number | null>(null);
   const [editColor, setEditColor] = useState("");
   const [editColorName, setEditColorName] = useState("");
+  const [editColorType, setEditColorType] = useState("hex");
 
   const [linkQuery, setLinkQuery] = useState("");
   const [catQuery, setCatQuery] = useState("");
@@ -72,10 +75,13 @@ export default function AdminDashboard() {
     await refresh();
   };
 
-  const startEditColor = (c: { id: number; value: string; name?: string }) => {
+  const startEditColor = (
+    c: { id: number; value: string; name?: string; type?: string }
+  ) => {
     setEditColorId(c.id);
     setEditColor(c.value);
     setEditColorName(c.name || "");
+    setEditColorType(c.type || "hex");
   };
 
   const saveColor = async () => {
@@ -83,9 +89,11 @@ export default function AdminDashboard() {
     await api.patch(`/colors/${editColorId}`, {
       value: editColor,
       name: editColorName || undefined,
+      type: editColorType,
     });
     setEditColorId(null);
     setEditColorName("");
+    setEditColorType("hex");
     await refresh();
   };
 
@@ -133,7 +141,7 @@ export default function AdminDashboard() {
   return (
 
 
-    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white">
+    <div className="max-w-7xl mx-auto px-4 py-8 text-gray-900 dark:text-white overflow-x-hidden">
       <div className="grid gap-8 md:grid-cols-3">
         <section className="bg-[#1c2233] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
 
@@ -172,11 +180,11 @@ export default function AdminDashboard() {
                 categoryMap[l.categoryId || 0]?.icon || "Link2"
               ];
               return (
-                <motion.li
-                  key={l.id}
-                  layout
-                  className="flex items-center gap-2 bg-[#1c2233] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
-                >
+              <motion.li
+                key={l.id}
+                layout
+                className="flex items-center gap-2 bg-[#1c2233] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
+              >
                   <span
                     className="w-4 h-4 rounded"
                     style={{ backgroundColor: categoryMap[l.categoryId || 0]?.color }}
@@ -258,7 +266,7 @@ export default function AdminDashboard() {
                 <motion.li
                   key={c.id}
                   layout
-                  className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                  className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
                 >
                   <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                   {Icon && <Icon size={16} className="opacity-70" />}
@@ -333,7 +341,7 @@ export default function AdminDashboard() {
               <motion.li
                 key={c.id}
                 layout
-                className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl shadow-md hover:shadow-xl text-white"
+                className="flex items-center gap-2 bg-[#1c2233] p-3 rounded-2xl shadow-md hover:shadow-xl text-white w-full"
               >
                 <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
                 {editColorId === c.id ? (
@@ -342,15 +350,32 @@ export default function AdminDashboard() {
                       type="text"
                       value={editColor}
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        setEditColor(e.target.value)}
+                        setEditColor(e.target.value)
+                      }
                       className={`${colorInputClass} w-32 h-8 px-2`}
                     />
                     <input
                       type="text"
                       placeholder="Nome"
                       value={editColorName}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setEditColorName(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setEditColorName(e.target.value)
+                      }
                       className={`${colorInputClass} w-28 h-8 px-2`}
+                    />
+                    <select
+                      value={editColorType}
+                      onChange={(e) => setEditColorType(e.target.value)}
+                      className={`${colorInputClass} h-8 px-2`}
+                    >
+                      <option value="hex">HEX</option>
+                      <option value="rgb">RGB</option>
+                      <option value="hsl">HSL</option>
+                      <option value="cmyk">CMYK</option>
+                    </select>
+                    <span
+                      className="w-6 h-6 rounded border"
+                      style={{ backgroundColor: editColor || "transparent" }}
                     />
                     <button onClick={saveColor} className="p-1 text-green-400">
                       <ChevronDown size={16} />
@@ -361,7 +386,10 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 font-mono">{c.value}{c.name ? ` - ${c.name}` : ""}</span>
+                    <span className="flex-1 font-mono">
+                      {c.value}
+                      {c.name ? ` - ${c.name}` : ""} ({c.type})
+                    </span>
                     <button onClick={() => startEditColor(c)} className="p-1 hover:text-[#7c3aed]">
                       <Pencil size={16} />
                     </button>
