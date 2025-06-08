@@ -37,6 +37,20 @@ export default function AdminLinks() {
     "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
 
 
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
+  const fieldClass =
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+
   useEffect(() => {
     refresh();
   }, []);
@@ -153,6 +167,7 @@ export default function AdminLinks() {
       <form
         onSubmit={editingId ? saveEdit : handleCreate}
         className="flex flex-col gap-3 bg-white dark:bg-slate-800 p-6 rounded-lg text-gray-900 dark:text-white"
+
       >
         <input
           className={fieldClass}
@@ -267,6 +282,7 @@ export default function AdminLinks() {
             </button>
           )}
         </div>
+
       </form>
       <motion.ul
         className="space-y-2"
@@ -278,6 +294,7 @@ export default function AdminLinks() {
             key={l.id}
             layout
             className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white"
+
           >
             <span className="flex-1">{l.title}</span>
             <button onClick={() => startEdit(l)} className="text-sm text-blue-400">
@@ -286,6 +303,7 @@ export default function AdminLinks() {
             <button onClick={() => remove(l.id)} className="text-sm text-red-400">
               Excluir
             </button>
+
           </motion.li>
         ))}
       </motion.ul>

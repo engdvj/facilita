@@ -19,6 +19,7 @@ export default function Admin() {
       <Header />
       <motion.nav
         className="bg-indigo-100 dark:bg-slate-800 py-6 flex justify-center gap-8 text-gray-900 dark:text-white"
+
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >

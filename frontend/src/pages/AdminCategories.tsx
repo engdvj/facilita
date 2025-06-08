@@ -85,6 +85,7 @@ export default function AdminCategories() {
       >
         <input
           className={fieldClass}
+
           placeholder="Nome"
           value={newCategory.name}
           onChange={(e) =>
@@ -93,6 +94,7 @@ export default function AdminCategories() {
         />
         <select
           className={fieldClass}
+
           value={newCategory.color}
           onChange={(e) =>
             setNewCategory({ ...newCategory, color: e.target.value })
@@ -124,10 +126,12 @@ export default function AdminCategories() {
       >
         {categories.map((c) => (
           <motion.li key={c.id} layout className="flex items-center gap-2 bg-white dark:bg-slate-800 p-3 rounded-lg text-gray-900 dark:text-white">
+
             {editingId === c.id ? (
               <>
                   <input
                     className={`${fieldClass} flex-1`}
+
                     value={editCat.name}
                   onChange={(e) =>
                     setEditCat({ ...editCat, name: e.target.value })
@@ -149,6 +153,7 @@ export default function AdminCategories() {
                 </select>
                   <input
                     className={fieldClass}
+
                     value={editCat.icon}
                   onChange={(e) =>
                     setEditCat({ ...editCat, icon: e.target.value })
