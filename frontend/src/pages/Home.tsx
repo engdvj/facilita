@@ -2,17 +2,15 @@ import {
   ChangeEvent,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import { motion } from 'framer-motion'
 import * as Icons from 'lucide-react'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 import api from '../api'
 import Header from '../components/Header'
 import Hero from '../components/Hero'
-import Carousel, { CarouselHandle } from '../components/Carousel'
 import LinkCard, { LinkData } from '../components/LinkCard'
 
 /* ---------- helpers ---------- */
@@ -36,9 +34,6 @@ export default function Home() {
   const [categories,  setCategories]  = useState<Category[]>([])
   const [search,      setSearch]      = useState('')
   const [categoryId,  setCategoryId]  = useState<number | 'all'>('all')
-  const [visibleCols, setVisibleCols] = useState(1)
-
-  const carouselRef = useRef<CarouselHandle>(null)
 
   /* ---------- carregar dados ---------- */
   useEffect(() => {
@@ -153,50 +148,18 @@ export default function Home() {
           })}
         </div>
 
-        {/* ---------- CARROSSEL ---------- */}
+        {/* ---------- LISTA DE LINKS ---------- */}
         {filtered.length ? (
-          <div className="relative my-6 flex items-center">
-            {/* seta ESQUERDA */}
-            {filtered.length > visibleCols && (
-              <button
-                aria-label="Anterior"
-                onClick={() => carouselRef.current?.prev()}
-                className="absolute -left-12 top-1/2 -translate-y-1/2
-                           w-10 h-10 flex items-center justify-center
-                           rounded-full bg-white/10 hover:bg-white/20"
-              >
-                <ChevronLeft size={20} className="text-white" />
-              </button>
-            )}
-
-            <Carousel
-              ref={carouselRef}
-              onVisibleChange={setVisibleCols}
-            >
-              {filtered.map(link => (
-                <LinkCard
-                  key={link.id}
-                  link={{
-                    ...link,
-                    categoryColor:
-                      categoryMap[link.categoryId || 0]?.color,
-                  }}
-                />
-              ))}
-            </Carousel>
-
-            {/* seta DIREITA */}
-            {filtered.length > visibleCols && (
-              <button
-                aria-label="Próximo"
-                onClick={() => carouselRef.current?.next()}
-                className="absolute -right-12 top-1/2 -translate-y-1/2
-                           w-10 h-10 flex items-center justify-center
-                           rounded-full bg-white/10 hover:bg-white/20"
-              >
-                <ChevronRight size={20} className="text-white" />
-              </button>
-            )}
+          <div className="my-6 flex flex-wrap justify-center gap-4">
+            {filtered.map(link => (
+              <LinkCard
+                key={link.id}
+                link={{
+                  ...link,
+                  categoryColor: categoryMap[link.categoryId || 0]?.color,
+                }}
+              />
+            ))}
           </div>
         ) : (
           <p className="text-center text-gray-500 dark:text-gray-400 py-10">
