@@ -25,6 +25,7 @@ const defaultTheme = {
   '--hover-effect': '#4338ca',
   '--card-background': '#1c2233',
   '--accent-color': '#7c3aed',
+  '--input-background': '#1e293b',
 }
 
 export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
@@ -239,7 +240,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               if (location.pathname.startsWith('/admin')) {
                 groups.push({
                   label: 'Admin',
-                  vars: ['--card-background', '--accent-color'],
+                  vars: ['--card-background', '--accent-color', '--input-background'],
                 })
               }
 
