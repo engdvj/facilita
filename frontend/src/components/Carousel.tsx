@@ -80,7 +80,8 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         {extended.map((child, i) => (
           <div
             key={i}
-            className="flex-none"
+            className="px-2 flex-none"
+
             style={{ width: `calc(100% / ${total})` }}
           >
             {child}
@@ -91,7 +92,8 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         aria-label="Anterior"
         role="button"
         onClick={prev}
-        className="absolute top-1/2 -translate-y-1/2 z-10 left-[-2rem] sm:left-2 bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
+        className="absolute top-1/2 -translate-y-1/2 z-10 left-2 sm:left-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
+
       >
         <ChevronLeft size={20} />
       </button>
@@ -99,7 +101,8 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         aria-label="Próximo"
         role="button"
         onClick={next}
-        className="absolute top-1/2 -translate-y-1/2 z-10 right-[-2rem] sm:right-2 bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
+        className="absolute top-1/2 -translate-y-1/2 z-10 right-2 sm:right-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
+
       >
         <ChevronRight size={20} />
       </button>
