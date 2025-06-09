@@ -1,6 +1,3 @@
-/**
- * Home – usa o Carousel responsivo (máx. 4 colunas)
- */
 import {
   ChangeEvent,
   useEffect,
@@ -18,7 +15,7 @@ import Hero from '../components/Hero'
 import Carousel, { CarouselHandle } from '../components/Carousel'
 import LinkCard, { LinkData } from '../components/LinkCard'
 
-/* ---- helpers ---- */
+/* ---------- helpers ---------- */
 function isLight(hex: string) {
   const c = hex.replace('#', '')
   const r = parseInt(c.slice(0, 2), 16)
@@ -35,34 +32,42 @@ interface Category {
 }
 
 export default function Home() {
-  const [links, setLinks] = useState<LinkData[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [search, setSearch] = useState('')
-  const [categoryId, setCategoryId] = useState<number | 'all'>('all')
+  const [links,       setLinks]       = useState<LinkData[]>([])
+  const [categories,  setCategories]  = useState<Category[]>([])
+  const [search,      setSearch]      = useState('')
+  const [categoryId,  setCategoryId]  = useState<number | 'all'>('all')
+  const [visibleCols, setVisibleCols] = useState(1)
 
-  /* ---- carregar dados ---- */
+  const carouselRef = useRef<CarouselHandle>(null)
+
+  /* ---------- carregar dados ---------- */
   useEffect(() => {
-    api.get('/links').then(r => {
-      const data = (r.data as LinkData[])
+    api.get('/links').then(({ data }) => {
+      const cleaned = (data as LinkData[])
         .map(l =>
           l.imageUrl?.startsWith('/uploads/')
             ? { ...l, imageUrl: `/api${l.imageUrl}` }
-            : l
+            : l,
         )
         .sort((a, b) => a.title.localeCompare(b.title))
-      setLinks(data)
+      setLinks(cleaned)
     })
-    api.get('/categories').then(r =>
-      setCategories([...r.data].sort((a, b) => a.name.localeCompare(b.name)))
+
+    api.get('/categories').then(({ data }) =>
+      setCategories(
+        [...data].sort((a, b) => a.name.localeCompare(b.name)),
+      ),
     )
   }, [])
 
-  /* ---- filtros ---- */
+  /* ---------- filtros ---------- */
   const filtered = links
     .filter(l => {
-      const s = l.title.toLowerCase().includes(search.toLowerCase())
-      const c = categoryId === 'all' || l.categoryId === categoryId
-      return s && c
+      const matchSearch = l.title
+        .toLowerCase()
+        .includes(search.toLowerCase())
+      const matchCat = categoryId === 'all' || l.categoryId === categoryId
+      return matchSearch && matchCat
     })
     .sort((a, b) => a.title.localeCompare(b.title))
 
@@ -74,12 +79,10 @@ export default function Home() {
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
-    [categories]
+    [categories],
   )
 
-  /* ---- refs ---- */
-  const carousel = useRef<CarouselHandle>(null)
-
+  /* ---------- UI ---------- */
   return (
     <div
       className="min-h-screen"
@@ -96,7 +99,7 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        {/* -------- BUSCA -------- */}
+        {/* ---------- BUSCA ---------- */}
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <Search
@@ -114,7 +117,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* -------- CATEGORIAS -------- */}
+        {/* ---------- CATEGORIAS ---------- */}
         <div className="flex overflow-x-auto gap-2 pb-4 mb-4">
           <button
             onClick={() => setCategoryId('all')}
@@ -150,40 +153,46 @@ export default function Home() {
           })}
         </div>
 
-        {/* -------- CARROSSEL -------- */}
+        {/* ---------- CARROSSEL ---------- */}
         {filtered.length ? (
-          <div className="flex items-center justify-center gap-8">
-            {/* seta esquerda */}
-            {filtered.length > 4 && (
+          <div className="relative my-6 flex items-center">
+            {/* seta ESQUERDA */}
+            {filtered.length > visibleCols && (
               <button
                 aria-label="Anterior"
-                onClick={() => carousel.current?.prev()}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"
+                onClick={() => carouselRef.current?.prev()}
+                className="absolute -left-12 top-1/2 -translate-y-1/2
+                           w-10 h-10 flex items-center justify-center
+                           rounded-full bg-white/10 hover:bg-white/20"
               >
                 <ChevronLeft size={20} className="text-white" />
               </button>
             )}
 
-            <Carousel ref={carousel}>
+            <Carousel
+              ref={carouselRef}
+              onVisibleChange={setVisibleCols}
+            >
               {filtered.map(link => (
-                <motion.div key={link.id} layout>
-                  <LinkCard
-                    className="w-full h-full"
-                    link={{
-                      ...link,
-                      categoryColor: categoryMap[link.categoryId || 0]?.color,
-                    }}
-                  />
-                </motion.div>
+                <LinkCard
+                  key={link.id}
+                  link={{
+                    ...link,
+                    categoryColor:
+                      categoryMap[link.categoryId || 0]?.color,
+                  }}
+                />
               ))}
             </Carousel>
 
-            {/* seta direita */}
-            {filtered.length > 4 && (
+            {/* seta DIREITA */}
+            {filtered.length > visibleCols && (
               <button
                 aria-label="Próximo"
-                onClick={() => carousel.current?.next()}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"
+                onClick={() => carouselRef.current?.next()}
+                className="absolute -right-12 top-1/2 -translate-y-1/2
+                           w-10 h-10 flex items-center justify-center
+                           rounded-full bg-white/10 hover:bg-white/20"
               >
                 <ChevronRight size={20} className="text-white" />
               </button>

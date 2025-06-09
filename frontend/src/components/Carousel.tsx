@@ -1,11 +1,3 @@
-/**
- * Carousel responsivo
- * – Máx. 4 colunas
- * – Largura mínima do card = 200 px
- * – gap fixo = 16 px
- * – Considera o padding lateral (px-4 → 32 px) para não cortar cards
- */
-
 import {
   forwardRef,
   useEffect,
@@ -16,92 +8,112 @@ import {
 } from 'react'
 
 export interface CarouselHandle {
-  next: () => void
-  prev: () => void
+  next(): void
+  prev(): void
 }
 
-/* ---- parâmetros ---- */
-const MIN_CARD = 200   // px
-const GAP      = 16    // px (gap-4)
-const MAX_COLS = 4
-const PAD_X    = 32    // px-4 → 16 px de cada lado
-
-function columnsFor(innerWidth: number) {
-  /* (+GAP para considerar o espaço à direita) */
-  const cols = Math.floor((innerWidth + GAP) / (MIN_CARD + GAP))
-  return Math.max(1, Math.min(MAX_COLS, cols))
+interface CarouselProps {
+  children: React.ReactNode[]
+  onVisibleChange?: (cols: number) => void
 }
 
-const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
-  ({ children }, ref) => {
+/* ---- parâmetros visuais ---- */
+const CARD_W   = 250      // largura fixa
+const CARD_H   = 260      // altura fixa
+const GAP      = 16       // gap constante
+const MAX_COLS = 4        // 1-4 cartões visíveis
+
+function colsFor(container: number) {
+  return Math.max(1, Math.floor((container + GAP) / (CARD_W + GAP)))
+}
+
+const Carousel = forwardRef<CarouselHandle, CarouselProps>(
+  ({ children, onVisibleChange }, ref) => {
     const items = Array.isArray(children) ? children : [children]
 
-    const viewportRef = useRef<HTMLDivElement>(null)
-    const trackRef    = useRef<HTMLDivElement>(null)
+    const wrapperRef = useRef<HTMLDivElement>(null)
+    const trackRef   = useRef<HTMLDivElement>(null)
 
-    const [viewportW, setViewportW] = useState(0)   // largura total do wrapper
-    const [cols, setCols]           = useState(1)   // colunas visíveis
-    const [index, setIndex]         = useState(0)
+    const [cols,  setCols]  = useState(1)
+    const [index, setIndex] = useState(0)
 
-    /* -------- ResizeObserver -------- */
+    /* --------- medir wrapper via ResizeObserver --------- */
     useLayoutEffect(() => {
-      const el = viewportRef.current
-      if (!el) return
-      const update = () => {
-        const w = el.clientWidth           // inclui padding px-4
-        setViewportW(w)
-        setCols(columnsFor(w - PAD_X))     // largura interna!
-      }
-      update()
-      const ro = new ResizeObserver(update)
-      ro.observe(el)
-      return () => ro.disconnect()
-    }, [])
+      if (!wrapperRef.current) return
 
-    /* -------- navegação -------- */
-    const last = Math.max(0, items.length - cols)
+      const obs = new ResizeObserver(([entry]) => {
+        const detected = colsFor(entry.contentRect.width)
+        const c = Math.min(detected, MAX_COLS)
+        setCols(c)
+        onVisibleChange?.(c)
+      })
 
+      obs.observe(wrapperRef.current)
+      return () => obs.disconnect()
+    }, [onVisibleChange])
+
+    /* --------- navegação infinita --------- */
     const scrollTo = (i: number) => {
-      const el = trackRef.current?.children[i] as HTMLElement | undefined
-      el?.scrollIntoView({ behavior: 'smooth', inline: 'start' })
-    }
-    const next = () => {
-      const n = index >= last ? 0 : index + 1
-      setIndex(n)
-      scrollTo(n)
-    }
-    const prev = () => {
-      const p = index <= 0 ? last : index - 1
-      setIndex(p)
-      scrollTo(p)
+      const node = trackRef.current?.children[i] as HTMLElement | undefined
+      if (node && trackRef.current) {
+        trackRef.current.scrollTo({
+          left: node.offsetLeft,
+          behavior: 'smooth',
+        })
+      }
     }
 
-    useImperativeHandle(ref, () => ({ next, prev }))
+    const move = (dir: 1 | -1) => {
+      const last = Math.max(0, items.length - cols)
+      const nxt  = (index + dir + (last + 1)) % (last + 1)
+      setIndex(nxt)
+      scrollTo(nxt)
+    }
 
+    useImperativeHandle(ref, () => ({
+      next: () => move(1),
+      prev: () => move(-1),
+    }))
+
+    /* --------- corrige índice ao mudar layout --------- */
     useEffect(() => {
-      if (index > last) setIndex(0)
-      scrollTo(index)
-    }, [cols])
+      const last = Math.max(0, items.length - cols)
+      if (index > last) {
+        setIndex(0)
+        scrollTo(0)
+      }
+    }, [items.length, cols]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (!items.length) return null
+    /* largura total da faixa (todos os cartões + gaps internos) */
+    const trackW = items.length * (CARD_W + GAP) - GAP
+    /* largura ocupada pelos cartões visíveis (para centragem) */
+    const visibleW = cols * (CARD_W + GAP) - GAP
 
-    /* largura interna realmente disponível */
-    const inner = viewportW - PAD_X
-    const cardW = (inner - GAP * (cols - 1)) / cols
-    const cardH = cardW * 1.04
+    /* margem lateral para centralizar o bloco visível */
+    const padSide =
+      wrapperRef.current
+        ? Math.max(
+            0,
+            (wrapperRef.current.clientWidth - visibleW) / 2,
+          )
+        : 0
 
     return (
-      <div ref={viewportRef} className="overflow-hidden px-4">
+      <div ref={wrapperRef} className="overflow-hidden w-full">
         <div
           ref={trackRef}
-          className="flex overflow-x-auto gap-4 snap-x snap-mandatory scroll-smooth no-scrollbar"
-          style={{ scrollPadding: '0 1rem' }}
+          className="flex gap-4 no-scrollbar scroll-smooth"
+          style={{
+            width: trackW,
+            paddingLeft: padSide,
+            paddingRight: padSide,
+          }}
         >
           {items.map((child, i) => (
             <div
               key={i}
-              className="flex-none snap-start rounded-xl overflow-hidden"
-              style={{ width: cardW, height: cardH }}
+              className="flex-none rounded-xl overflow-hidden"
+              style={{ width: CARD_W, height: CARD_H }}
             >
               {child}
             </div>
@@ -109,7 +121,7 @@ const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
         </div>
       </div>
     )
-  }
+  },
 )
 
 export default Carousel
