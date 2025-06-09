@@ -151,6 +151,7 @@ export default function Home() {
         {/* ---------- LISTA DE LINKS ---------- */}
         {filtered.length ? (
           <div className="mt-8 mb-6 flex flex-wrap gap-6 w-fit mx-auto justify-start">
+
             {filtered.map(link => (
               <LinkCard
                 key={link.id}
