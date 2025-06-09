@@ -1,12 +1,12 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import api from "../api";
 import LinkCard, { LinkData } from "../components/LinkCard";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
-import Carousel from "../components/Carousel";
+import Carousel, { CarouselHandle } from "../components/Carousel";
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
-import { Search } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 function isLight(hex: string) {
   const c = hex.replace('#', '');
@@ -70,6 +70,7 @@ export default function Home() {
     () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
     [categories]
   );
+  const carouselRef = useRef<CarouselHandle>(null);
   return (
     <div
       className="min-h-screen"
@@ -95,7 +96,7 @@ export default function Home() {
             />
           </div>
         </div>
-        <div className="flex overflow-x-auto gap-2 pb-4 mb-6">
+        <div className="flex overflow-x-auto gap-2 pb-4 mb-4">
           <button
             onClick={() => {
               setCategoryId('all');
@@ -131,8 +132,28 @@ export default function Home() {
             );
           })}
         </div>
+        {paginated.length > 1 && (
+          <div className="flex justify-between items-center px-4 mt-4">
+            <button
+              aria-label="Anterior"
+              role="button"
+              onClick={() => carouselRef.current?.prev()}
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center transition-all"
+            >
+              <ChevronLeft className="text-white" size={20} />
+            </button>
+            <button
+              aria-label="Próximo"
+              role="button"
+              onClick={() => carouselRef.current?.next()}
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center transition-all"
+            >
+              <ChevronRight className="text-white" size={20} />
+            </button>
+          </div>
+        )}
         {paginated.length ? (
-          <Carousel>
+          <Carousel ref={carouselRef}>
             {paginated.map((link: LinkData) => (
               <motion.div key={link.id} layout>
                 <LinkCard
