@@ -64,9 +64,17 @@ export default function AdminDashboard() {
       api.get("/categories"),
       api.get("/colors"),
     ]);
-    setLinks(linkRes.data);
-    setCategories(catRes.data);
-    setColors(colorRes.data);
+    setLinks(
+      [...linkRes.data].sort((a, b) => a.title.localeCompare(b.title))
+    );
+    setCategories(
+      [...catRes.data].sort((a, b) => a.name.localeCompare(b.name))
+    );
+    setColors(
+      [...colorRes.data].sort((a, b) =>
+        (a.name || a.value).localeCompare(b.name || b.value)
+      )
+    );
   };
 
   /* ---------------------------------------------------------------- */
@@ -115,17 +123,19 @@ export default function AdminDashboard() {
   /* ---------------------------------------------------------------- */
   /* Filtros e paginação                                               */
   /* ---------------------------------------------------------------- */
-  const filteredLinks = links.filter((l) =>
-    l.title.toLowerCase().includes(linkQuery.toLowerCase())
-  );
-  const filteredCats = categories.filter((c) =>
-    c.name.toLowerCase().includes(catQuery.toLowerCase())
-  );
-  const filteredColors = colors.filter(
-    (c) =>
-      c.value.toLowerCase().includes(colorQuery.toLowerCase()) ||
-      (c.name || "").toLowerCase().includes(colorQuery.toLowerCase())
-  );
+  const filteredLinks = links
+    .filter((l) => l.title.toLowerCase().includes(linkQuery.toLowerCase()))
+    .sort((a, b) => a.title.localeCompare(b.title));
+  const filteredCats = categories
+    .filter((c) => c.name.toLowerCase().includes(catQuery.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const filteredColors = colors
+    .filter(
+      (c) =>
+        c.value.toLowerCase().includes(colorQuery.toLowerCase()) ||
+        (c.name || "").toLowerCase().includes(colorQuery.toLowerCase())
+    )
+    .sort((a, b) => (a.name || a.value).localeCompare(b.name || b.value));
 
   const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
   const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;

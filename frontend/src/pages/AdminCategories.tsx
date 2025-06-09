@@ -53,8 +53,14 @@ export default function AdminCategories() {
       api.get("/categories"),
       api.get("/colors"),
     ]);
-    setCategories(catRes.data);
-    setColors(colorRes.data);
+    setCategories(
+      [...catRes.data].sort((a, b) => a.name.localeCompare(b.name))
+    );
+    setColors(
+      [...colorRes.data].sort((a, b) =>
+        (a.name || a.value).localeCompare(b.name || b.value)
+      )
+    );
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -92,8 +98,9 @@ export default function AdminCategories() {
     await refresh();
   };
 
-  const pageCount = Math.ceil(categories.length / perPage) || 1;
-  const paginatedCats = categories.slice((page - 1) * perPage, page * perPage);
+  const sortedCats = [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  const pageCount = Math.ceil(sortedCats.length / perPage) || 1;
+  const paginatedCats = sortedCats.slice((page - 1) * perPage, page * perPage);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
