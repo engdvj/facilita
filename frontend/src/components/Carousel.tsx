@@ -1,116 +1,68 @@
-import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
-export default function Carousel({ children }: { children: React.ReactNode[] }) {
-  const [pos, setPos] = useState(0)
+export interface CarouselHandle {
+  next: () => void
+  prev: () => void
+}
 
-  const [visible, setVisible] = useState(4)
-  const items = Array.isArray(children) ? children : [children]
-  const count = items.length
+const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
+  ({ children }, ref) => {
+    const items = Array.isArray(children) ? children : [children]
+    const containerRef = useRef<HTMLDivElement>(null)
+    const [index, setIndex] = useState(0)
 
-  useEffect(() => {
-    const update = () => {
-      const w = window.innerWidth
-      if (w >= 1024) setVisible(4)
-      else if (w >= 768) setVisible(3)
-      else if (w >= 500) setVisible(2)
-      else setVisible(1)
+    const scrollToIndex = (idx: number) => {
+      const container = containerRef.current
+      if (!container) return
+      const child = container.children[idx] as HTMLElement | undefined
+      if (child) {
+        child.scrollIntoView({ behavior: 'smooth', inline: 'start' })
+      }
     }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
 
-  useEffect(() => {
-    setPos(0)
-  }, [visible, count])
+    const next = () => {
+      const nextIdx = (index + 1) % items.length
+      setIndex(nextIdx)
+      scrollToIndex(nextIdx)
+    }
 
-  const [skip, setSkip] = useState(false)
+    const prev = () => {
+      const prevIdx = (index - 1 + items.length) % items.length
+      setIndex(prevIdx)
+      scrollToIndex(prevIdx)
+    }
 
-  const prev = () => {
-    setSkip(false)
-    setPos((p) => p - 1)
-  }
-  const next = () => {
-    setSkip(false)
-    setPos((p) => p + 1)
-  }
+    useImperativeHandle(ref, () => ({ next, prev }))
 
+    useEffect(() => {
+      scrollToIndex(index)
+    }, [index])
 
-  if (count <= visible) {
+    if (!items.length) return null
+
     return (
-      <div className="flex justify-center gap-4">
-        {items.map((child, i) => (
-          <div
-            key={i}
-            className="flex-none"
-            style={{ width: `calc(100% / ${visible})` }}
-          >
-
-            {child}
-          </div>
-        ))}
+      <div
+        className="overflow-hidden"
+        style={{ maxWidth: 'calc(250px * 4 + 3rem)' }}
+      >
+        <div
+          ref={containerRef}
+          className="flex overflow-x-auto gap-4 snap-x snap-mandatory no-scrollbar scroll-smooth"
+          style={{ scrollPaddingLeft: '1rem' }}
+        >
+          {items.map((child, i) => (
+            <div
+              key={i}
+              className="flex-none snap-start w-[250px] h-[260px] rounded-[1rem]"
+            >
+              {child}
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
+)
 
-  const extended = [
-    ...items.slice(count - visible),
-    ...items,
-    ...items.slice(0, visible),
-  ]
-  const total = extended.length
-
-
-  const handleEnd = () => {
-    if (pos < 0) {
-      setSkip(true)
-      setPos(pos + count)
-    } else if (pos >= count) {
-      setSkip(true)
-      setPos(pos - count)
-    }
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      <div
-        onTransitionEnd={handleEnd}
-        className={`flex gap-4 ${skip ? '' : 'transition-transform duration-500 ease-out'}`}
-        style={{
-          width: `calc(${total} * 100% / ${visible})`,
-          transform: `translateX(-${((pos + visible) * 100) / total}%)`,
-        }}
-      >
-        {extended.map((child, i) => (
-          <div
-            key={i}
-            className="px-2 flex-none"
-            style={{ width: `calc(100% / ${total})` }}
-          >
-            {child}
-          </div>
-        ))}
-      </div>
-      <button
-        aria-label="Anterior"
-        role="button"
-        onClick={prev}
-        className="absolute top-1/2 -translate-y-1/2 z-10 left-2 sm:left-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
-
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <button
-        aria-label="Próximo"
-        role="button"
-        onClick={next}
-        className="absolute top-1/2 -translate-y-1/2 z-10 right-2 sm:right-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
-
-      >
-        <ChevronRight size={20} />
-      </button>
-    </div>
-  )
-}
+export default Carousel
 
