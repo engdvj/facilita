@@ -19,6 +19,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
       target="_blank"
       rel="noopener noreferrer"
       className="block rounded-2xl overflow-hidden shadow-md hover:shadow-xl transform hover:scale-[1.02] transition-transform duration-300 relative bg-gradient-to-b from-slate-800 to-slate-950 text-white"
+
     >
       {link.imageUrl && (
         <div className="relative overflow-hidden">

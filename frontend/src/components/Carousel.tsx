@@ -71,7 +71,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     <div className="relative overflow-hidden">
       <div
         onTransitionEnd={handleEnd}
-        className={`flex ${skip ? '' : 'transition-transform duration-500 ease-out'}`}
+        className={`flex gap-4 ${skip ? '' : 'transition-transform duration-500 ease-out'}`}
         style={{
           width: `calc(${total} * 100% / ${visible})`,
           transform: `translateX(-${((pos + visible) * 100) / total}%)`,
@@ -92,6 +92,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         role="button"
         onClick={prev}
         className="absolute top-1/2 -translate-y-1/2 z-10 left-2 sm:left-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
+
       >
         <ChevronLeft size={20} />
       </button>
@@ -100,6 +101,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         role="button"
         onClick={next}
         className="absolute top-1/2 -translate-y-1/2 z-10 right-2 sm:right-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
+
       >
         <ChevronRight size={20} />
       </button>
