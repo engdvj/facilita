@@ -66,7 +66,7 @@ export default function AdminLinks() {
 
   /* --------- classe reutilizável de input ------------------------- */
   const fieldClass =
-    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-[var(--input-background)] text-white";
 
   const categoryMap = useMemo(() => {
     const map: Record<number, Category> = {};
