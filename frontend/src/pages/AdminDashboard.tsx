@@ -481,6 +481,13 @@ function ColorsColumn({
 /* ================================================================== */
 
 function Header({ title, total }: { title: string; total: number }) {
+  const pathMap: Record<string, string> = {
+    Links: "links",
+    Categorias: "categories",
+    Cores: "colors",
+  };
+  const path = pathMap[title] || title.toLowerCase();
+
   return (
     <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
       <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -490,7 +497,7 @@ function Header({ title, total }: { title: string; total: number }) {
         </span>
       </h2>
       <Link
-        to={`/admin/${title.toLowerCase()}`}
+        to={`/admin/${path}`}
         className="px-3 py-1.5 rounded-md bg-[var(--accent-color)] text-white text-sm hover:bg-[var(--hover-effect)] flex items-center gap-1"
       >
         <Plus size={16} /> Novo
