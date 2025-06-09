@@ -1,5 +1,12 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Shield, LogOut, Menu, X, Palette } from 'lucide-react'
+import {
+  Home,
+  Shield,
+  LogOut,
+  Menu,
+  X,
+  Palette,
+} from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import api from '../api'
@@ -24,6 +31,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const [loggedIn, setLoggedIn] = useState(false)
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState(defaultTheme)
+  const [themeName, setThemeName] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -42,6 +50,8 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
       current[k] = styles.getPropertyValue(k).trim()
     })
     setTheme(current)
+    const savedName = localStorage.getItem('theme-name')
+    setThemeName(savedName || '')
     setOpen(true)
   }
 
@@ -54,12 +64,19 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const saveTheme = () => {
     applyTheme(theme)
     localStorage.setItem('theme-custom', JSON.stringify(theme))
+    if (themeName) {
+      localStorage.setItem('theme-name', themeName)
+    } else {
+      localStorage.removeItem('theme-name')
+    }
     setOpen(false)
   }
 
   const resetTheme = () => {
     applyTheme(defaultTheme)
     localStorage.removeItem('theme-custom')
+    localStorage.removeItem('theme-name')
+    setThemeName('')
     setTheme(defaultTheme)
   }
 
@@ -141,10 +158,21 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
       {/* Modal de personalização */}
       {open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-3xl text-gray-900 space-y-4 overflow-y-auto max-h-[90vh]">
-            <h2 className="text-lg font-semibold mb-2">
-              Personalizar Aparência
+          <div className="bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 p-6 rounded-2xl shadow-2xl w-full max-w-xl space-y-4 overflow-y-auto max-h-[90vh]">
+            <h2 className="text-xl font-semibold text-center mb-4 flex items-center justify-center gap-2">
+              <Palette size={20} /> Personalizar Aparência
             </h2>
+
+            <div className="flex items-center justify-between gap-4">
+              <label className="text-sm text-gray-700 dark:text-gray-300 w-40">Nome do Tema</label>
+              <input
+                type="text"
+                value={themeName}
+                onChange={(e) => setThemeName(e.target.value)}
+                placeholder="Opcional"
+                className="flex-1 px-2 py-1 border rounded"
+              />
+            </div>
 
             {/* grupos de variáveis */}
             {(() => {
@@ -170,54 +198,73 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               }
 
               return groups.map((g) => (
-                <div
-                  key={g.label}
-                  className="border-t pt-4 first:border-t-0 first:pt-0"
-                >
-                  <h3 className="font-semibold mb-2 text-sm">{g.label}</h3>
+                <div key={g.label} className="border-t pt-4 first:border-t-0 first:pt-0">
+                  <h3 className="text-xs uppercase text-gray-500 mt-6 border-b pb-2">
+                    {g.label}
+                  </h3>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-6">
                     {g.vars.map((key) => (
-                      <label
-                        key={key}
-                        className="flex items-center gap-2 text-xs md:text-sm"
-                      >
-                        <span className="flex-1">{key.replace('--', '')}</span>
-
-                        {/* único seletor de cor (removido o preview extra) */}
+                      <div key={key} className="flex items-center justify-between gap-4">
+                        <label className="text-sm text-gray-700 dark:text-gray-300 w-40">
+                          {key.replace('--', '')}
+                        </label>
                         <input
                           type="color"
                           value={theme[key]}
                           onChange={(e) =>
                             setTheme({ ...theme, [key]: e.target.value })
                           }
-                          className="cursor-pointer w-8 h-8 border rounded p-0"
+                          className="h-8 w-12 rounded border"
                           title={theme[key]}
                         />
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>
               ))
             })()}
 
+            <div className="mt-4 flex justify-center">
+              <div className="w-32 border rounded-md overflow-hidden text-xs">
+                <div
+                  style={{
+                    backgroundColor: theme['--link-bar-background'],
+                    color: theme['--link-bar-text'],
+                  }}
+                  className="h-6 flex items-center justify-center"
+                >
+                  Barra
+                </div>
+                <div
+                  style={{ backgroundColor: theme['--background-main'] }}
+                  className="h-16 flex items-center justify-center"
+                >
+                  <div
+                    style={{ backgroundColor: theme['--button-primary'] }}
+                    className="w-12 h-4 rounded"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* ações */}
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={resetTheme}
-                className="px-3 py-1 rounded border text-sm"
+                className="text-sm px-3 py-1.5 border rounded hover:bg-gray-100"
               >
-                Resetar para padrão
+                Resetar
               </button>
               <button
                 onClick={() => setOpen(false)}
-                className="px-3 py-1 rounded border text-sm"
+                className="text-sm px-3 py-1.5 border rounded hover:bg-gray-100"
               >
                 Cancelar
               </button>
               <button
                 onClick={saveTheme}
-                className="btn-primary px-3 py-1 rounded text-sm"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition"
               >
                 Salvar
               </button>
