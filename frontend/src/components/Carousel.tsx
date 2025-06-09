@@ -11,6 +11,9 @@ const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
     const items = Array.isArray(children) ? children : [children]
     const containerRef = useRef<HTMLDivElement>(null)
     const [index, setIndex] = useState(0)
+    const slidesToShow = 4
+
+    const lastIndex = Math.max(0, items.length - slidesToShow)
 
     const scrollToIndex = (idx: number) => {
       const container = containerRef.current
@@ -22,13 +25,13 @@ const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
     }
 
     const next = () => {
-      const nextIdx = (index + 1) % items.length
+      const nextIdx = index >= lastIndex ? 0 : index + 1
       setIndex(nextIdx)
       scrollToIndex(nextIdx)
     }
 
     const prev = () => {
-      const prevIdx = (index - 1 + items.length) % items.length
+      const prevIdx = index <= 0 ? lastIndex : index - 1
       setIndex(prevIdx)
       scrollToIndex(prevIdx)
     }
@@ -38,6 +41,13 @@ const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
     useEffect(() => {
       scrollToIndex(index)
     }, [index])
+
+    useEffect(() => {
+      if (index > lastIndex) {
+        setIndex(0)
+        scrollToIndex(0)
+      }
+    }, [lastIndex])
 
     if (!items.length) return null
 
