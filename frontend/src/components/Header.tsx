@@ -32,6 +32,10 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState(defaultTheme)
   const [themeName, setThemeName] = useState('')
+  const [savedThemes, setSavedThemes] = useState<
+    { name: string; vars: Record<string, string> }[]
+  >([])
+
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -52,6 +56,17 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
     setTheme(current)
     const savedName = localStorage.getItem('theme-name')
     setThemeName(savedName || '')
+    const stored = localStorage.getItem('saved-themes')
+    if (stored) {
+      try {
+        setSavedThemes(JSON.parse(stored))
+      } catch {
+        setSavedThemes([])
+      }
+    } else {
+      setSavedThemes([])
+    }
+
     setOpen(true)
   }
 
@@ -66,6 +81,16 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
     localStorage.setItem('theme-custom', JSON.stringify(theme))
     if (themeName) {
       localStorage.setItem('theme-name', themeName)
+      const list = [...savedThemes]
+      const idx = list.findIndex((t) => t.name === themeName)
+      if (idx >= 0) {
+        list[idx].vars = theme
+      } else {
+        list.push({ name: themeName, vars: theme })
+      }
+      setSavedThemes(list)
+      localStorage.setItem('saved-themes', JSON.stringify(list))
+
     } else {
       localStorage.removeItem('theme-name')
     }
@@ -174,6 +199,27 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               />
             </div>
 
+            {savedThemes.length > 0 && (
+              <div>
+                <h3 className="text-xs uppercase text-gray-500 mt-4 border-b pb-2">
+                  Temas Salvos
+                </h3>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {savedThemes.map((t) => (
+                    <button
+                      key={t.name}
+                      onClick={() => {
+                        setTheme(t.vars)
+                        setThemeName(t.name)
+                      }}
+                      className="px-2 py-1 border rounded text-sm hover:bg-gray-100"
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* grupos de variáveis */}
             {(() => {
               const groups: { label: string; vars: string[] }[] = [
