@@ -1,14 +1,5 @@
 import { motion } from "framer-motion";
 
-function isLight(hex: string) {
-  const c = hex.replace('#', '');
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6;
-}
-
 
 export interface LinkData {
   id: number;
@@ -22,16 +13,15 @@ export interface LinkData {
 }
 
 export default function LinkCard({ link }: { link: LinkData }) {
-  const textColor = link.color || "#1e293b";
   return (
     <motion.a
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all relative bg-white dark:bg-slate-800 hover:pulse-fast"
+      className="block rounded-2xl overflow-hidden shadow-md hover:shadow-xl transform hover:scale-[1.02] transition-transform duration-300 relative bg-gradient-to-b from-slate-800 to-slate-950 text-white"
     >
       {link.imageUrl && (
-        <div className="relative">
+        <div className="relative overflow-hidden">
           <img
             src={
               link.imageUrl.startsWith("/api/")
@@ -46,7 +36,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
       )}
-      <div className="p-4" style={{ color: textColor }}>
+      <div className="p-4 text-white">
         <h3 className="font-semibold text-lg">{link.title}</h3>
         {link.category && <p className="text-sm opacity-80">{link.category}</p>}
       </div>

@@ -75,30 +75,31 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
         style={{
           width: `calc(${total} * 100% / ${visible})`,
           transform: `translateX(-${((pos + visible) * 100) / total}%)`,
-
         }}
       >
         {extended.map((child, i) => (
           <div
             key={i}
             className="px-2 flex-none"
-
             style={{ width: `calc(100% / ${total})` }}
           >
-
             {child}
           </div>
         ))}
       </div>
       <button
+        aria-label="Anterior"
+        role="button"
         onClick={prev}
-        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/80 dark:bg-slate-700/80"
+        className="absolute top-1/2 -translate-y-1/2 z-10 left-2 sm:left-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
       >
         <ChevronLeft size={20} />
       </button>
       <button
+        aria-label="Próximo"
+        role="button"
         onClick={next}
-        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/80 dark:bg-slate-700/80"
+        className="absolute top-1/2 -translate-y-1/2 z-10 right-2 sm:right-[-2rem] bg-black/40 hover:bg-white/20 rounded-full border border-white/10 shadow-lg backdrop-blur-md p-1 cursor-pointer transition-transform hover:scale-105"
       >
         <ChevronRight size={20} />
       </button>
