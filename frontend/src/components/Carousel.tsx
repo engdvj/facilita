@@ -1,3 +1,4 @@
+
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 export interface CarouselHandle {
@@ -65,4 +66,5 @@ const Carousel = forwardRef<CarouselHandle, { children: React.ReactNode[] }>(
 )
 
 export default Carousel
+
 
