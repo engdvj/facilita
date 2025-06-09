@@ -35,6 +35,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const [savedThemes, setSavedThemes] = useState<
     { name: string; vars: Record<string, string> }[]
   >([])
+
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -65,6 +66,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
     } else {
       setSavedThemes([])
     }
+
     setOpen(true)
   }
 
@@ -88,6 +90,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
       }
       setSavedThemes(list)
       localStorage.setItem('saved-themes', JSON.stringify(list))
+
     } else {
       localStorage.removeItem('theme-name')
     }
@@ -217,7 +220,6 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
                 </div>
               </div>
             )}
-
             {/* grupos de variáveis */}
             {(() => {
               const groups: { label: string; vars: string[] }[] = [
