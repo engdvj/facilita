@@ -9,6 +9,8 @@ export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [remember, setRemember] = useState(false)
+
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -22,7 +24,11 @@ export default function Login() {
     e.preventDefault()
     try {
       await api.post('/auth/login', { username, password })
-      localStorage.setItem('loggedIn', 'true')
+      if (remember) {
+        localStorage.setItem('loggedIn', 'true')
+      } else {
+        localStorage.removeItem('loggedIn')
+      }
       toast.success('Login realizado')
       navigate('/admin')
     } catch (err) {
@@ -77,12 +83,15 @@ export default function Login() {
           </button>
           <div className="flex items-center justify-between text-xs text-gray-300">
             <label className="flex items-center gap-2">
-              <input type="checkbox" className="rounded bg-gray-700 border-gray-600" />
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="rounded bg-gray-700 border-gray-600"
+              />
               Lembrar login
             </label>
-            <a href="#" className="hover:underline">
-              Esqueci minha senha
-            </a>
+
           </div>
         </form>
         <footer className="mt-6 text-center text-xs text-gray-400">Versão 1.0.0</footer>
