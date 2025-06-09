@@ -28,3 +28,16 @@ body {
 .btn-primary:hover {
   background-color: var(--hover-effect);
 }
+
+@keyframes pulse-fast {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.hover\:pulse-fast:hover {
+  animation: pulse-fast 0.4s ease-in-out;
+}

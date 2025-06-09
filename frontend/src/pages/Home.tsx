@@ -77,7 +77,7 @@ export default function Home() {
             onClick={() => {
               setCategoryId('all');
             }}
-            className={`px-3 py-1 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
               categoryId === 'all'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
@@ -94,7 +94,7 @@ export default function Home() {
                 onClick={() => {
                   setCategoryId(c.id);
                 }}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
                   active
                     ? 'text-white'
                     : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
@@ -102,7 +102,7 @@ export default function Home() {
                 style={
                   active
                     ? { backgroundColor: c.color }
-                    : { borderColor: c.color || 'transparent' }
+                    : undefined
                 }
               >
                 {Icon && <Icon size={16} />}

@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
 
 function isLight(hex: string) {
   const c = hex.replace('#', '');
@@ -29,7 +28,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all relative group bg-white dark:bg-slate-800"
+      className="rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all relative bg-white dark:bg-slate-800 hover:pulse-fast"
     >
       {link.imageUrl && (
         <div className="relative">
@@ -50,12 +49,6 @@ export default function LinkCard({ link }: { link: LinkData }) {
       <div className="p-4" style={{ color: textColor }}>
         <h3 className="font-semibold text-lg">{link.title}</h3>
         {link.category && <p className="text-sm opacity-80">{link.category}</p>}
-      </div>
-      <div
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ color: textColor }}
-      >
-        <ArrowUpRight size={18} />
       </div>
       {link.categoryColor && (
         <span
