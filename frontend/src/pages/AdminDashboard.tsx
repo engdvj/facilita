@@ -47,9 +47,9 @@ export default function AdminDashboard() {
 
   /* ---------- classes utilitárias --------------------------------- */
   const fieldClass =
-    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-700";
+    "p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-[var(--input-background)] text-white";
   const colorInputClass =
-    "p-0 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-slate-700";
+    "p-0 border border-gray-300 dark:border-gray-700 rounded bg-[var(--input-background)] text-white";
 
   /* ---------------------------------------------------------------- */
   /* Carregamento inicial                                              */

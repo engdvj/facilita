@@ -24,7 +24,7 @@ export default function AdminColors() {
   const perPage = 5;
 
   const colorInputClass =
-    "p-0 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-slate-700";
+    "p-0 border border-gray-300 dark:border-gray-700 rounded bg-[var(--input-background)] text-white";
 
   /* ---------------------------------- IO --------------------------------- */
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function AdminColors() {
                 placeholder="#RRGGBB"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
-                className="w-32 rounded-md px-3 py-2 bg-slate-800 text-white font-mono"
+                className="w-32 rounded-md px-3 py-2 bg-[var(--input-background)] text-white font-mono"
               />
 
               {/* nome opcional */}
@@ -118,7 +118,7 @@ export default function AdminColors() {
                 placeholder="Nome (opcional)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="flex-1 min-w-[150px] rounded-md px-3 py-2 bg-slate-800 text-white"
+                className="flex-1 min-w-[150px] rounded-md px-3 py-2 bg-[var(--input-background)] text-white"
               />
             </div>
 
