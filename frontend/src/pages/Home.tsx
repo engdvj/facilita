@@ -134,7 +134,7 @@ export default function Home() {
         {paginated.length ? (
           <Carousel>
             {paginated.map((link: LinkData) => (
-              <motion.div key={link.id} layout className="w-full">
+              <motion.div key={link.id} layout>
                 <LinkCard
                   link={{
                     ...link,
