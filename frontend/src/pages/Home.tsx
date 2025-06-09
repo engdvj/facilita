@@ -32,23 +32,33 @@ export default function Home() {
 
   useEffect(() => {
     api.get("/links").then((res: any) => {
-      const data = (res.data as LinkData[]).map((l) => {
-        if (l.imageUrl && l.imageUrl.startsWith("/uploads/")) {
-          return { ...l, imageUrl: `/api${l.imageUrl}` };
-        }
-        return l;
-      });
+      const data = (res.data as LinkData[])
+        .map((l) => {
+          if (l.imageUrl && l.imageUrl.startsWith("/uploads/")) {
+            return { ...l, imageUrl: `/api${l.imageUrl}` };
+          }
+          return l;
+        })
+        .sort((a, b) => a.title.localeCompare(b.title));
       setLinks(data);
     });
-    api.get("/categories").then((res: any) => setCategories(res.data));
+    api
+      .get("/categories")
+      .then((res: any) =>
+        setCategories(
+          [...res.data].sort((a, b) => a.name.localeCompare(b.name))
+        )
+      );
   }, []);
 
 
-  const filtered = links.filter((l: LinkData) => {
-    const matchSearch = l.title.toLowerCase().includes(search.toLowerCase());
-    const matchCat = categoryId === "all" || l.categoryId === categoryId;
-    return matchSearch && matchCat;
-  });
+  const filtered = links
+    .filter((l: LinkData) => {
+      const matchSearch = l.title.toLowerCase().includes(search.toLowerCase());
+      const matchCat = categoryId === "all" || l.categoryId === categoryId;
+      return matchSearch && matchCat;
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   const paginated = filtered;
   const categoryMap = useMemo(() => {
@@ -56,6 +66,10 @@ export default function Home() {
     for (const c of categories) map[c.id] = c;
     return map;
   }, [categories]);
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
+    [categories]
+  );
   return (
     <div
       className="min-h-screen"
@@ -94,7 +108,7 @@ export default function Home() {
           >
             Todos
           </button>
-          {categories.map((c: Category) => {
+          {sortedCategories.map((c: Category) => {
             const Icon = (Icons as any)[c.icon || ''];
             const active = categoryId === c.id;
             const activeText = c.color && isLight(c.color) ? 'text-black' : 'text-white';

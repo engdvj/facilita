@@ -81,9 +81,21 @@ export default function AdminLinks() {
       api.get("/categories"),
       api.get("/colors"),
     ]);
-    setLinks(linkRes.data as LinkData[]);
-    setCategories(catRes.data as Category[]);
-    setColors(colorRes.data as Color[]);
+    setLinks(
+      [...(linkRes.data as LinkData[])].sort((a, b) =>
+        a.title.localeCompare(b.title)
+      )
+    );
+    setCategories(
+      [...(catRes.data as Category[])].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
+    );
+    setColors(
+      [...(colorRes.data as Color[])].sort((a, b) =>
+        (a.name || a.value).localeCompare(b.name || b.value)
+      )
+    );
   };
 
   /* ---------------------------------------------------------------- */
@@ -193,8 +205,9 @@ export default function AdminLinks() {
     await refresh();
   };
 
-  const pageCount = Math.ceil(links.length / perPage) || 1;
-  const paginatedLinks = links.slice((page - 1) * perPage, page * perPage);
+  const sortedLinks = [...links].sort((a, b) => a.title.localeCompare(b.title));
+  const pageCount = Math.ceil(sortedLinks.length / perPage) || 1;
+  const paginatedLinks = sortedLinks.slice((page - 1) * perPage, page * perPage);
 
   /* ---------------------------------------------------------------- */
   return (

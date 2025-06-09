@@ -33,7 +33,11 @@ export default function AdminColors() {
 
   const fetchColors = async () => {
     const res = await api.get("/colors");
-    setColors(res.data);
+    setColors(
+      [...res.data].sort((a, b) =>
+        (a.name || a.value).localeCompare(b.name || b.value)
+      )
+    );
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -82,8 +86,11 @@ export default function AdminColors() {
   };
 
   /* ------------------------------ Paginação ------------------------------ */
-  const pageCount = Math.ceil(colors.length / perPage) || 1;
-  const paginatedColors = colors.slice((page - 1) * perPage, page * perPage);
+  const sortedColors = [...colors].sort((a, b) =>
+    (a.name || a.value).localeCompare(b.name || b.value)
+  );
+  const pageCount = Math.ceil(sortedColors.length / perPage) || 1;
+  const paginatedColors = sortedColors.slice((page - 1) * perPage, page * perPage);
 
   /* --------------------------------- UI ---------------------------------- */
   return (
