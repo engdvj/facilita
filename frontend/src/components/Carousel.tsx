@@ -41,7 +41,7 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
     return (
       <div className="flex justify-center gap-4">
         {items.map((child, i) => (
-          <div key={i} className="w-full max-w-xs flex-none">
+          <div key={i} className="w-full flex-none">
             {child}
           </div>
         ))}
@@ -81,7 +81,6 @@ export default function Carousel({ children }: { children: React.ReactNode[] }) 
           <div
             key={i}
             className="px-2 flex-none"
-
             style={{ width: `calc(100% / ${total})` }}
           >
             {child}
