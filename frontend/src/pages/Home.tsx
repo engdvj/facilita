@@ -77,7 +77,7 @@ export default function Home() {
               onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               type="text"
               placeholder="Buscar..."
-              className="w-full pl-8 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 p-2 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black p-2 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
             />
           </div>
         </div>
