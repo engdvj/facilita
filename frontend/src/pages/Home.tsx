@@ -8,6 +8,15 @@ import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Search } from "lucide-react";
 
+function isLight(hex: string) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6;
+}
+
 interface Category {
   id: number;
   name: string;
@@ -86,8 +95,9 @@ export default function Home() {
             Todos
           </button>
           {categories.map((c: Category) => {
-            const Icon = (Icons as any)[c.icon || 'Circle'];
+            const Icon = (Icons as any)[c.icon || ''];
             const active = categoryId === c.id;
+            const activeText = c.color && isLight(c.color) ? 'text-black' : 'text-white';
             return (
               <button
                 key={c.id}
@@ -96,14 +106,10 @@ export default function Home() {
                 }}
                 className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
                   active
-                    ? 'text-white'
+                    ? activeText
                     : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
                 }`}
-                style={
-                  active
-                    ? { backgroundColor: c.color }
-                    : undefined
-                }
+                style={active ? { backgroundColor: c.color } : undefined}
               >
                 {Icon && <Icon size={16} />}
                 {c.name}
