@@ -10,6 +10,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [remember, setRemember] = useState(false)
+
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function Login() {
               />
               Lembrar login
             </label>
+
           </div>
         </form>
         <footer className="mt-6 text-center text-xs text-gray-400">Versão 1.0.0</footer>
