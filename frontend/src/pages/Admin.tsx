@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Link2, Folder, Palette, Home, X } from "lucide-react";
+import { Link2, Folder, Palette, Home, X, Users } from "lucide-react";
 
 import { motion } from "framer-motion";
 import Header from "../components/Header";
@@ -85,6 +85,17 @@ export default function Admin() {
               }
             >
               <Palette size={18} /> Cores
+            </NavLink>
+            <NavLink
+              to="/admin/users"
+              className={({ isActive }) =>
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+              }
+              style={({ isActive }) =>
+                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+              }
+            >
+              <Users size={18} /> Usuários
             </NavLink>
           </nav>
         </motion.aside>

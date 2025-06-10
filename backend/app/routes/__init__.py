@@ -34,6 +34,36 @@ def create_api_blueprint():
             return {"message": "ok"}
         return {"message": "Invalid credentials"}, 401
 
+    @bp.post("/auth/register")
+    def register():
+        data = request.get_json() or {}
+        username = data.get("username")
+        password = data.get("password")
+        if not username or not password:
+            return {"message": "Missing credentials"}, 400
+        if User.query.filter_by(username=username).first():
+            return {"message": "User exists"}, 400
+        user = User(username=username)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return {"message": "created"}, 201
+
+    @bp.post("/auth/change-password")
+    @login_required
+    def change_password():
+        data = request.get_json() or {}
+        old = data.get("old_password")
+        new = data.get("new_password")
+        if not old or not new:
+            return {"message": "Missing data"}, 400
+        user = User.query.get(session["user_id"])
+        if not user.check_password(old):
+            return {"message": "Invalid password"}, 400
+        user.set_password(new)
+        db.session.commit()
+        return {"message": "ok"}
+
     @bp.post("/auth/logout")
     def logout():
         session.pop("user_id", None)
@@ -41,15 +71,36 @@ def create_api_blueprint():
 
     @bp.get("/links")
     def list_links():
-        if session.get("user_id"):
-            links = Link.query.all()
-        else:
+        user_id = session.get("user_id")
+        if not user_id:
             links = (
                 Link.query.join(Category, isouter=True)
-                .filter((Category.admin_only == False) | (Link.category == None))
+                .filter(
+                    ((Category.admin_only == False) | (Link.category == None))
+                    & (Link.user_id == None)
+                )
                 .all()
             )
-        return jsonify([l.to_dict() for l in links])
+            include_user = False
+        else:
+            user = User.query.get(user_id)
+            if user.is_admin:
+                links = Link.query.all()
+                include_user = True
+            else:
+                links = (
+                    Link.query.join(Category, isouter=True)
+                    .filter(
+                        (Link.user_id == user_id)
+                        | (
+                            (Link.user_id == None)
+                            & ((Category.admin_only == False) | (Link.category == None))
+                        )
+                    )
+                    .all()
+                )
+                include_user = False
+        return jsonify([l.to_dict(include_user=include_user) for l in links])
 
     @bp.post("/links")
     @login_required
@@ -62,29 +113,36 @@ def create_api_blueprint():
         link = Link(
             title=title,
             url=url,
+            user_id=session["user_id"],
             category_id=data.get("category_id"),
             color=data.get("color"),
             image_url=data.get("image_url"),
         )
         db.session.add(link)
         db.session.commit()
-        return link.to_dict(), 201
+        return link.to_dict(include_user=True), 201
 
     @bp.patch("/links/<int:link_id>")
     @login_required
     def update_link(link_id):
         link = Link.query.get_or_404(link_id)
+        user = User.query.get(session["user_id"])
+        if not user.is_admin and link.user_id != user.id:
+            return {"message": "Forbidden"}, 403
         data = request.get_json() or {}
         for field in ["title", "url", "category_id", "color", "image_url"]:
             if field in data:
                 setattr(link, field, data[field])
         db.session.commit()
-        return link.to_dict()
+        return link.to_dict(include_user=True)
 
     @bp.delete("/links/<int:link_id>")
     @login_required
     def delete_link(link_id):
         link = Link.query.get_or_404(link_id)
+        user = User.query.get(session["user_id"])
+        if not user.is_admin and link.user_id != user.id:
+            return {"message": "Forbidden"}, 403
         db.session.delete(link)
         db.session.commit()
         return {"message": "deleted"}
@@ -222,6 +280,79 @@ def create_api_blueprint():
     def delete_color(color_id):
         color = Color.query.get_or_404(color_id)
         db.session.delete(color)
+        db.session.commit()
+        return {"message": "deleted"}
+
+    @bp.get("/users")
+    @login_required
+    def list_users():
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        users = User.query.all()
+        return jsonify(
+            [
+                {"id": u.id, "username": u.username, "isAdmin": u.is_admin}
+                for u in users
+            ]
+        )
+
+    @bp.post("/users")
+    @login_required
+    def create_user():
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        data = request.get_json() or {}
+        username = data.get("username")
+        password = data.get("password")
+        if not username or not password:
+            return {"message": "Missing data"}, 400
+        if User.query.filter_by(username=username).first():
+            return {"message": "User exists"}, 400
+        user = User(username=username, is_admin=data.get("is_admin", False))
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return {
+            "id": user.id,
+            "username": user.username,
+            "isAdmin": user.is_admin,
+        }, 201
+
+    @bp.patch("/users/<int:user_id>")
+    @login_required
+    def update_user(user_id):
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        user = User.query.get_or_404(user_id)
+        data = request.get_json() or {}
+        if "username" in data:
+            user.username = data["username"]
+        if "password" in data:
+            user.set_password(data["password"])
+        if "is_admin" in data:
+            user.is_admin = data["is_admin"]
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return {"message": "User exists"}, 400
+        return {
+            "id": user.id,
+            "username": user.username,
+            "isAdmin": user.is_admin,
+        }
+
+    @bp.delete("/users/<int:user_id>")
+    @login_required
+    def delete_user(user_id):
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        user = User.query.get_or_404(user_id)
+        db.session.delete(user)
         db.session.commit()
         return {"message": "deleted"}
 

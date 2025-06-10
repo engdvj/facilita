@@ -27,6 +27,9 @@ export default function AdminDashboard() {
   const [colors, setColors] = useState<
     { id: number; value: string; name?: string }[]
   >([]);
+  const [users, setUsers] = useState<
+    { id: number; username: string; isAdmin: boolean }[]
+  >([]);
 
   const navigate = useNavigate();
 
@@ -39,11 +42,13 @@ export default function AdminDashboard() {
   const [linkQuery, setLinkQuery] = useState("");
   const [catQuery, setCatQuery] = useState("");
   const [colorQuery, setColorQuery] = useState("");
+  const [userQuery, setUserQuery] = useState("");
 
   const perPage = 5;
   const [linkPage, setLinkPage] = useState(1);
   const [catPage, setCatPage] = useState(1);
   const [colorPage, setColorPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
 
   /* ---------- classes utilitárias --------------------------------- */
   const fieldClass =
@@ -59,22 +64,38 @@ export default function AdminDashboard() {
   }, []);
 
   const refresh = async () => {
-    const [linkRes, catRes, colorRes] = await Promise.all([
+    const results = await Promise.allSettled([
       api.get("/links"),
       api.get("/categories"),
       api.get("/colors"),
+      api.get("/users"),
     ]);
-    setLinks(
-      [...linkRes.data].sort((a, b) => a.title.localeCompare(b.title))
-    );
-    setCategories(
-      [...catRes.data].sort((a, b) => a.name.localeCompare(b.name))
-    );
-    setColors(
-      [...colorRes.data].sort((a, b) =>
-        (a.name || a.value).localeCompare(b.name || b.value)
-      )
-    );
+    const [linkRes, catRes, colorRes, userRes] = results;
+
+    if (linkRes.status === "fulfilled") {
+      setLinks(
+        [...linkRes.value.data].sort((a, b) => a.title.localeCompare(b.title))
+      );
+    }
+    if (catRes.status === "fulfilled") {
+      setCategories(
+        [...catRes.value.data].sort((a, b) => a.name.localeCompare(b.name))
+      );
+    }
+    if (colorRes.status === "fulfilled") {
+      setColors(
+        [...colorRes.value.data].sort((a, b) =>
+          (a.name || a.value).localeCompare(b.name || b.value)
+        )
+      );
+    }
+    if (userRes.status === "fulfilled") {
+      setUsers(
+        [...userRes.value.data].sort((a, b) =>
+          a.username.localeCompare(b.username)
+        )
+      );
+    }
   };
 
   /* ---------------------------------------------------------------- */
@@ -120,6 +141,16 @@ export default function AdminDashboard() {
     await refresh();
   };
 
+  const startEditUser = (u: { id: number }) => {
+    navigate(`/admin/users/${u.id}`);
+  };
+
+  const removeUser = async (id: number) => {
+    if (!confirm("Excluir usuário?")) return;
+    await api.delete(`/users/${id}`);
+    await refresh();
+  };
+
   /* ---------------------------------------------------------------- */
   /* Filtros e paginação                                               */
   /* ---------------------------------------------------------------- */
@@ -136,10 +167,14 @@ export default function AdminDashboard() {
         (c.name || "").toLowerCase().includes(colorQuery.toLowerCase())
     )
     .sort((a, b) => (a.name || a.value).localeCompare(b.name || b.value));
+  const filteredUsers = users
+    .filter((u) => u.username.toLowerCase().includes(userQuery.toLowerCase()))
+    .sort((a, b) => a.username.localeCompare(b.username));
 
   const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
   const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
   const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
+  const userPageCount = Math.ceil(filteredUsers.length / perPage) || 1;
 
   const paginatedLinks = filteredLinks.slice(
     (linkPage - 1) * perPage,
@@ -152,6 +187,10 @@ export default function AdminDashboard() {
   const paginatedColors = filteredColors.slice(
     (colorPage - 1) * perPage,
     colorPage * perPage
+  );
+  const paginatedUsers = filteredUsers.slice(
+    (userPage - 1) * perPage,
+    userPage * perPage
   );
 
   /* ---------- lookup rápido de categoria -------------------------- */
@@ -217,6 +256,19 @@ export default function AdminDashboard() {
           saveColor={saveColor}
           removeColor={removeColor}
           colorInputClass={colorInputClass}
+        />
+
+        {/* ---------------------- COLUNA USUÁRIOS -------------------- */}
+        <UsersColumn
+          users={paginatedUsers}
+          total={users.length}
+          page={userPage}
+          pageCount={userPageCount}
+          setPage={setUserPage}
+          query={userQuery}
+          setQuery={setUserQuery}
+          startEditUser={startEditUser}
+          removeUser={removeUser}
         />
       </div>
     </div>
@@ -486,6 +538,60 @@ function ColorsColumn({
   );
 }
 
+interface UsersColumnProps {
+  users: { id: number; username: string; isAdmin: boolean }[];
+  total: number;
+  page: number;
+  pageCount: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+  query: string;
+  setQuery: React.Dispatch<React.SetStateAction<string>>;
+  startEditUser: (u: { id: number }) => void;
+  removeUser: (id: number) => Promise<void>;
+}
+
+function UsersColumn({
+  users,
+  total,
+  page,
+  pageCount,
+  setPage,
+  query,
+  setQuery,
+  startEditUser,
+  removeUser,
+}: UsersColumnProps) {
+  return (
+    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+      <Header title="Usuários" total={total} />
+      <SearchBar value={query} onChange={setQuery} />
+
+      <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        {users.map((u) => (
+          <motion.li
+            key={u.id}
+            layout
+            className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
+          >
+            <span className="flex-1">{u.username}</span>
+            {u.isAdmin && (
+              <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">ADM</span>
+            )}
+            <button onClick={() => startEditUser(u)} className="p-1 hover:text-[var(--accent-color)]">
+              <Pencil size={16} />
+            </button>
+            <button onClick={() => removeUser(u.id)} className="p-1 hover:text-red-400">
+              <Trash2 size={16} />
+            </button>
+          </motion.li>
+        ))}
+      </motion.ul>
+
+      <Paginator {...{ page, pageCount, setPage }} />
+    </section>
+  );
+}
+
 /* ================================================================== */
 /*  COMPONENTES PEQUENOS                                               */
 /* ================================================================== */
@@ -495,6 +601,7 @@ function Header({ title, total }: { title: string; total: number }) {
     Links: "links",
     Categorias: "categories",
     Cores: "colors",
+    "Usuários": "users",
   };
   const path = pathMap[title] || title.toLowerCase();
 

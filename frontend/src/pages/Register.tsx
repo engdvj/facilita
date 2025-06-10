@@ -1,41 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import toast from 'react-hot-toast'
 import { User, Lock, ArrowRightToLine } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-export default function Login() {
+export default function Register() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [remember, setRemember] = useState(false)
+  const [confirm, setConfirm] = useState('')
   const navigate = useNavigate()
-
-  useEffect(() => {
-    const loggedIn =
-      sessionStorage.getItem('loggedIn') === 'true' ||
-      localStorage.getItem('loggedIn') === 'true'
-    if (loggedIn) {
-      navigate('/admin')
-    }
-  }, [navigate])
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
+    if (password !== confirm) {
+      toast.error('Senhas não conferem')
+      return
+    }
     try {
-      await api.post('/auth/login', { username, password })
-      sessionStorage.setItem('loggedIn', 'true')
-      if (remember) {
-        localStorage.setItem('loggedIn', 'true')
-      } else {
-        localStorage.removeItem('loggedIn')
-      }
-      toast.success('Login realizado')
-      navigate('/admin')
-    } catch (err) {
-      setError('Credenciais inválidas')
-      toast.error('Credenciais inválidas')
+      await api.post('/auth/register', { username, password })
+      toast.success('Usuário criado')
+      navigate('/admin/login')
+    } catch (err: any) {
+      toast.error('Erro ao criar usuário')
     }
   }
 
@@ -48,8 +35,7 @@ export default function Login() {
         className="relative z-10 w-full max-w-sm rounded-2xl backdrop-blur-md bg-white/5 border border-purple-500/30 shadow-xl p-6"
       >
         <div className="text-center mb-6">
-          <h1 className="font-heading text-2xl text-white">FACILITA CHVC</h1>
-          <p className="text-sm text-gray-300">sua central de acessos</p>
+          <h1 className="font-heading text-2xl text-white">Cadastro</h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
@@ -71,39 +57,24 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 italic mt-1">
-              {error}
-            </motion.p>
-          )}
+          <div className="relative">
+            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="password"
+              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Confirmar senha"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </div>
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md hover:scale-105 transition"
           >
             <ArrowRightToLine size={18} />
-            Entrar
+            Cadastrar
           </button>
-          <div className="flex items-center justify-between text-xs text-gray-300">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="rounded bg-gray-700 border-gray-600"
-              />
-              Lembrar login
-            </label>
-            <a href="/change-password" className="hover:underline">
-              Esqueceu a senha?
-            </a>
-          </div>
-          <div className="text-center text-xs mt-2">
-            <a href="/" className="hover:underline">
-              Voltar ao início
-            </a>
-          </div>
         </form>
-        <footer className="mt-6 text-center text-xs text-gray-400">Versão 1.0.0</footer>
       </motion.div>
     </div>
   )
