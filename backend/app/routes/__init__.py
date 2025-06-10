@@ -18,6 +18,20 @@ def login_required(func):
     return wrapper
 
 
+def admin_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        user_id = session.get("user_id")
+        if not user_id:
+            return {"message": "Unauthorized"}, 401
+        user = User.query.get(user_id)
+        if not user or not user.is_admin:
+            return {"message": "Forbidden"}, 403
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def create_api_blueprint():
     bp = Blueprint("api", __name__)
 
@@ -165,7 +179,7 @@ def create_api_blueprint():
         ])
 
     @bp.post("/categories")
-    @login_required
+    @admin_required
     def create_category():
         data = request.get_json() or {}
         name = data.get("name")
@@ -192,7 +206,7 @@ def create_api_blueprint():
         }, 201
 
     @bp.patch("/categories/<int:cat_id>")
-    @login_required
+    @admin_required
     def update_category(cat_id):
         category = Category.query.get_or_404(cat_id)
         data = request.get_json() or {}
@@ -213,7 +227,7 @@ def create_api_blueprint():
         }
 
     @bp.delete("/categories/<int:cat_id>")
-    @login_required
+    @admin_required
     def delete_category(cat_id):
         category = Category.query.get_or_404(cat_id)
         db.session.delete(category)
@@ -231,7 +245,7 @@ def create_api_blueprint():
         ])
 
     @bp.post("/colors")
-    @login_required
+    @admin_required
     def create_color():
         data = request.get_json() or {}
         value = data.get("value")
@@ -254,7 +268,7 @@ def create_api_blueprint():
         }, 201
 
     @bp.patch("/colors/<int:color_id>")
-    @login_required
+    @admin_required
     def update_color(color_id):
         color = Color.query.get_or_404(color_id)
         data = request.get_json() or {}
@@ -276,7 +290,7 @@ def create_api_blueprint():
         }
 
     @bp.delete("/colors/<int:color_id>")
-    @login_required
+    @admin_required
     def delete_color(color_id):
         color = Color.query.get_or_404(color_id)
         db.session.delete(color)

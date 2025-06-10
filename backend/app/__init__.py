@@ -66,7 +66,6 @@ def create_app(debug: bool = False):
             db.session.execute(
                 text("UPDATE user SET is_admin = 1 WHERE username = 'admin'")
             )
-
             db.session.commit()
         link_cols = [c["name"] for c in inspector.get_columns("link")]
         if "user_id" not in link_cols:

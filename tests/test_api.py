@@ -124,3 +124,20 @@ def test_user_private_links(client):
     login(client)
     res = client.get("/api/links")
     assert any(l["id"] == link_id and l["user"] == "bob" for l in res.get_json())
+
+
+
+def test_non_admin_cannot_manage_admin_resources(client):
+    register_user(client, "eve")
+    res = client.post("/api/auth/login", json={"username": "eve", "password": "pass"})
+    assert res.status_code == 200
+
+    res = client.post("/api/colors", json={"value": "#ff00ff"})
+    assert res.status_code == 403
+
+    res = client.post("/api/categories", json={"name": "hacks"})
+    assert res.status_code == 403
+
+    res = client.post("/api/users", json={"username": "x", "password": "y"})
+    assert res.status_code == 403
+
