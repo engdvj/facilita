@@ -101,6 +101,7 @@ export default function Login() {
             <a href="/" className="hover:underline">
               Voltar ao início
             </a>
+
           </div>
         </form>
         <footer className="mt-6 text-center text-xs text-gray-400">Versão 1.0.0</footer>

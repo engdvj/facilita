@@ -65,6 +65,7 @@ export default function AdminDashboard() {
 
   const refresh = async () => {
     const results = await Promise.allSettled([
+
       api.get("/links"),
       api.get("/categories"),
       api.get("/colors"),
@@ -96,6 +97,7 @@ export default function AdminDashboard() {
         )
       );
     }
+
   };
 
   /* ---------------------------------------------------------------- */
