@@ -17,7 +17,9 @@ export default function Login() {
       sessionStorage.getItem('loggedIn') === 'true' ||
       localStorage.getItem('loggedIn') === 'true'
     if (loggedIn) {
-      navigate('/admin')
+      api.get('/auth/me').then(({ data }) => {
+        navigate(data.isAdmin ? '/admin' : '/user/links')
+      })
     }
   }, [navigate])
 
@@ -31,8 +33,9 @@ export default function Login() {
       } else {
         localStorage.removeItem('loggedIn')
       }
+      const me = await api.get('/auth/me')
       toast.success('Login realizado')
-      navigate('/admin')
+      navigate(me.data.isAdmin ? '/admin' : '/user/links')
     } catch (err) {
       setError('Credenciais inválidas')
       toast.error('Credenciais inválidas')

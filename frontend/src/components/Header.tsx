@@ -30,6 +30,7 @@ const defaultTheme = {
 
 export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   const [loggedIn, setLoggedIn] = useState(false)
+  const [user, setUser] = useState<{ username: string; isAdmin: boolean } | null>(null)
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState(defaultTheme)
   const [themeName, setThemeName] = useState('')
@@ -48,6 +49,12 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
       sessionStorage.getItem('loggedIn') === 'true' ||
       localStorage.getItem('loggedIn') === 'true'
     setLoggedIn(loggedIn)
+    if (loggedIn) {
+      api
+        .get('/auth/me')
+        .then(({ data }) => setUser(data))
+        .catch(() => setUser(null))
+    }
   }, [])
 
   const openModal = () => {
@@ -114,6 +121,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
     sessionStorage.removeItem('loggedIn')
     localStorage.removeItem('loggedIn')
     setLoggedIn(false)
+    setUser(null)
     navigate('/admin/login')
   }
 
@@ -173,6 +181,10 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               <LogIn size={18} />
               Login
             </Link>
+          )}
+
+          {loggedIn && user && (
+            <span className="text-sm opacity-80">Olá, {user.username}</span>
           )}
 
           {loggedIn && (

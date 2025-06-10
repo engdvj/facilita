@@ -35,7 +35,7 @@ class Link(db.Model):
     image_url = db.Column(db.String(255))
 
     def to_dict(self, include_user: bool = False):
-        return {
+        data = {
             "id": self.id,
             "title": self.title,
             "url": self.url,
@@ -43,8 +43,11 @@ class Link(db.Model):
             "categoryId": self.category_id,
             "color": self.color,
             "imageUrl": self.image_url,
-            **({"user": self.user.username} if include_user and self.user else {}),
+            "userId": self.user_id,
         }
+        if include_user and self.user:
+            data["user"] = self.user.username
+        return data
 
 
 class Color(db.Model):
