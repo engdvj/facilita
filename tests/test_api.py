@@ -139,6 +139,18 @@ def test_user_private_links(client):
     assert any(l["id"] == link_id and l["user"] == "bob" for l in res.get_json())
 
 
+def test_admin_can_assign_link_owner(client):
+    register_user(client, "bob")
+    login(client)
+    users = client.get("/api/users").get_json()
+    bob_id = next(u["id"] for u in users if u["username"] == "bob")
+    res = client.post(
+        "/api/links",
+        json={"title": "For Bob", "url": "http://bob.com", "user_id": bob_id},
+    )
+    assert res.status_code == 201
+    assert res.get_json()["user"] == "bob"
+
 
 def test_non_admin_cannot_manage_admin_resources(client):
     register_user(client, "eve")

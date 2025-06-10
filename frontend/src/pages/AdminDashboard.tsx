@@ -330,6 +330,11 @@ function LinksColumn({
               />
               {CatIcon && <CatIcon size={16} className="opacity-70" />}
               <span className="flex-1">{l.title}</span>
+              {l.user && (
+                <span className="text-xs px-2 py-1 rounded bg-slate-700 opacity-80">
+                  {l.user}
+                </span>
+              )}
               <Link
                 to={`/admin/links/${l.id}`}
                 className="p-1 hover:text-[var(--accent-color)]"

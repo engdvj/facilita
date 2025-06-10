@@ -134,10 +134,14 @@ def create_api_blueprint():
         url = data.get("url")
         if not title or not url:
             return {"message": "Missing title or url"}, 400
+        current = User.query.get(session["user_id"])
+        owner_id = session["user_id"]
+        if current.is_admin and "user_id" in data:
+            owner_id = data.get("user_id") or owner_id
         link = Link(
             title=title,
             url=url,
-            user_id=session["user_id"],
+            user_id=owner_id,
             category_id=data.get("category_id"),
             color=data.get("color"),
             image_url=data.get("image_url"),
@@ -157,6 +161,8 @@ def create_api_blueprint():
         for field in ["title", "url", "category_id", "color", "image_url"]:
             if field in data:
                 setattr(link, field, data[field])
+        if user.is_admin and "user_id" in data:
+            link.user_id = data["user_id"]
         db.session.commit()
         return link.to_dict(include_user=True)
 

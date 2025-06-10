@@ -5,6 +5,8 @@ export interface LinkData {
   id: number;
   title: string;
   url: string;
+  userId?: number;
+  user?: string;
   categoryId?: number;
   color?: string;
   imageUrl?: string;

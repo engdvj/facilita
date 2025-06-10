@@ -24,6 +24,7 @@ interface Color {
 interface LinkFormData {
   title: string;
   url: string;
+  user_id: number | null;
   category_id: number | null;
   color: string;
   image_url: string;
@@ -39,10 +40,12 @@ export default function AdminLinks() {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
+  const [users, setUsers] = useState<{ id: number; username: string }[]>([]);
 
   const [newLink, setNewLink] = useState<LinkFormData>({
     title: "",
     url: "",
+    user_id: null,
     category_id: null,
     color: "",
     image_url: "",
@@ -54,6 +57,7 @@ export default function AdminLinks() {
   const [editLink, setEditLink] = useState<LinkFormData>({
     title: "",
     url: "",
+    user_id: null,
     category_id: null,
     color: "",
     image_url: "",
@@ -76,10 +80,11 @@ export default function AdminLinks() {
 
   /* ---------------------------------------------------------------- */
   const refresh = async () => {
-    const [linkRes, catRes, colorRes] = await Promise.all([
+    const [linkRes, catRes, colorRes, userRes] = await Promise.all([
       api.get("/links"),
       api.get("/categories"),
       api.get("/colors"),
+      api.get("/users"),
     ]);
     setLinks(
       [...(linkRes.data as LinkData[])].sort((a, b) =>
@@ -94,6 +99,11 @@ export default function AdminLinks() {
     setColors(
       [...(colorRes.data as Color[])].sort((a, b) =>
         (a.name || a.value).localeCompare(b.name || b.value)
+      )
+    );
+    setUsers(
+      [...(userRes.data as { id: number; username: string }[])].sort((a, b) =>
+        a.username.localeCompare(b.username)
       )
     );
   };
@@ -111,6 +121,7 @@ export default function AdminLinks() {
         setEditLink({
           title: l.title,
           url: l.url,
+          user_id: l.userId ?? null,
           category_id: l.categoryId ?? null,
           color: l.color ?? "",
           image_url: l.imageUrl ?? "",
@@ -138,6 +149,7 @@ export default function AdminLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
+      if (payload.user_id === null) delete (payload as any).user_id;
 
       await api.post("/links", payload);
       toast.success("Link criado");
@@ -146,6 +158,7 @@ export default function AdminLinks() {
       setNewLink({
         title: "",
         url: "",
+        user_id: null,
         category_id: null,
         color: "",
         image_url: "",
@@ -163,6 +176,7 @@ export default function AdminLinks() {
     setEditLink({
       title: link.title,
       url: link.url,
+      user_id: link.userId ?? null,
       category_id: link.categoryId ?? null,
       color: link.color ?? "",
       image_url: link.imageUrl ?? "",
@@ -186,6 +200,7 @@ export default function AdminLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
+      if (payload.user_id === null) delete (payload as any).user_id;
 
       await api.patch(`/links/${editingId}`, payload);
       toast.success("Link atualizado");
@@ -240,6 +255,26 @@ export default function AdminLinks() {
                   : setNewLink({ ...newLink, url: e.target.value })
               }
             />
+
+            <select
+              className={fieldClass}
+              value={
+                editingId ? editLink.user_id ?? "" : newLink.user_id ?? ""
+              }
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                const parsed = e.target.value === "" ? null : Number(e.target.value);
+                editingId
+                  ? setEditLink({ ...editLink, user_id: parsed })
+                  : setNewLink({ ...newLink, user_id: parsed });
+              }}
+            >
+              <option value="">Usuário</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.username}
+                </option>
+              ))}
+            </select>
 
             <select
               className={fieldClass}
@@ -360,6 +395,11 @@ export default function AdminLinks() {
                   />
                   {Icon && <Icon size={16} className="opacity-70" />}
                   <span className="flex-1">{l.title}</span>
+                  {l.user && (
+                    <span className="text-xs px-2 py-1 rounded bg-slate-700 opacity-80">
+                      {l.user}
+                    </span>
+                  )}
                   <button onClick={() => startEdit(l)} className="p-1 hover:text-[var(--accent-color)]">
                     <Pencil size={16} />
                   </button>
