@@ -8,8 +8,9 @@ export default function Hero() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-2xl sm:text-3xl font-heading font-bold mb-1">Bem-vindo ao FACILITA CHVC</h1>
-        <p className="text-base max-w-2xl mx-auto" style={{ color: 'var(--text-color)' }}>
+        <h1 className="text-xl sm:text-3xl font-heading font-bold mb-1">Bem-vindo ao FACILITA CHVC</h1>
+        <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: 'var(--text-color)' }}>
+
           Encontre rapidamente links úteis e recursos organizados em categorias.
         </p>
       </motion.div>
