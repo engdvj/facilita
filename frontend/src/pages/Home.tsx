@@ -131,6 +131,7 @@ export default function Home() {
           >
             <HomeIcon size={18} /> Início
           </NavLink>
+
             <nav className="flex flex-col gap-2">
               {user?.isAdmin ? (
                 <>
