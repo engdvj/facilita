@@ -54,4 +54,4 @@ Agora é possível registrar novos usuários acessando `/register`. Cada usuári
 
 Usuários comuns são direcionados para `/user/links` após o login. Nesta tela são listados os links gerais em modo somente leitura e, separadamente, os links do próprio usuário com opções de adicionar, editar ou excluir.
 
-
+Cada usuario pode tambem personalizar suas proprias cores (tema). Essas preferencias ficam salvas no servidor, sem interferir nos demais. O tema definido pelo administrador serve como padrao para visitantes nao autenticados.

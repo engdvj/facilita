@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # load variables from a .env file located at the project root
-load_dotenv(Path(__file__).resolve().parents[2] / '.env')
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 ROOT = Path(__file__).resolve().parents[2]
 DIST_DIR = ROOT / "frontend" / "dist"
 UPLOAD_DIR = ROOT / "uploads"
+
 
 def create_app(debug: bool = False):
     static_folder = str(DIST_DIR) if DIST_DIR.exists() else None
@@ -67,11 +68,15 @@ def create_app(debug: bool = False):
                 text("UPDATE user SET is_admin = 1 WHERE username = 'admin'")
             )
             db.session.commit()
+        if "theme" not in user_cols:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN theme TEXT"))
+            db.session.commit()
         link_cols = [c["name"] for c in inspector.get_columns("link")]
         if "user_id" not in link_cols:
             db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
             db.session.commit()
     from .routes import create_api_blueprint
+
     app.register_blueprint(create_api_blueprint(), url_prefix="/api")
 
     @app.route("/api/ping")
@@ -79,6 +84,7 @@ def create_app(debug: bool = False):
         return {"message": "pong"}
 
     if DIST_DIR.exists():
+
         @app.route("/", defaults={"path": ""})
         @app.route("/<path:path>")
         def frontend(path: str):
