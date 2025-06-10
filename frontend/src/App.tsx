@@ -10,6 +10,7 @@ import AdminCategories from './pages/AdminCategories'
 import AdminColors from './pages/AdminColors'
 import AdminUsers from './pages/AdminUsers'
 import AdminDashboard from './pages/AdminDashboard'
+import UserLinks from './pages/UserLinks'
 
 export default function App() {
   return (
@@ -19,6 +20,10 @@ export default function App() {
         <Route path="/admin/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/user/links">
+          <Route index element={<UserLinks />} />
+          <Route path=":id" element={<UserLinks />} />
+        </Route>
         <Route path="/admin" element={<Admin />}>
           <Route index element={<AdminDashboard />} />
           <Route path="links">
