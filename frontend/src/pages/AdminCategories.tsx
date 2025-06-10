@@ -11,7 +11,7 @@ export default function AdminCategories() {
   const navigate = useNavigate();
 
   const [categories, setCategories] = useState<
-    { id: number; name: string; color: string; icon: string }[]
+    { id: number; name: string; color: string; icon: string; adminOnly?: boolean }[]
   >([]);
   const [colors, setColors] = useState<
 
@@ -22,9 +22,10 @@ export default function AdminCategories() {
     name: "",
     color: "",
     icon: "",
+    admin_only: false,
   });
   const [editingId, setEditingId] = useState<number | null>(id ? Number(id) : null);
-  const [editCat, setEditCat] = useState({ name: "", color: "", icon: "" });
+  const [editCat, setEditCat] = useState({ name: "", color: "", icon: "", admin_only: false });
 
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -41,7 +42,12 @@ export default function AdminCategories() {
       const cat = categories.find((c) => c.id === Number(id));
       if (cat) {
         setEditingId(cat.id);
-        setEditCat({ name: cat.name, color: cat.color || "", icon: cat.icon || "" });
+        setEditCat({
+          name: cat.name,
+          color: cat.color || "",
+          icon: cat.icon || "",
+          admin_only: cat.adminOnly || false,
+        });
       }
     } else {
       setEditingId(null);
@@ -58,7 +64,7 @@ export default function AdminCategories() {
     );
     setColors(
       [...colorRes.data].sort((a, b) =>
-        (a.name || a.value).localeCompare(b.name || b.value)
+      (a.name || a.value).localeCompare(b.name || b.value)
       )
     );
   };
@@ -68,7 +74,7 @@ export default function AdminCategories() {
     try {
       await api.post("/categories", newCategory);
       await refresh();
-      setNewCategory({ name: "", color: "", icon: "" });
+      setNewCategory({ name: "", color: "", icon: "", admin_only: false });
       toast.success("Categoria criada");
     } catch {
       toast.error("Erro ao criar categoria");
@@ -153,6 +159,18 @@ export default function AdminCategories() {
                 : setNewCategory({ ...newCategory, icon: e.target.value })
             }
           />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={editingId ? editCat.admin_only : newCategory.admin_only}
+              onChange={(e) =>
+                editingId
+                  ? setEditCat({ ...editCat, admin_only: e.target.checked })
+                  : setNewCategory({ ...newCategory, admin_only: e.target.checked })
+              }
+            />
+            Apenas admin
+          </label>
           <div className="flex gap-2">
             <button
               type="submit"

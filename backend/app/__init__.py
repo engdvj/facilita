@@ -50,6 +50,12 @@ def create_app(debug: bool = False):
         if "name" not in color_cols:
             db.session.execute(text("ALTER TABLE color ADD COLUMN name VARCHAR(50)"))
             db.session.commit()
+        category_cols = [c["name"] for c in inspector.get_columns("category")]
+        if "admin_only" not in category_cols:
+            db.session.execute(
+                text("ALTER TABLE category ADD COLUMN admin_only BOOLEAN DEFAULT 0")
+            )
+            db.session.commit()
     from .routes import create_api_blueprint
     app.register_blueprint(create_api_blueprint(), url_prefix="/api")
 
