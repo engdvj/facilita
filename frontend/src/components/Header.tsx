@@ -105,6 +105,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
     } else {
       localStorage.removeItem('theme-name')
     }
+    api.post('/theme', { theme }).catch(() => {})
     setOpen(false)
   }
 
@@ -114,12 +115,24 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
     localStorage.removeItem('theme-name')
     setThemeName('')
     setTheme(defaultTheme)
+    api.post('/theme', { theme: null }).catch(() => {})
   }
 
   const logout = async () => {
     await api.post('/auth/logout')
     sessionStorage.removeItem('loggedIn')
     localStorage.removeItem('loggedIn')
+    try {
+      const { data } = await api.get('/theme')
+      if (data.theme) {
+        applyTheme(data.theme)
+        localStorage.setItem('theme-custom', JSON.stringify(data.theme))
+      } else {
+        applyTheme(defaultTheme)
+        localStorage.removeItem('theme-custom')
+        localStorage.removeItem('theme-name')
+      }
+    } catch {}
     setLoggedIn(false)
     setUser(null)
     navigate('/admin/login')

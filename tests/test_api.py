@@ -9,7 +9,9 @@ def login(client):
 
 
 def register_user(client, username):
-    res = client.post("/api/auth/register", json={"username": username, "password": "pass"})
+    res = client.post(
+        "/api/auth/register", json={"username": username, "password": "pass"}
+    )
     assert res.status_code == 201
 
 
@@ -181,3 +183,17 @@ def test_admin_can_create_and_list_users(client):
     users = res.get_json()
     assert any(u["id"] == user_id and u["username"] == "newuser" for u in users)
 
+
+def test_user_theme_persistence(client):
+    login(client)
+    res = client.post("/api/theme", json={"theme": {"--accent-color": "#111111"}})
+    assert res.status_code == 200
+    res = client.get("/api/theme")
+    assert res.get_json()["theme"]["--accent-color"] == "#111111"
+
+    client.post("/api/auth/logout")
+
+    register_user(client, "bob")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pass"})
+    res = client.get("/api/theme")
+    assert res.get_json()["theme"] is None
