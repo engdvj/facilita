@@ -149,7 +149,6 @@ export default function AdminLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
-      if (payload.user_id === null) delete (payload as any).user_id;
 
       await api.post("/links", payload);
       toast.success("Link criado");
@@ -200,7 +199,6 @@ export default function AdminLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
-      if (payload.user_id === null) delete (payload as any).user_id;
 
       await api.patch(`/links/${editingId}`, payload);
       toast.success("Link atualizado");
