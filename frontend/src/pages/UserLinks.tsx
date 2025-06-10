@@ -1,11 +1,22 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Home as HomeIcon,
+  Link2,
+  Folder,
+  Palette,
+  Users,
+} from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
+import Header from "../components/Header";
 
 /* ------------------------------------------------------------------ */
 /* Tipos auxiliares                                                    */
@@ -71,6 +82,7 @@ export default function UserLinks() {
 
   const [page, setPage] = useState(1);
   const perPage = 5;
+  const [open, setOpen] = useState(false);
 
   /* --------- classe reutilizável de input ------------------------- */
   const fieldClass =
@@ -223,8 +235,105 @@ export default function UserLinks() {
 
   /* ---------------------------------------------------------------- */
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
-      <div className="grid gap-8 md:grid-cols-2">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+    >
+      <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
+      <div className="flex flex-1 overflow-hidden relative">
+        <motion.aside
+          className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
+          style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+          initial={false}
+          animate={{ x: open ? 0 : -256 }}
+        >
+          <NavLink
+            to="/"
+            onClick={() => setOpen(false)}
+            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+          >
+            <HomeIcon size={18} /> Início
+          </NavLink>
+          <nav className="flex flex-col gap-2">
+            {user?.isAdmin ? (
+              <>
+                <NavLink
+                  end
+                  to="/admin"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <HomeIcon size={18} /> Dashboard
+                </NavLink>
+                <NavLink
+                  to="/admin/links"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <Link2 size={18} /> Links
+                </NavLink>
+                <NavLink
+                  to="/admin/categories"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <Folder size={18} /> Categorias
+                </NavLink>
+                <NavLink
+                  to="/admin/colors"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <Palette size={18} /> Cores
+                </NavLink>
+                <NavLink
+                  to="/admin/users"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <Users size={18} /> Usuários
+                </NavLink>
+              </>
+            ) : (
+              <NavLink
+                to="/user/links"
+                className={({ isActive }) =>
+                  `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                }
+                style={({ isActive }) =>
+                  isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                }
+              >
+                <Link2 size={18} /> Links
+              </NavLink>
+            )}
+          </nav>
+        </motion.aside>
+        <main
+          className={`flex-1 p-4 md:p-8 transition-all ${open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0'}`}
+        >
+          <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
+            <div className="grid gap-8 md:grid-cols-2">
         <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Links Gerais</h2>
           <ul className="space-y-2">
@@ -420,6 +529,9 @@ export default function UserLinks() {
             </div>
           )}
         </section>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

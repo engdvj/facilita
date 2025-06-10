@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Link2, Folder, Palette, Home, X, Users } from "lucide-react";
+import {
+  Link2,
+  Folder,
+  Palette,
+  Home as HomeIcon,
+  Users,
+} from "lucide-react";
 
 import { motion } from "framer-motion";
 import Header from "../components/Header";
@@ -36,16 +42,18 @@ export default function Admin() {
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
-
           className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
           style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
-
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
-          <button className="mb-4" onClick={() => setOpen(false)}>
-            <X size={20} />
-          </button>
+          <NavLink
+            to="/"
+            onClick={() => setOpen(false)}
+            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+          >
+            <HomeIcon size={18} /> Início
+          </NavLink>
           <nav className="flex flex-col gap-2">
             <NavLink
               end
@@ -59,7 +67,7 @@ export default function Admin() {
                 isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
               }
             >
-              <Home size={18} /> Dashboard
+              <HomeIcon size={18} /> Dashboard
             </NavLink>
             <NavLink
               to="/admin/links"

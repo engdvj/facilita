@@ -124,9 +124,14 @@ export default function Home() {
             initial={false}
             animate={{ x: open ? 0 : -256 }}
           >
-            <button className="mb-4" onClick={() => setOpen(false)}>
-              <X size={20} />
-            </button>
+          <NavLink
+            to="/"
+            onClick={() => setOpen(false)}
+            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+          >
+            <HomeIcon size={18} /> Início
+          </NavLink>
+
             <nav className="flex flex-col gap-2">
               {user?.isAdmin ? (
                 <>
