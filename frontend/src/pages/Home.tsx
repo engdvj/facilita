@@ -124,13 +124,13 @@ export default function Home() {
             initial={false}
             animate={{ x: open ? 0 : -256 }}
           >
-          <NavLink
-            to="/"
-            onClick={() => setOpen(false)}
-            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
-          >
-            <HomeIcon size={18} /> Início
-          </NavLink>
+            <NavLink
+              to="/"
+              onClick={() => setOpen(false)}
+              className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+            >
+              <HomeIcon size={18} /> Início
+            </NavLink>
 
             <nav className="flex flex-col gap-2">
               {user?.isAdmin ? (
@@ -208,6 +208,7 @@ export default function Home() {
             </nav>
           </motion.aside>
         )}
+
         <main
           className={`flex-1 ${loggedIn ? 'p-4 md:p-8 transition-all' : ''} ${
             loggedIn ? (open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0') : ''
@@ -215,96 +216,97 @@ export default function Home() {
         >
           <Hero />
 
+          {/* ---------- WRAPPER CENTRAL ---------- */}
           <motion.div
-            className="container pb-8"
+            className="pb-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-        {/* ---------- BUSCA ---------- */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              value={search}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setSearch(e.target.value)
-              }
-              placeholder="Buscar..."
-              className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black p-2 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
-
-        {/* ---------- CATEGORIAS ---------- */}
-        <div className="flex overflow-x-auto gap-2 pb-4 mb-4">
-          <button
-            onClick={() => setCategoryId('all')}
-            className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              categoryId === 'all'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
-            }`}
-          >
-            Todos
-          </button>
-
-          {sortedCategories.map(c => {
-            const Icon = (Icons as any)[c.icon || '']
-            const active = categoryId === c.id
-            const textColor =
-              c.color && isLight(c.color) ? 'text-black' : 'text-white'
-            return (
-              <button
-                key={c.id}
-                onClick={() => setCategoryId(c.id)}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  active
-                    ? textColor
-                    : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
-                }`}
-                style={active ? { backgroundColor: c.color } : undefined}
-              >
-                {Icon && <Icon size={16} />}
-                {c.name}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* ---------- LISTA DE LINKS ---------- */}
-          {filtered.length ? (
-            <motion.div
-              className="pb-8 flex justify-center"      // 1) centraliza o contêiner inteiro
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              {/* contêiner dos cards */}
-              <div
-                className="flex flex-wrap gap-6 justify-start w-full max-w-7xl"
-                /* opcional: max-w-7xl limita largura total */
-              >
-                {filtered.map(link => (
-                  <LinkCard
-                    key={link.id}
-                    link={{
-                      ...link,
-                      categoryColor: categoryMap[link.categoryId || 0]?.color,
-                    }}
+            <div className="mx-auto w-full max-w-7xl px-4">
+              {/* ---------- BUSCA ---------- */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="relative flex-1">
+                  <Search
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                   />
-                ))}
+                  <input
+                    value={search}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setSearch(e.target.value)
+                    }
+                    placeholder="Buscar..."
+                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black p-2 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
-            </motion.div>
-          ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-10">
-              Nenhum link encontrado.
-            </p>
-          )}
-        </motion.div>
-      </main>
+
+              {/* ---------- CATEGORIAS ---------- */}
+              <div className="flex overflow-x-auto gap-2 pb-4 mb-4">
+                <button
+                  onClick={() => setCategoryId('all')}
+                  className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                    categoryId === 'all'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
+                  }`}
+                >
+                  Todos
+                </button>
+
+                {sortedCategories.map(c => {
+                  const Icon = (Icons as any)[c.icon || '']
+                  const active = categoryId === c.id
+                  const textColor =
+                    c.color && isLight(c.color) ? 'text-black' : 'text-white'
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setCategoryId(c.id)}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                        active
+                          ? textColor
+                          : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
+                      }`}
+                      style={active ? { backgroundColor: c.color } : undefined}
+                    >
+                      {Icon && <Icon size={16} />}
+                      {c.name}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* ---------- LISTA DE LINKS ---------- */}
+              {filtered.length ? (
+                <div
+                  className="
+                    grid gap-8
+                    grid-cols-1                               /* mobile: sempre 1 coluna    */
+                    sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]  /* ≥640 px: grid fluido */
+                    sm:justify-center
+                    lg:justify-start
+                  "
+                >
+                  {filtered.map(link => (
+                    <LinkCard
+                      key={link.id}
+                      link={{
+                        ...link,
+                        categoryColor: categoryMap[link.categoryId || 0]?.color,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-10">
+                  Nenhum link encontrado.
+                </p>
+              )}
+            </div>
+          </motion.div>
+        </main>
+      </div>
     </div>
-  </div>
   )
 }
