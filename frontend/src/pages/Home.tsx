@@ -275,24 +275,33 @@ export default function Home() {
         </div>
 
         {/* ---------- LISTA DE LINKS ---------- */}
-        {filtered.length ? (
-          <div className="mt-10 mb-6 flex flex-wrap gap-6 w-full mx-auto justify-start">
-
-            {filtered.map(link => (
-              <LinkCard
-                key={link.id}
-                link={{
-                  ...link,
-                  categoryColor: categoryMap[link.categoryId || 0]?.color,
-                }}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-10">
-            Nenhum link encontrado.
-          </p>
-        )}
+          {filtered.length ? (
+            <motion.div
+              className="pb-8 flex justify-center"      // 1) centraliza o contêiner inteiro
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              {/* contêiner dos cards */}
+              <div
+                className="flex flex-wrap gap-6 justify-start w-full max-w-7xl"
+                /* opcional: max-w-7xl limita largura total */
+              >
+                {filtered.map(link => (
+                  <LinkCard
+                    key={link.id}
+                    link={{
+                      ...link,
+                      categoryColor: categoryMap[link.categoryId || 0]?.color,
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <p className="text-center text-gray-500 dark:text-gray-400 py-10">
+              Nenhum link encontrado.
+            </p>
+          )}
         </motion.div>
       </main>
     </div>
