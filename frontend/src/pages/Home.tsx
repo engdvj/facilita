@@ -211,7 +211,7 @@ export default function Home() {
 
         <main
           className={`flex-1 ${loggedIn ? 'p-4 md:p-8 transition-all' : ''} ${
-            loggedIn ? (open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0') : ''
+            loggedIn ? (open ? 'md:ml-64' : 'md:ml-0') : ''
           }`}
         >
           <Hero />
@@ -236,7 +236,7 @@ export default function Home() {
                       setSearch(e.target.value)
                     }
                     placeholder="Buscar..."
-                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black p-2 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black p-2 text-sm sm:text-base shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
