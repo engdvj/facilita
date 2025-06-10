@@ -15,7 +15,7 @@ def app():
     app.config.update({'TESTING': True})
 
     with app.app_context():
-        admin = User(username='admin')
+        admin = User(username='admin', is_admin=True)
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
