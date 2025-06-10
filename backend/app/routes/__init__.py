@@ -3,6 +3,7 @@ from functools import wraps
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 from pathlib import Path
+import json
 
 from ..extensions import db
 from ..models import User, Link, Category, Color
@@ -67,11 +68,46 @@ def create_api_blueprint():
     @login_required
     def auth_me():
         user = User.query.get(session["user_id"])
-        return {
+        data = {
             "id": user.id,
             "username": user.username,
             "isAdmin": user.is_admin,
         }
+        if user.theme:
+            try:
+                data["theme"] = json.loads(user.theme)
+            except Exception:
+                data["theme"] = None
+        else:
+            data["theme"] = None
+        return data
+
+    @bp.get("/theme")
+    def get_theme():
+        user_id = session.get("user_id")
+        if user_id:
+            user = User.query.get(user_id)
+        else:
+            user = User.query.filter_by(is_admin=True).first()
+        if user and user.theme:
+            try:
+                return {"theme": json.loads(user.theme)}
+            except Exception:
+                return {"theme": None}
+        return {"theme": None}
+
+    @bp.post("/theme")
+    @login_required
+    def set_theme():
+        user = User.query.get(session["user_id"])
+        data = request.get_json() or {}
+        theme = data.get("theme")
+        if theme is not None:
+            user.theme = json.dumps(theme)
+        else:
+            user.theme = None
+        db.session.commit()
+        return {"message": "ok"}
 
     @bp.post("/auth/change-password")
     @login_required
@@ -183,16 +219,18 @@ def create_api_blueprint():
             categories = Category.query.all()
         else:
             categories = Category.query.filter_by(admin_only=False).all()
-        return jsonify([
-            {
-                "id": c.id,
-                "name": c.name,
-                "color": c.color,
-                "icon": c.icon,
-                "adminOnly": c.admin_only,
-            }
-            for c in categories
-        ])
+        return jsonify(
+            [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "color": c.color,
+                    "icon": c.icon,
+                    "adminOnly": c.admin_only,
+                }
+                for c in categories
+            ]
+        )
 
     @bp.post("/categories")
     @admin_required
@@ -253,12 +291,7 @@ def create_api_blueprint():
     @bp.get("/colors")
     def list_colors():
         colors = Color.query.all()
-        return jsonify([
-
-            {"id": c.id, "value": c.value, "name": c.name}
-            for c in colors
-
-        ])
+        return jsonify([{"id": c.id, "value": c.value, "name": c.name} for c in colors])
 
     @bp.post("/colors")
     @admin_required
@@ -280,7 +313,6 @@ def create_api_blueprint():
             "id": color.id,
             "value": color.value,
             "name": color.name,
-
         }, 201
 
     @bp.patch("/colors/<int:color_id>")
@@ -302,7 +334,6 @@ def create_api_blueprint():
             "id": color.id,
             "value": color.value,
             "name": color.name,
-
         }
 
     @bp.delete("/colors/<int:color_id>")
@@ -321,10 +352,7 @@ def create_api_blueprint():
             return {"message": "Forbidden"}, 403
         users = User.query.all()
         return jsonify(
-            [
-                {"id": u.id, "username": u.username, "isAdmin": u.is_admin}
-                for u in users
-            ]
+            [{"id": u.id, "username": u.username, "isAdmin": u.is_admin} for u in users]
         )
 
     @bp.post("/users")
@@ -408,7 +436,6 @@ def create_api_blueprint():
             target = upload_dir / filename
         file.save(target)
         return {"url": f"/api/uploads/{filename}"}
-
 
     @bp.route("/uploads/<path:filename>")
     def serve_upload(filename: str):

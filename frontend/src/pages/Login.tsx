@@ -34,6 +34,15 @@ export default function Login() {
         localStorage.removeItem('loggedIn')
       }
       const me = await api.get('/auth/me')
+      try {
+        const { data } = await api.get('/theme')
+        if (data.theme) {
+          Object.entries(data.theme).forEach(([k, v]) => {
+            document.documentElement.style.setProperty(k, v as string)
+          })
+          localStorage.setItem('theme-custom', JSON.stringify(data.theme))
+        }
+      } catch {}
       toast.success('Login realizado')
       navigate(me.data.isAdmin ? '/admin' : '/user/links')
     } catch (err) {
