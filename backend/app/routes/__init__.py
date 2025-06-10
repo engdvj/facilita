@@ -41,7 +41,14 @@ def create_api_blueprint():
 
     @bp.get("/links")
     def list_links():
-        links = Link.query.all()
+        if session.get("user_id"):
+            links = Link.query.all()
+        else:
+            links = (
+                Link.query.join(Category, isouter=True)
+                .filter((Category.admin_only == False) | (Link.category == None))
+                .all()
+            )
         return jsonify([l.to_dict() for l in links])
 
     @bp.post("/links")
@@ -84,9 +91,18 @@ def create_api_blueprint():
 
     @bp.get("/categories")
     def list_categories():
-        categories = Category.query.all()
+        if session.get("user_id"):
+            categories = Category.query.all()
+        else:
+            categories = Category.query.filter_by(admin_only=False).all()
         return jsonify([
-            {"id": c.id, "name": c.name, "color": c.color, "icon": c.icon}
+            {
+                "id": c.id,
+                "name": c.name,
+                "color": c.color,
+                "icon": c.icon,
+                "adminOnly": c.admin_only,
+            }
             for c in categories
         ])
 
@@ -97,7 +113,12 @@ def create_api_blueprint():
         name = data.get("name")
         if not name:
             return {"message": "Missing name"}, 400
-        category = Category(name=name, color=data.get("color"), icon=data.get("icon"))
+        category = Category(
+            name=name,
+            color=data.get("color"),
+            icon=data.get("icon"),
+            admin_only=data.get("admin_only", False),
+        )
         db.session.add(category)
         try:
             db.session.commit()
@@ -109,6 +130,7 @@ def create_api_blueprint():
             "name": category.name,
             "color": category.color,
             "icon": category.icon,
+            "adminOnly": category.admin_only,
         }, 201
 
     @bp.patch("/categories/<int:cat_id>")
@@ -116,7 +138,7 @@ def create_api_blueprint():
     def update_category(cat_id):
         category = Category.query.get_or_404(cat_id)
         data = request.get_json() or {}
-        for field in ["name", "color", "icon"]:
+        for field in ["name", "color", "icon", "admin_only"]:
             if field in data:
                 setattr(category, field, data[field])
         try:
@@ -129,6 +151,7 @@ def create_api_blueprint():
             "name": category.name,
             "color": category.color,
             "icon": category.icon,
+            "adminOnly": category.admin_only,
         }
 
     @bp.delete("/categories/<int:cat_id>")

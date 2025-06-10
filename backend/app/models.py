@@ -19,6 +19,7 @@ class Category(db.Model):
     name = db.Column(db.String(80), unique=True, nullable=False)
     color = db.Column(db.String(30))
     icon = db.Column(db.String(50))
+    admin_only = db.Column(db.Boolean, default=False)
 
 
 class Link(db.Model):

@@ -67,3 +67,33 @@ def test_create_category_and_color(client, app):
     # verify listing
     res = client.get("/api/categories")
     assert all(c["id"] != cat_id for c in res.get_json())
+
+
+def test_admin_category_visibility(client):
+    login(client)
+    res = client.post(
+        "/api/categories",
+        json={"name": "secret", "admin_only": True},
+    )
+    assert res.status_code == 201
+    cat_id = res.get_json()["id"]
+
+    res = client.post(
+        "/api/links",
+        json={"title": "Private", "url": "http://private.com", "category_id": cat_id},
+    )
+    assert res.status_code == 201
+    link_id = res.get_json()["id"]
+
+    # visible when logged in
+    res = client.get("/api/categories")
+    assert any(c["id"] == cat_id for c in res.get_json())
+    res = client.get("/api/links")
+    assert any(l["id"] == link_id for l in res.get_json())
+
+    client.post("/api/auth/logout")
+
+    res = client.get("/api/categories")
+    assert all(c["id"] != cat_id for c in res.get_json())
+    res = client.get("/api/links")
+    assert all(l["id"] != link_id for l in res.get_json())
