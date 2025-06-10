@@ -8,6 +8,11 @@ def login(client):
     assert res.status_code == 200
 
 
+def register_user(client, username):
+    res = client.post("/api/auth/register", json={"username": username, "password": "pass"})
+    assert res.status_code == 201
+
+
 def test_login(client):
     login(client)
 
@@ -20,6 +25,7 @@ def test_create_and_list_link(client, app):
     assert res.status_code == 201
     data = res.get_json()
     assert data["title"] == "Example"
+    assert data["user"] == "admin"
 
     # update
     res = client.patch(f"/api/links/{data['id']}", json={"title": "Example2"})
@@ -97,3 +103,39 @@ def test_admin_category_visibility(client):
     assert all(c["id"] != cat_id for c in res.get_json())
     res = client.get("/api/links")
     assert all(l["id"] != link_id for l in res.get_json())
+
+
+def test_user_private_links(client):
+    register_user(client, "bob")
+    res = client.post("/api/auth/login", json={"username": "bob", "password": "pass"})
+    assert res.status_code == 200
+    res = client.post("/api/links", json={"title": "Mine", "url": "http://m.com"})
+    assert res.status_code == 201
+    link_id = res.get_json()["id"]
+    client.post("/api/auth/logout")
+
+    register_user(client, "alice")
+    res = client.post("/api/auth/login", json={"username": "alice", "password": "pass"})
+    assert res.status_code == 200
+    res = client.get("/api/links")
+    assert all(l["id"] != link_id for l in res.get_json())
+    client.post("/api/auth/logout")
+
+    login(client)
+    res = client.get("/api/links")
+    assert any(l["id"] == link_id and l["user"] == "bob" for l in res.get_json())
+
+
+def test_non_admin_cannot_manage_admin_resources(client):
+    register_user(client, "eve")
+    res = client.post("/api/auth/login", json={"username": "eve", "password": "pass"})
+    assert res.status_code == 200
+
+    res = client.post("/api/colors", json={"value": "#ff00ff"})
+    assert res.status_code == 403
+
+    res = client.post("/api/categories", json={"name": "hacks"})
+    assert res.status_code == 403
+
+    res = client.post("/api/users", json={"username": "x", "password": "y"})
+    assert res.status_code == 403

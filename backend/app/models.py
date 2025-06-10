@@ -6,6 +6,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    links = db.relationship("Link", backref="user")
 
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
@@ -26,12 +28,13 @@ class Link(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
     url = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     category_id = db.Column(db.Integer, db.ForeignKey("category.id"))
     category = db.relationship("Category", backref="links")
     color = db.Column(db.String(30))
     image_url = db.Column(db.String(255))
 
-    def to_dict(self):
+    def to_dict(self, include_user: bool = False):
         return {
             "id": self.id,
             "title": self.title,
@@ -40,6 +43,7 @@ class Link(db.Model):
             "categoryId": self.category_id,
             "color": self.color,
             "imageUrl": self.image_url,
+            **({"user": self.user.username} if include_user and self.user else {}),
         }
 
 

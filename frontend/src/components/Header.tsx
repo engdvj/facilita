@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   Home,
-  Shield,
+  LogIn,
   LogOut,
   Menu,
   X,
@@ -157,13 +157,23 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
             Início
           </Link>
 
-          <Link
-            to={loggedIn ? '/admin' : '/admin/login'}
-            className="hover:underline flex items-center gap-1"
-          >
-            <Shield size={18} />
-            Admin
-          </Link>
+          {loggedIn ? (
+            <Link
+              to="/admin"
+              className="hover:underline flex items-center gap-1"
+            >
+              <Home size={18} />
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/admin/login"
+              className="hover:underline flex items-center gap-1"
+            >
+              <LogIn size={18} />
+              Login
+            </Link>
+          )}
 
           {loggedIn && (
             <button
