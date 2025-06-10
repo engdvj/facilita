@@ -237,6 +237,7 @@ export default function Home() {
                     }
                     placeholder="Buscar..."
                     className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black py-1 px-2 text-sm sm:text-base shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+
                   />
                 </div>
               </div>

@@ -22,6 +22,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
       rel="noopener noreferrer"
       className="block w-[140px] h-[180px] sm:w-[220px] sm:h-[240px] flex flex-col justify-between overflow-hidden rounded-2xl shadow-md hover:shadow-xl transform hover:scale-[1.02] transition-transform duration-300 relative bg-gradient-to-b from-slate-800 to-slate-950 text-white"
 
+
     >
       {link.imageUrl && (
         <div className="relative overflow-hidden">
