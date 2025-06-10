@@ -58,7 +58,15 @@ def create_app(debug: bool = False):
             db.session.commit()
         user_cols = [c["name"] for c in inspector.get_columns("user")]
         if "is_admin" not in user_cols:
-            db.session.execute(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+            db.session.execute(
+                text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0")
+            )
+            db.session.commit()
+            # make sure existing admin account keeps privileges
+            db.session.execute(
+                text("UPDATE user SET is_admin = 1 WHERE username = 'admin'")
+            )
+
             db.session.commit()
         link_cols = [c["name"] for c in inspector.get_columns("link")]
         if "user_id" not in link_cols:

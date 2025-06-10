@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import api from '../api'
 import toast from 'react-hot-toast'
 import { User, Lock, ArrowRightToLine } from 'lucide-react'
@@ -93,9 +93,10 @@ export default function Login() {
               />
               Lembrar login
             </label>
-            <a href="/change-password" className="hover:underline">
+            <Link to="/change-password" className="hover:underline">
               Esqueceu a senha?
-            </a>
+            </Link>
+
           </div>
           <div className="text-center text-xs mt-2">
             <a href="/" className="hover:underline">

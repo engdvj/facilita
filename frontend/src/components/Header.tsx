@@ -175,7 +175,6 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
             </Link>
           )}
 
-
           {loggedIn && (
             <button
               onClick={logout}
