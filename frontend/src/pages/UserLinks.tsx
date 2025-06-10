@@ -110,8 +110,8 @@ export default function UserLinks() {
 
   /* ---------------------------------------------------------------- */
   useEffect(() => {
-    refresh();
-  }, []);
+    refresh().catch(() => navigate('/admin/login'));
+  }, [navigate]);
 
   useEffect(() => {
     if (id && links.length) {
