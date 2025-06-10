@@ -17,6 +17,19 @@ def test_login(client):
     login(client)
 
 
+def test_auth_me(client):
+    login(client)
+    res = client.get("/api/auth/me")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["username"] == "admin"
+    assert data["isAdmin"] is True
+
+    client.post("/api/auth/logout")
+    res = client.get("/api/auth/me")
+    assert res.status_code == 401
+
+
 def test_create_and_list_link(client, app):
     login(client)
     res = client.post(

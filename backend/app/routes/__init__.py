@@ -63,6 +63,16 @@ def create_api_blueprint():
         db.session.commit()
         return {"message": "created"}, 201
 
+    @bp.get("/auth/me")
+    @login_required
+    def auth_me():
+        user = User.query.get(session["user_id"])
+        return {
+            "id": user.id,
+            "username": user.username,
+            "isAdmin": user.is_admin,
+        }
+
     @bp.post("/auth/change-password")
     @login_required
     def change_password():

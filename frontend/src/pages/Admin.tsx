@@ -5,6 +5,7 @@ import { Link2, Folder, Palette, Home, X, Users } from "lucide-react";
 
 import { motion } from "framer-motion";
 import Header from "../components/Header";
+import api from "../api";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -16,6 +17,13 @@ export default function Admin() {
       localStorage.getItem("loggedIn") === "true";
     if (!loggedIn) {
       navigate("/admin/login");
+    } else {
+      api
+        .get("/auth/me")
+        .then(({ data }) => {
+          if (!data.isAdmin) navigate("/user/links");
+        })
+        .catch(() => navigate("/admin/login"));
     }
   }, [navigate]);
 
