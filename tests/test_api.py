@@ -119,6 +119,14 @@ def test_admin_category_visibility(client):
     res = client.get("/api/links")
     assert all(l["id"] != link_id for l in res.get_json())
 
+    register_user(client, "bob")
+    client.post("/api/auth/login", json={"username": "bob", "password": "pass"})
+
+    res = client.get("/api/categories")
+    assert all(c["id"] != cat_id for c in res.get_json())
+    res = client.get("/api/links")
+    assert all(l["id"] != link_id for l in res.get_json())
+
 
 def test_user_private_links(client):
     register_user(client, "bob")

@@ -215,8 +215,13 @@ def create_api_blueprint():
 
     @bp.get("/categories")
     def list_categories():
-        if session.get("user_id"):
-            categories = Category.query.all()
+        user_id = session.get("user_id")
+        if user_id:
+            user = User.query.get(user_id)
+            if user.is_admin:
+                categories = Category.query.all()
+            else:
+                categories = Category.query.filter_by(admin_only=False).all()
         else:
             categories = Category.query.filter_by(admin_only=False).all()
         return jsonify(
