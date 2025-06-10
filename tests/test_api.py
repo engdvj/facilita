@@ -154,3 +154,18 @@ def test_non_admin_cannot_manage_admin_resources(client):
     res = client.post("/api/users", json={"username": "x", "password": "y"})
     assert res.status_code == 403
 
+
+def test_admin_can_create_and_list_users(client):
+    login(client)
+    res = client.post(
+        "/api/users",
+        json={"username": "newuser", "password": "newpass", "is_admin": False},
+    )
+    assert res.status_code == 201
+    user_id = res.get_json()["id"]
+
+    res = client.get("/api/users")
+    assert res.status_code == 200
+    users = res.get_json()
+    assert any(u["id"] == user_id and u["username"] == "newuser" for u in users)
+
