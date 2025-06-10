@@ -13,7 +13,9 @@ export default function Login() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem('loggedIn') === 'true'
+    const loggedIn =
+      sessionStorage.getItem('loggedIn') === 'true' ||
+      localStorage.getItem('loggedIn') === 'true'
     if (loggedIn) {
       navigate('/admin')
     }
@@ -23,6 +25,7 @@ export default function Login() {
     e.preventDefault()
     try {
       await api.post('/auth/login', { username, password })
+      sessionStorage.setItem('loggedIn', 'true')
       if (remember) {
         localStorage.setItem('loggedIn', 'true')
       } else {
