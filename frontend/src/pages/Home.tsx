@@ -6,7 +6,16 @@ import {
 } from 'react'
 import { motion } from 'framer-motion'
 import * as Icons from 'lucide-react'
-import { Search } from 'lucide-react'
+import {
+  Search,
+  Home as HomeIcon,
+  Link2,
+  Folder,
+  Palette,
+  Users,
+  X,
+} from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 
 import api from '../api'
 import Header from '../components/Header'
@@ -30,10 +39,14 @@ interface Category {
 }
 
 export default function Home() {
-  const [links,       setLinks]       = useState<LinkData[]>([])
-  const [categories,  setCategories]  = useState<Category[]>([])
-  const [search,      setSearch]      = useState('')
-  const [categoryId,  setCategoryId]  = useState<number | 'all'>('all')
+  const [links, setLinks] = useState<LinkData[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [search, setSearch] = useState('')
+  const [categoryId, setCategoryId] = useState<number | 'all'>('all')
+
+  const [loggedIn, setLoggedIn] = useState(false)
+  const [user, setUser] = useState<{ username: string; isAdmin: boolean } | null>(null)
+  const [open, setOpen] = useState(false)
 
   /* ---------- carregar dados ---------- */
   useEffect(() => {
@@ -53,6 +66,19 @@ export default function Home() {
         [...data].sort((a, b) => a.name.localeCompare(b.name)),
       ),
     )
+  }, [])
+
+  useEffect(() => {
+    const li =
+      sessionStorage.getItem('loggedIn') === 'true' ||
+      localStorage.getItem('loggedIn') === 'true'
+    setLoggedIn(li)
+    if (li) {
+      api
+        .get('/auth/me')
+        .then(({ data }) => setUser(data))
+        .catch(() => setUser(null))
+    }
   }, [])
 
   /* ---------- filtros ---------- */
@@ -80,20 +106,119 @@ export default function Home() {
   /* ---------- UI ---------- */
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen flex flex-col"
       style={{
         backgroundColor: 'var(--background-main)',
         color: 'var(--text-color)',
       }}
     >
-      <Header />
-      <Hero />
+      <Header
+        onMenuClick={loggedIn ? () => setOpen((o) => !o) : undefined}
+        sidebarOpen={open}
+      />
+      <div className="flex flex-1 overflow-hidden relative">
+        {loggedIn && (
+          <motion.aside
+            className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
+            style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+            initial={false}
+            animate={{ x: open ? 0 : -256 }}
+          >
+          <NavLink
+            to="/"
+            onClick={() => setOpen(false)}
+            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+          >
+            <HomeIcon size={18} /> Início
+          </NavLink>
+            <nav className="flex flex-col gap-2">
+              {user?.isAdmin ? (
+                <>
+                  <NavLink
+                    end
+                    to="/admin"
+                    className={({ isActive }) =>
+                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                    }
+                    style={({ isActive }) =>
+                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                    }
+                  >
+                    <HomeIcon size={18} /> Dashboard
+                  </NavLink>
+                  <NavLink
+                    to="/admin/links"
+                    className={({ isActive }) =>
+                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                    }
+                    style={({ isActive }) =>
+                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                    }
+                  >
+                    <Link2 size={18} /> Links
+                  </NavLink>
+                  <NavLink
+                    to="/admin/categories"
+                    className={({ isActive }) =>
+                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                    }
+                    style={({ isActive }) =>
+                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                    }
+                  >
+                    <Folder size={18} /> Categorias
+                  </NavLink>
+                  <NavLink
+                    to="/admin/colors"
+                    className={({ isActive }) =>
+                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                    }
+                    style={({ isActive }) =>
+                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                    }
+                  >
+                    <Palette size={18} /> Cores
+                  </NavLink>
+                  <NavLink
+                    to="/admin/users"
+                    className={({ isActive }) =>
+                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                    }
+                    style={({ isActive }) =>
+                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                    }
+                  >
+                    <Users size={18} /> Usuários
+                  </NavLink>
+                </>
+              ) : (
+                <NavLink
+                  to="/user/links"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <Link2 size={18} /> Links
+                </NavLink>
+              )}
+            </nav>
+          </motion.aside>
+        )}
+        <main
+          className={`flex-1 ${loggedIn ? 'p-4 md:p-8 transition-all' : ''} ${
+            loggedIn ? (open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0') : ''
+          }`}
+        >
+          <Hero />
 
-      <motion.div
-        className="container pb-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
+          <motion.div
+            className="container pb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
         {/* ---------- BUSCA ---------- */}
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
@@ -167,7 +292,9 @@ export default function Home() {
             Nenhum link encontrado.
           </p>
         )}
-      </motion.div>
+        </motion.div>
+      </main>
     </div>
+  </div>
   )
 }
