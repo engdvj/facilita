@@ -44,7 +44,10 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   /* Auth & tema persistido                                            */
   /* ---------------------------------------------------------------- */
   useEffect(() => {
-    setLoggedIn(localStorage.getItem('loggedIn') === 'true')
+    const loggedIn =
+      sessionStorage.getItem('loggedIn') === 'true' ||
+      localStorage.getItem('loggedIn') === 'true'
+    setLoggedIn(loggedIn)
   }, [])
 
   const openModal = () => {
@@ -108,6 +111,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
 
   const logout = async () => {
     await api.post('/auth/logout')
+    sessionStorage.removeItem('loggedIn')
     localStorage.removeItem('loggedIn')
     setLoggedIn(false)
     navigate('/admin/login')

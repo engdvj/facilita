@@ -11,7 +11,9 @@ export default function Admin() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem("loggedIn") === "true";
+    const loggedIn =
+      sessionStorage.getItem("loggedIn") === "true" ||
+      localStorage.getItem("loggedIn") === "true";
     if (!loggedIn) {
       navigate("/admin/login");
     }
