@@ -93,6 +93,9 @@ export default function Login() {
               />
               Lembrar login
             </label>
+            <a href="/change-password" className="hover:underline">
+              Esqueceu a senha?
+            </a>
           </div>
         </form>
         <footer className="mt-6 text-center text-xs text-gray-400">Versão 1.0.0</footer>

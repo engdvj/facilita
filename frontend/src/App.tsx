@@ -8,6 +8,7 @@ import Admin from './pages/Admin'
 import AdminLinks from './pages/AdminLinks'
 import AdminCategories from './pages/AdminCategories'
 import AdminColors from './pages/AdminColors'
+import AdminUsers from './pages/AdminUsers'
 import AdminDashboard from './pages/AdminDashboard'
 
 export default function App() {
@@ -29,6 +30,10 @@ export default function App() {
             <Route path=":id" element={<AdminCategories />} />
           </Route>
           <Route path="colors" element={<AdminColors />} />
+          <Route path="users">
+            <Route index element={<AdminUsers />} />
+            <Route path=":id" element={<AdminUsers />} />
+          </Route>
         </Route>
       </Routes>
       <Toaster position="bottom-center" />

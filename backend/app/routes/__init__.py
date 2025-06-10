@@ -283,6 +283,79 @@ def create_api_blueprint():
         db.session.commit()
         return {"message": "deleted"}
 
+    @bp.get("/users")
+    @login_required
+    def list_users():
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        users = User.query.all()
+        return jsonify(
+            [
+                {"id": u.id, "username": u.username, "isAdmin": u.is_admin}
+                for u in users
+            ]
+        )
+
+    @bp.post("/users")
+    @login_required
+    def create_user():
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        data = request.get_json() or {}
+        username = data.get("username")
+        password = data.get("password")
+        if not username or not password:
+            return {"message": "Missing data"}, 400
+        if User.query.filter_by(username=username).first():
+            return {"message": "User exists"}, 400
+        user = User(username=username, is_admin=data.get("is_admin", False))
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return {
+            "id": user.id,
+            "username": user.username,
+            "isAdmin": user.is_admin,
+        }, 201
+
+    @bp.patch("/users/<int:user_id>")
+    @login_required
+    def update_user(user_id):
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        user = User.query.get_or_404(user_id)
+        data = request.get_json() or {}
+        if "username" in data:
+            user.username = data["username"]
+        if "password" in data:
+            user.set_password(data["password"])
+        if "is_admin" in data:
+            user.is_admin = data["is_admin"]
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return {"message": "User exists"}, 400
+        return {
+            "id": user.id,
+            "username": user.username,
+            "isAdmin": user.is_admin,
+        }
+
+    @bp.delete("/users/<int:user_id>")
+    @login_required
+    def delete_user(user_id):
+        current = User.query.get(session["user_id"])
+        if not current.is_admin:
+            return {"message": "Forbidden"}, 403
+        user = User.query.get_or_404(user_id)
+        db.session.delete(user)
+        db.session.commit()
+        return {"message": "deleted"}
+
     @bp.post("/upload")
     @login_required
     def upload_file():
