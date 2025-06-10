@@ -160,20 +160,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
 
         {/* Navegação */}
         <nav className="space-x-4 flex items-center">
-          <Link to="/" className="hover:underline flex items-center gap-1">
-            <Home size={18} />
-            Início
-          </Link>
-
-          {loggedIn ? (
-            <Link
-              to="/admin"
-              className="hover:underline flex items-center gap-1"
-            >
-              <Home size={18} />
-              Dashboard
-            </Link>
-          ) : (
+          {!loggedIn ? (
             <Link
               to="/admin/login"
               className="hover:underline flex items-center gap-1"
@@ -181,28 +168,26 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
               <LogIn size={18} />
               Login
             </Link>
-          )}
+          ) : (
+            <>
+              {user && (
+                <span className="text-sm opacity-80">Olá, {user.username}</span>
+              )}
 
-          {loggedIn && user && (
-            <span className="text-sm opacity-80">Olá, {user.username}</span>
-          )}
+              <button
+                onClick={logout}
+                className="hover:underline flex items-center gap-1"
+              >
+                <LogOut size={18} /> Sair
+              </button>
 
-          {loggedIn && (
-            <button
-              onClick={logout}
-              className="hover:underline flex items-center gap-1"
-            >
-              <LogOut size={18} /> Sair
-            </button>
-          )}
-
-          {loggedIn && (
-            <button
-              onClick={openModal}
-              className="ml-2 hover:bg-[var(--hover-effect)] p-1 rounded"
-            >
-              <Palette size={18} />
-            </button>
+              <button
+                onClick={openModal}
+                className="ml-2 hover:bg-[var(--hover-effect)] p-1 rounded"
+              >
+                <Palette size={18} />
+              </button>
+            </>
           )}
         </nav>
       </div>
