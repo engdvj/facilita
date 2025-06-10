@@ -64,26 +64,40 @@ export default function AdminDashboard() {
   }, []);
 
   const refresh = async () => {
-    const [linkRes, catRes, colorRes, userRes] = await Promise.all([
+    const results = await Promise.allSettled([
+
       api.get("/links"),
       api.get("/categories"),
       api.get("/colors"),
       api.get("/users"),
     ]);
-    setLinks(
-      [...linkRes.data].sort((a, b) => a.title.localeCompare(b.title))
-    );
-    setCategories(
-      [...catRes.data].sort((a, b) => a.name.localeCompare(b.name))
-    );
-    setColors(
-      [...colorRes.data].sort((a, b) =>
-        (a.name || a.value).localeCompare(b.name || b.value)
-      )
-    );
-    setUsers(
-      [...userRes.data].sort((a, b) => a.username.localeCompare(b.username))
-    );
+    const [linkRes, catRes, colorRes, userRes] = results;
+
+    if (linkRes.status === "fulfilled") {
+      setLinks(
+        [...linkRes.value.data].sort((a, b) => a.title.localeCompare(b.title))
+      );
+    }
+    if (catRes.status === "fulfilled") {
+      setCategories(
+        [...catRes.value.data].sort((a, b) => a.name.localeCompare(b.name))
+      );
+    }
+    if (colorRes.status === "fulfilled") {
+      setColors(
+        [...colorRes.value.data].sort((a, b) =>
+          (a.name || a.value).localeCompare(b.name || b.value)
+        )
+      );
+    }
+    if (userRes.status === "fulfilled") {
+      setUsers(
+        [...userRes.value.data].sort((a, b) =>
+          a.username.localeCompare(b.username)
+        )
+      );
+    }
+
   };
 
   /* ---------------------------------------------------------------- */

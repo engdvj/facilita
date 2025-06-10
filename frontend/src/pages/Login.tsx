@@ -97,6 +97,12 @@ export default function Login() {
               Esqueceu a senha?
             </a>
           </div>
+          <div className="text-center text-xs mt-2">
+            <a href="/" className="hover:underline">
+              Voltar ao início
+            </a>
+
+          </div>
         </form>
         <footer className="mt-6 text-center text-xs text-gray-400">Versão 1.0.0</footer>
       </motion.div>
