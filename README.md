@@ -18,12 +18,12 @@ python -m venv venv
 source venv/bin/activate ou venv\Scripts\activate
 pip install -r requirements.txt
 # Edite ../.env e defina SECRET_KEY para producao se necessario
-python setup_db.py  # cria o banco e o usuário admin
+# O usuário administrador padrão será criado automaticamente
 # exponha o servidor para a rede com FLASK_HOST=0.0.0.0
 FLASK_DEBUG=0 FLASK_HOST=0.0.0.0 python wsgi.py
 ```
 
-Se novos modelos forem adicionados ao backend, execute novamente `python setup_db.py` ou simplesmente reinicie o servidor. O `create_app()` agora garante que tabelas ausentes sejam criadas automaticamente.
+Se novos modelos forem adicionados ao backend, basta reiniciar o servidor. O `create_app()` garante que tabelas ausentes sejam criadas automaticamente e que o usuário administrador exista.
 
 ### Frontend
 
