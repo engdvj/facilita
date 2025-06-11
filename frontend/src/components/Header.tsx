@@ -165,7 +165,7 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
 
           <Link
             to="/"
-            className="text-xl sm:text-2xl font-heading font-bold whitespace-nowrap"
+            className="text-lg sm:text-2xl font-heading font-bold whitespace-nowrap"
           >
             FACILITA CHVC
           </Link>

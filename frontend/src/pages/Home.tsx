@@ -211,7 +211,7 @@ export default function Home() {
 
         <main
           className={`flex-1 ${loggedIn ? 'p-4 md:p-8 transition-all' : ''} ${
-            loggedIn ? (open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0') : ''
+            loggedIn ? (open ? 'md:ml-64' : 'md:ml-0') : ''
           }`}
         >
           <Hero />
@@ -225,7 +225,7 @@ export default function Home() {
             <div className="mx-auto w-full max-w-7xl px-4">
               {/* ---------- BUSCA ---------- */}
               <div className="flex items-center gap-2 mb-4">
-                <div className="relative flex-1">
+                <div className="relative flex-1 max-w-xs mx-auto sm:max-w-none">
                   <Search
                     size={18}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -236,13 +236,13 @@ export default function Home() {
                       setSearch(e.target.value)
                     }
                     placeholder="Buscar..."
-                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black p-2 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black py-1 px-2 text-sm sm:text-base shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
               {/* ---------- CATEGORIAS ---------- */}
-              <div className="flex overflow-x-auto gap-2 pb-4 mb-4">
+              <div className="flex flex-wrap justify-center gap-2 pb-4 mb-4">
                 <button
                   onClick={() => setCategoryId('all')}
                   className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
@@ -281,10 +281,10 @@ export default function Home() {
               {filtered.length ? (
                 <div
                   className="
-                    grid gap-8
-                    grid-cols-1                               /* mobile: sempre 1 coluna    */
-                    sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]  /* ≥640 px: grid fluido */
-                    sm:justify-center
+                    grid gap-4
+                    grid-cols-[repeat(auto-fill,minmax(150px,1fr))]
+                    sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]
+                    justify-center
                     lg:justify-start
                   "
                 >
