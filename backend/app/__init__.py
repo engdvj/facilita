@@ -85,6 +85,7 @@ def create_app(debug: bool = False):
         elif not admin.is_admin:
             admin.is_admin = True
         db.session.commit()
+
     from .routes import create_api_blueprint
 
     app.register_blueprint(create_api_blueprint(), url_prefix="/api")
