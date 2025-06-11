@@ -42,6 +42,7 @@ def create_app(debug: bool = False):
     cors.init_app(app)
 
     from . import models
+    from .models import User
 
     # ensure all tables exist and add new columns if missing
     with app.app_context():
@@ -74,6 +75,12 @@ def create_app(debug: bool = False):
         link_cols = [c["name"] for c in inspector.get_columns("link")]
         if "user_id" not in link_cols:
             db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
+            db.session.commit()
+        # ensure a default admin user exists
+        if not User.query.filter_by(username="admin").first():
+            admin = User(username="admin", is_admin=True)
+            admin.set_password("admin123")
+            db.session.add(admin)
             db.session.commit()
     from .routes import create_api_blueprint
 
