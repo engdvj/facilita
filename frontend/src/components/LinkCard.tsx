@@ -41,6 +41,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
       )}
       <div className="p-4 text-white flex-1 flex flex-col justify-between text-left">
         <h3 className="font-semibold text-sm sm:text-lg truncate">{link.title}</h3>
+
         {link.category && (
           <p className="text-xs sm:text-sm opacity-80 truncate">{link.category}</p>
         )}
