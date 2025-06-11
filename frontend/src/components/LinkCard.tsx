@@ -20,7 +20,7 @@ export default function LinkCard({ link }: { link: LinkData }) {
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block w-[140px] h-[180px] sm:w-[220px] sm:h-[240px] flex flex-col justify-between overflow-hidden rounded-2xl shadow-md hover:shadow-xl transform hover:scale-[1.02] transition-transform duration-300 relative bg-gradient-to-b from-slate-800 to-slate-950 text-white"
+      className="block w-full h-[180px] sm:h-[240px] flex flex-col justify-between overflow-hidden rounded-2xl shadow-md hover:shadow-xl transform hover:scale-[1.02] transition-transform duration-300 relative bg-gradient-to-b from-slate-800 to-slate-950 text-white"
 
 
     >
@@ -40,7 +40,8 @@ export default function LinkCard({ link }: { link: LinkData }) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
       )}
-      <div className="p-4 text-white flex-1 flex flex-col justify-between">
+      <div className="p-4 text-white flex-1 flex flex-col justify-between text-left">
+
         <h3 className="font-semibold text-base sm:text-lg truncate">{link.title}</h3>
         {link.category && (
           <p className="text-sm opacity-80 truncate">{link.category}</p>

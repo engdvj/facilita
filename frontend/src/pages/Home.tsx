@@ -283,7 +283,8 @@ export default function Home() {
                 <div
                   className="
                     grid gap-4
-                    grid-cols-2
+                    grid-cols-[repeat(auto-fill,minmax(150px,1fr))]
+
                     sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]
                     justify-center
                     lg:justify-start
