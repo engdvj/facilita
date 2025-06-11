@@ -14,6 +14,11 @@ import api from '../api'
 interface HeaderProps {
   onMenuClick?: () => void
   sidebarOpen?: boolean
+  /**
+   * When true the header stays visible while scrolling with reduced opacity
+   * and becomes fully opaque on hover.
+   */
+  sticky?: boolean
 }
 
 const defaultTheme = {
@@ -28,7 +33,7 @@ const defaultTheme = {
   '--input-background': '#1e293b',
 }
 
-export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
+export default function Header({ onMenuClick, sidebarOpen, sticky = false }: HeaderProps) {
   const [loggedIn, setLoggedIn] = useState(false)
   const [user, setUser] = useState<{ username: string; isAdmin: boolean } | null>(null)
   const [open, setOpen] = useState(false)
@@ -143,7 +148,9 @@ export default function Header({ onMenuClick, sidebarOpen }: HeaderProps) {
   /* ---------------------------------------------------------------- */
   return (
     <motion.header
-      className="shadow-md"
+      className={`shadow-md ${
+        sticky ? 'sticky top-0 z-30 opacity-60 hover:opacity-100 transition-opacity' : ''
+      }`}
       style={{
         backgroundColor: 'var(--link-bar-background)',
         color: 'var(--link-bar-text)',

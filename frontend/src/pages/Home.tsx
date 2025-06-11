@@ -115,6 +115,7 @@ export default function Home() {
       <Header
         onMenuClick={loggedIn ? () => setOpen((o) => !o) : undefined}
         sidebarOpen={open}
+        sticky
       />
       <div className="flex flex-1 overflow-hidden relative">
         {loggedIn && (
