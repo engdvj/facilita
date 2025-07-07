@@ -55,3 +55,20 @@ Agora é possível registrar novos usuários acessando `/register`. Cada usuári
 Usuários comuns são direcionados para `/user/links` após o login. Nesta tela são listados os links gerais em modo somente leitura e, separadamente, os links do próprio usuário com opções de adicionar, editar ou excluir.
 
 Cada usuario pode tambem personalizar suas proprias cores (tema). Essas preferencias ficam salvas no servidor, sem interferir nos demais. O tema definido pelo administrador serve como padrao para visitantes nao autenticados.
+
+## Usando Docker
+
+É possível executar todo o projeto utilizando contêineres. O arquivo
+`docker-compose.yml` monta três serviços: `db` (PostgreSQL), `backend` e
+`frontend`. Copie `\.env.example` para `\.env` e ajuste as variáveis se
+necessário.
+
+Para iniciar basta ter o Docker instalado e executar:
+
+```bash
+docker compose up --build
+```
+
+O frontend ficará disponível em `http://localhost:5173` e o backend em
+`http://localhost:5000`. Os dados do banco e os uploads são armazenados em
+volumes nomeados para persistirem entre execuções.
