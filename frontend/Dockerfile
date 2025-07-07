@@ -1,11 +1,11 @@
-FROM node:18-alpine AS build
+FROM node:18-slim AS build
 WORKDIR /app
-COPY frontend/package*.json ./
+COPY package*.json ./
 RUN npm install
-COPY frontend .
+COPY . .
 RUN npm run build
 
-FROM node:18-alpine
+FROM node:18-slim
 WORKDIR /app
 RUN npm install -g serve
 COPY --from=build /app/dist ./dist
