@@ -57,6 +57,7 @@ volumes de uma instalação anterior), execute `python backend/setup_db.py` para
 recriar o usuário administrador ou remova os volumes com
 `docker compose down -v`.
 
+
 Agora é possível registrar novos usuários acessando `/register`. Cada usuário tem seus próprios links privados. O administrador visualiza todos os links e o nome de quem os criou. Usuários autenticados podem alterar sua senha em `/change-password`. Somente o administrador pode criar categorias, cores e gerenciar usuários.
 
 Usuários comuns são direcionados para `/user/links` após o login. Nesta tela são listados os links gerais em modo somente leitura e, separadamente, os links do próprio usuário com opções de adicionar, editar ou excluir.
