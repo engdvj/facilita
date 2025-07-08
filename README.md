@@ -61,10 +61,10 @@ Cada usuario pode tambem personalizar suas proprias cores (tema). Essas preferen
 É possível executar todo o projeto utilizando contêineres. O arquivo
 `docker-compose.yml` monta quatro serviços: `db` (PostgreSQL), `backend`,
 `frontend` e `nginx`. Copie `\.env.example` para `\.env` e ajuste as variáveis se
-necessário. Defina também `VITE_API_URL` apontando para o backend, por
-exemplo `http://localhost:5000/api`, para que o frontend se comunique
-
-corretamente com a API durante a construção da imagem Docker.
+necessário. Defina também `VITE_API_URL` para `/api` (ou para a URL
+publicamente acessível do backend), garantindo que o frontend se comunique
+corretamente com a API durante a construção da imagem Docker mesmo quando
+o sistema for acessado por outros computadores.
 
 Para iniciar basta ter o Docker instalado e executar:
 
@@ -72,8 +72,9 @@ Para iniciar basta ter o Docker instalado e executar:
 docker compose up --build
 ```
 
-Com o Nginx mapeando a porta 80, o sistema pode ser acessado em
-`http://localhost`. O Nginx encaminha as rotas `/api` para o backend e o
+Com o Nginx mapeando a porta 80, o sistema fica disponível em
+`http://localhost` (ou no IP da máquina que executa o Docker, por exemplo
+`http://10.17.201.75`). O Nginx encaminha as rotas `/api` para o backend e o
 restante para o frontend, que continua escutando na porta 5173 internamente.
 Os dados do banco e os uploads são armazenados em
 volumes nomeados para persistirem entre execuções.
