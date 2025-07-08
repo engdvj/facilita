@@ -172,8 +172,8 @@ def create_api_blueprint():
             return {"message": "Missing title or url"}, 400
         current = User.query.get(session["user_id"])
         owner_id = session["user_id"]
-        if current.is_admin:
-            owner_id = data.get("user_id") if "user_id" in data else None
+        if current.is_admin and "user_id" in data:
+            owner_id = data.get("user_id")
         link = Link(
             title=title,
             url=url,
