@@ -31,9 +31,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:5000/api
     environment:
       # Recomenda-se passar a URL do backend para o frontend via variável de ambiente se seu frontend suporta .env ou uso em build
-      VITE_API_URL: http://backend:5000
+      VITE_API_URL: http://localhost:5000/api
     depends_on:
       - backend
     ports:
