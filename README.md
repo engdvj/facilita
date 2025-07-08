@@ -49,6 +49,9 @@ Após realizar login em `/admin/login`, utilize o menu de administração para
 criar cores, categorias e links. A sessão é mantida automaticamente pelo
 navegador.
 Credenciais padrão do administrador: **admin/admin123**
+Se as credenciais não funcionarem (por exemplo após reutilizar volumes de uma
+instalação anterior), execute `python backend/setup_db.py` para recriar o
+usuário administrador ou remova os volumes com `docker compose down -v`.
 
 Agora é possível registrar novos usuários acessando `/register`. Cada usuário tem seus próprios links privados. O administrador visualiza todos os links e o nome de quem os criou. Usuários autenticados podem alterar sua senha em `/change-password`. Somente o administrador pode criar categorias, cores e gerenciar usuários.
 
