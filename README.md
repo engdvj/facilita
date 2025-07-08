@@ -72,8 +72,9 @@ Para iniciar basta ter o Docker instalado e executar:
 docker compose up --build
 ```
 
-Com o Nginx mapeando a porta 80, o sistema pode ser acessado em
-`http://localhost`. O Nginx encaminha as rotas `/api` para o backend e o
+Com o Nginx mapeando a porta 80, o sistema fica disponível em
+`http://localhost` (ou no IP da máquina que executa o Docker, por exemplo
+`http://10.17.201.75`). O Nginx encaminha as rotas `/api` para o backend e o
 restante para o frontend, que continua escutando na porta 5173 internamente.
 Os dados do banco e os uploads são armazenados em
 volumes nomeados para persistirem entre execuções.
