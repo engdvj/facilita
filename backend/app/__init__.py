@@ -37,6 +37,12 @@ def create_app(debug: bool = False):
         else:
             raise RuntimeError("SECRET_KEY environment variable not set")
     app.config["SECRET_KEY"] = secret
+    # allow session cookies to work when frontend and backend use different origins
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "None")
+    app.config.setdefault("SESSION_COOKIE_SECURE", not app.config.get("DEBUG"))
+    domain = os.getenv("SESSION_COOKIE_DOMAIN")
+    if domain:
+        app.config.setdefault("SESSION_COOKIE_DOMAIN", domain)
 
     db.init_app(app)
     cors.init_app(app)

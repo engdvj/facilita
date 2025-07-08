@@ -72,3 +72,9 @@ docker compose up --build
 O frontend ficará disponível em `http://localhost:5173` e o backend em
 `http://localhost:5000`. Os dados do banco e os uploads são armazenados em
 volumes nomeados para persistirem entre execuções.
+
+Se o frontend estiver rodando em um endereço diferente do backend, o Flask agora
+permite cookies em requisições entre origens (CORS com `supports_credentials`).
+A sessão utiliza `SESSION_COOKIE_SAMESITE=None` e define automaticamente
+`SESSION_COOKIE_SECURE` conforme o modo de depuração, garantindo que o login
+funcione mesmo quando frontend e backend usam hosts distintos.
