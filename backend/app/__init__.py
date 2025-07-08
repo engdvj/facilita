@@ -84,13 +84,16 @@ def create_app(debug: bool = False):
             db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
             db.session.commit()
         # ensure a default admin user exists and has admin privileges
-        admin = User.query.filter_by(username="admin").first()
+        admin_user = os.getenv("ADMIN_USERNAME", "admin")
+        admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
+        admin = User.query.filter_by(username=admin_user).first()
         if not admin:
-            admin = User(username="admin", is_admin=True)
-            admin.set_password("admin123")
+            admin = User(username=admin_user, is_admin=True)
+            admin.set_password(admin_pass)
             db.session.add(admin)
-        elif not admin.is_admin:
-            admin.is_admin = True
+        else:
+            if not admin.is_admin:
+                admin.is_admin = True
         db.session.commit()
 
     from .routes import create_api_blueprint
