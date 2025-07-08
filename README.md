@@ -59,8 +59,8 @@ Cada usuario pode tambem personalizar suas proprias cores (tema). Essas preferen
 ## Usando Docker
 
 É possível executar todo o projeto utilizando contêineres. O arquivo
-`docker-compose.yml` monta três serviços: `db` (PostgreSQL), `backend` e
-`frontend`. Copie `\.env.example` para `\.env` e ajuste as variáveis se
+`docker-compose.yml` monta quatro serviços: `db` (PostgreSQL), `backend`,
+`frontend` e `nginx`. Copie `\.env.example` para `\.env` e ajuste as variáveis se
 necessário. Defina também `VITE_API_URL` apontando para o backend, por
 exemplo `http://localhost:5000/api`, para que o frontend se comunique
 
@@ -72,8 +72,10 @@ Para iniciar basta ter o Docker instalado e executar:
 docker compose up --build
 ```
 
-O frontend ficará disponível em `http://localhost:5173` e o backend em
-`http://localhost:5000`. Os dados do banco e os uploads são armazenados em
+Com o Nginx mapeando a porta 80, o sistema pode ser acessado em
+`http://localhost`. O Nginx encaminha as rotas `/api` para o backend e o
+restante para o frontend, que continua escutando na porta 5173 internamente.
+Os dados do banco e os uploads são armazenados em
 volumes nomeados para persistirem entre execuções.
 
 Se o frontend estiver rodando em um endereço diferente do backend, o Flask agora
