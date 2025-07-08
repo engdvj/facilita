@@ -19,6 +19,8 @@ source venv/bin/activate ou venv\Scripts\activate
 pip install -r requirements.txt
 # Edite ../.env e defina SECRET_KEY para producao se necessario
 # O usuário administrador padrão será criado automaticamente
+# Defina `ADMIN_USERNAME` e `ADMIN_PASSWORD` no arquivo `.env` caso deseje
+# outras credenciais
 # exponha o servidor para a rede com FLASK_HOST=0.0.0.0
 FLASK_DEBUG=0 FLASK_HOST=0.0.0.0 python wsgi.py
 ```
@@ -48,7 +50,12 @@ mesma rede para utilizar o sistema em produção.
 Após realizar login em `/admin/login`, utilize o menu de administração para
 criar cores, categorias e links. A sessão é mantida automaticamente pelo
 navegador.
-Credenciais padrão do administrador: **admin/admin123**
+Credenciais padrão do administrador: **admin/admin123**. Para alterá-las,
+defina `ADMIN_USERNAME` e `ADMIN_PASSWORD` em `.env` antes de iniciar o
+servidor. Se as credenciais não funcionarem (por exemplo após reutilizar
+volumes de uma instalação anterior), execute `python backend/setup_db.py` para
+recriar o usuário administrador ou remova os volumes com
+`docker compose down -v`.
 
 Agora é possível registrar novos usuários acessando `/register`. Cada usuário tem seus próprios links privados. O administrador visualiza todos os links e o nome de quem os criou. Usuários autenticados podem alterar sua senha em `/change-password`. Somente o administrador pode criar categorias, cores e gerenciar usuários.
 
@@ -61,7 +68,8 @@ Cada usuario pode tambem personalizar suas proprias cores (tema). Essas preferen
 É possível executar todo o projeto utilizando contêineres. O arquivo
 `docker-compose.yml` monta quatro serviços: `db` (PostgreSQL), `backend`,
 `frontend` e `nginx`. Copie `\.env.example` para `\.env` e ajuste as variáveis se
-necessário. Defina também `VITE_API_URL` para `/api` (ou para a URL
+necessário (incluindo `ADMIN_USERNAME` e `ADMIN_PASSWORD` se desejar outras
+credenciais). Defina também `VITE_API_URL` para `/api` (ou para a URL
 publicamente acessível do backend), garantindo que o frontend se comunique
 corretamente com a API durante a construção da imagem Docker mesmo quando
 o sistema for acessado por outros computadores.
@@ -72,12 +80,15 @@ Para iniciar basta ter o Docker instalado e executar:
 docker compose up --build
 ```
 
-Com o Nginx mapeando a porta 80, o sistema fica disponível em
+Com o Nginx mapeando apenas a porta 80, o sistema fica disponível em
 `http://localhost` (ou no IP da máquina que executa o Docker, por exemplo
 `http://10.17.201.75`). O Nginx encaminha as rotas `/api` para o backend e o
-restante para o frontend, que continua escutando na porta 5173 internamente.
-Os dados do banco e os uploads são armazenados em
-volumes nomeados para persistirem entre execuções.
+restante para o frontend, que continua escutando internamente na porta 5173
+sem expor essa porta para o host. Os dados do banco e os uploads são
+armazenados em volumes nomeados para persistirem entre execuções.
+
+Se o sistema for acessado somente por HTTP (sem HTTPS), mantenha
+`FLASK_DEBUG=1` para que o cookie de sessão seja enviado corretamente.
 
 Se o frontend estiver rodando em um endereço diferente do backend, o Flask agora
 permite cookies em requisições entre origens (CORS com `supports_credentials`).
