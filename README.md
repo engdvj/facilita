@@ -72,12 +72,15 @@ Para iniciar basta ter o Docker instalado e executar:
 docker compose up --build
 ```
 
-Com o Nginx mapeando a porta 80, o sistema fica disponível em
+Com o Nginx mapeando apenas a porta 80, o sistema fica disponível em
 `http://localhost` (ou no IP da máquina que executa o Docker, por exemplo
 `http://10.17.201.75`). O Nginx encaminha as rotas `/api` para o backend e o
-restante para o frontend, que continua escutando na porta 5173 internamente.
-Os dados do banco e os uploads são armazenados em
-volumes nomeados para persistirem entre execuções.
+restante para o frontend, que continua escutando internamente na porta 5173
+sem expor essa porta para o host. Os dados do banco e os uploads são
+armazenados em volumes nomeados para persistirem entre execuções.
+
+Se o sistema for acessado somente por HTTP (sem HTTPS), mantenha
+`FLASK_DEBUG=1` para que o cookie de sessão seja enviado corretamente.
 
 Se o frontend estiver rodando em um endereço diferente do backend, o Flask agora
 permite cookies em requisições entre origens (CORS com `supports_credentials`).
