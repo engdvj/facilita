@@ -6,6 +6,7 @@ import {
   Folder,
   Palette,
   Home as HomeIcon,
+  File as FileIcon,
   Users,
 } from "lucide-react";
 
@@ -79,6 +80,17 @@ export default function Admin() {
               }
             >
               <Link2 size={18} /> Links
+            </NavLink>
+            <NavLink
+              to="/admin/files"
+              className={({ isActive }) =>
+                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+              }
+              style={({ isActive }) =>
+                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+              }
+            >
+              <FileIcon size={18} /> Arquivos
             </NavLink>
             <NavLink
               to="/admin/categories"
