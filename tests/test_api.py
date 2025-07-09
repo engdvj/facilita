@@ -208,7 +208,9 @@ def test_user_theme_persistence(client):
     assert res.get_json()["theme"] is None
 
 
+
 def test_create_link_with_file(client):
+
     login(client)
     res = client.post("/api/categories", json={"name": "escalas"})
     assert res.status_code == 201
@@ -232,3 +234,4 @@ def test_create_link_with_file(client):
 
     res = client.get("/api/links")
     assert any(l["id"] == link_id for l in res.get_json())
+

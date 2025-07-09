@@ -9,6 +9,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     theme = db.Column(db.Text)
     links = db.relationship("Link", backref="user")
+    schedules = db.relationship("Schedule", backref="user")
 
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
@@ -57,5 +58,3 @@ class Color(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), unique=True, nullable=False)
     name = db.Column(db.String(50))
-
-

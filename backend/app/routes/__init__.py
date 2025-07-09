@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 
 from ..extensions import db
-from ..models import User, Link, Category, Color
+from ..models import User, Link, Category, Color, Schedule
 
 
 def login_required(func):
@@ -216,7 +216,6 @@ def create_api_blueprint():
         db.session.delete(link)
         db.session.commit()
         return {"message": "deleted"}
-
 
     @bp.get("/categories")
     def list_categories():
