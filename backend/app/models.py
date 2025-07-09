@@ -69,6 +69,7 @@ class Schedule(db.Model):
             "fileUrl": self.file_url,
             "category": self.category.name if self.category else None,
             "categoryId": self.category_id,
+
             "userId": self.user_id,
         }
         if include_user and self.user:

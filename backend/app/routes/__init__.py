@@ -9,6 +9,7 @@ from ..extensions import db
 from ..models import User, Link, Schedule, Category, Color
 
 
+
 def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
