@@ -70,8 +70,10 @@ export default function UserLinks() {
   });
   const [newImageType, setNewImageType] = useState<"url" | "file">("url");
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
+
   const [newHasFile, setNewHasFile] = useState(false);
   const [newFile, setNewFile] = useState<File | null>(null);
+
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState<LinkFormData>({
@@ -84,8 +86,10 @@ export default function UserLinks() {
   });
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+
   const [editHasFile, setEditHasFile] = useState(false);
   const [editFile, setEditFile] = useState<File | null>(null);
+
 
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -154,6 +158,7 @@ export default function UserLinks() {
       setEditingId(null);
       setEditHasFile(false);
       setEditFile(null);
+
     }
   }, [id, links]);
 
@@ -166,6 +171,7 @@ export default function UserLinks() {
       if (newHasFile && newFile) {
         const fd = new FormData();
         fd.append("file", newFile);
+
         const res = await api.post("/upload", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
@@ -199,6 +205,7 @@ export default function UserLinks() {
       setNewImageType("url");
       setNewFile(null);
       setNewHasFile(false);
+
     } catch {
       toast.error("Erro ao criar link");
     }
@@ -219,6 +226,7 @@ export default function UserLinks() {
     setEditImageFile(null);
     setEditHasFile(!!link.fileUrl);
     setEditFile(null);
+
   };
 
   const saveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -230,12 +238,14 @@ export default function UserLinks() {
       if (editHasFile && editFile) {
         const fd = new FormData();
         fd.append("file", editFile);
+
         const res = await api.post("/upload", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         payload.file_url = (res.data as { url: string }).url;
       } else if (!editHasFile) {
         payload.file_url = null as any;
+
       }
 
       if (editImageType === "file" && editImageFile) {
@@ -256,6 +266,7 @@ export default function UserLinks() {
       setEditImageType("url");
       setEditFile(null);
       setEditHasFile(false);
+
       await refresh();
       navigate("/user/links");
     } catch {
@@ -497,7 +508,6 @@ export default function UserLinks() {
             }}
           />
         )}
-
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -512,12 +522,14 @@ export default function UserLinks() {
         </label>
 
         {(editingId ? editHasFile : newHasFile) && (
+
           <input
             type="file"
             className={fieldClass}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const f = e.target.files?.[0] ?? null;
               editingId ? setEditFile(f) : setNewFile(f);
+
             }}
           />
         )}
@@ -537,6 +549,7 @@ export default function UserLinks() {
                     setEditingId(null);
                     setEditHasFile(false);
                     setEditFile(null);
+
                     navigate("/user/links");
                   }}
                   className="px-4 py-2 rounded border"
