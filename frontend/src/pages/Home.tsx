@@ -10,6 +10,7 @@ import {
   Search,
   Home as HomeIcon,
   Link2,
+  File as FileIcon,
   Folder,
   Palette,
   Users,
@@ -158,6 +159,17 @@ export default function Home() {
                     }
                   >
                     <Link2 size={18} /> Links
+                  </NavLink>
+                  <NavLink
+                    to="/admin/files"
+                    className={({ isActive }) =>
+                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                    }
+                    style={({ isActive }) =>
+                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                    }
+                  >
+                    <FileIcon size={18} /> Arquivos
                   </NavLink>
                   <NavLink
                     to="/admin/categories"

@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<
     { id: number; username: string; isAdmin: boolean }[]
   >([]);
+  const [files, setFiles] = useState<FileData[]>([]);
 
   const navigate = useNavigate();
 
@@ -43,12 +44,14 @@ export default function AdminDashboard() {
   const [catQuery, setCatQuery] = useState("");
   const [colorQuery, setColorQuery] = useState("");
   const [userQuery, setUserQuery] = useState("");
+  const [fileQuery, setFileQuery] = useState("");
 
   const perPage = 5;
   const [linkPage, setLinkPage] = useState(1);
   const [catPage, setCatPage] = useState(1);
   const [colorPage, setColorPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
+  const [filePage, setFilePage] = useState(1);
 
   /* ---------- classes utilitárias --------------------------------- */
   const fieldClass =
@@ -65,13 +68,13 @@ export default function AdminDashboard() {
 
   const refresh = async () => {
     const results = await Promise.allSettled([
-
       api.get("/links"),
       api.get("/categories"),
       api.get("/colors"),
       api.get("/users"),
+      api.get("/schedules"),
     ]);
-    const [linkRes, catRes, colorRes, userRes] = results;
+    const [linkRes, catRes, colorRes, userRes, fileRes] = results;
 
     if (linkRes.status === "fulfilled") {
       setLinks(
@@ -94,6 +97,13 @@ export default function AdminDashboard() {
       setUsers(
         [...userRes.value.data].sort((a, b) =>
           a.username.localeCompare(b.username)
+        )
+      );
+    }
+    if (fileRes.status === "fulfilled") {
+      setFiles(
+        [...(fileRes.value.data as FileData[])].sort((a, b) =>
+          a.title.localeCompare(b.title)
         )
       );
     }
@@ -152,6 +162,12 @@ export default function AdminDashboard() {
     await refresh();
   };
 
+  const removeFile = async (id: number) => {
+    if (!confirm("Excluir arquivo?")) return;
+    await api.delete(`/schedules/${id}`);
+    await refresh();
+  };
+
   /* ---------------------------------------------------------------- */
   /* Filtros e paginação                                               */
   /* ---------------------------------------------------------------- */
@@ -171,11 +187,15 @@ export default function AdminDashboard() {
   const filteredUsers = users
     .filter((u) => u.username.toLowerCase().includes(userQuery.toLowerCase()))
     .sort((a, b) => a.username.localeCompare(b.username));
+  const filteredFiles = files
+    .filter((f) => f.title.toLowerCase().includes(fileQuery.toLowerCase()))
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   const linkPageCount = Math.ceil(filteredLinks.length / perPage) || 1;
   const catPageCount = Math.ceil(filteredCats.length / perPage) || 1;
   const colorPageCount = Math.ceil(filteredColors.length / perPage) || 1;
   const userPageCount = Math.ceil(filteredUsers.length / perPage) || 1;
+  const filePageCount = Math.ceil(filteredFiles.length / perPage) || 1;
 
   const paginatedLinks = filteredLinks.slice(
     (linkPage - 1) * perPage,
@@ -193,6 +213,10 @@ export default function AdminDashboard() {
     (userPage - 1) * perPage,
     userPage * perPage
   );
+  const paginatedFiles = filteredFiles.slice(
+    (filePage - 1) * perPage,
+    filePage * perPage
+  );
 
   /* ---------- lookup rápido de categoria -------------------------- */
   const categoryMap = useMemo(() => {
@@ -203,6 +227,18 @@ export default function AdminDashboard() {
     for (const c of categories) map[c.id] = c;
     return map;
   }, [categories]);
+
+  const fileCategoryMap = useMemo(() => {
+    const m: Record<number, string> = {};
+    categories.forEach((c) => (m[c.id] = c.name));
+    return m;
+  }, [categories]);
+
+  const userMap = useMemo(() => {
+    const m: Record<number, string> = {};
+    users.forEach((u) => (m[u.id] = u.username));
+    return m;
+  }, [users]);
 
   /* ---------------------------------------------------------------- */
   /* JSX                                                               */
@@ -224,6 +260,20 @@ export default function AdminDashboard() {
           setQuery={setLinkQuery}
           removeLink={removeLink}
           categoryMap={categoryMap}
+        />
+
+        {/* --------------------- COLUNA ARQUIVOS --------------------- */}
+        <FilesColumn
+          files={paginatedFiles}
+          total={files.length}
+          page={filePage}
+          pageCount={filePageCount}
+          setPage={setFilePage}
+          query={fileQuery}
+          setQuery={setFileQuery}
+          removeFile={removeFile}
+          categoryMap={fileCategoryMap}
+          userMap={userMap}
         />
 
         {/* ------------------- COLUNA CATEGORIAS --------------------- */}
@@ -292,6 +342,29 @@ interface LinksColumnProps {
   categoryMap: Record<number, { color: string; icon: string }>;
 }
 
+interface FileData {
+  id: number;
+  title: string;
+  fileUrl: string;
+  userId?: number;
+  user?: string;
+  categoryId?: number;
+  category?: string;
+}
+
+interface FilesColumnProps {
+  files: FileData[];
+  total: number;
+  page: number;
+  pageCount: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+  query: string;
+  setQuery: React.Dispatch<React.SetStateAction<string>>;
+  removeFile: (id: number) => Promise<void>;
+  categoryMap: Record<number, string>;
+  userMap: Record<number, string>;
+}
+
 function LinksColumn({
   links,
   total,
@@ -350,6 +423,63 @@ function LinksColumn({
             </motion.li>
           );
         })}
+      </motion.ul>
+
+      <Paginator {...{ page, pageCount, setPage }} />
+    </section>
+  );
+}
+
+function FilesColumn({
+  files,
+  total,
+  page,
+  pageCount,
+  setPage,
+  query,
+  setQuery,
+  removeFile,
+  categoryMap,
+  userMap,
+}: FilesColumnProps) {
+  return (
+    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+      <Header title="Arquivos" total={total} />
+      <SearchBar value={query} onChange={setQuery} />
+
+      <motion.ul
+        className="space-y-2 flex-1 overflow-y-auto"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        {files.map((f) => (
+          <motion.li
+            key={f.id}
+            layout
+            className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
+          >
+            <span className="flex-1">
+              {f.title}
+              {f.categoryId && (
+                <span className="ml-2 text-xs opacity-80">[{categoryMap[f.categoryId]}]</span>
+              )}
+              {f.userId && (
+                <span className="ml-2 text-xs opacity-80">@{userMap[f.userId]}</span>
+              )}
+            </span>
+            <a
+              href={f.fileUrl}
+              className="underline mr-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              arquivo
+            </a>
+            <button onClick={() => removeFile(f.id)} className="p-1 hover:text-red-400">
+              <Trash2 size={16} />
+            </button>
+          </motion.li>
+        ))}
       </motion.ul>
 
       <Paginator {...{ page, pageCount, setPage }} />
@@ -605,6 +735,7 @@ function UsersColumn({
 function Header({ title, total }: { title: string; total: number }) {
   const pathMap: Record<string, string> = {
     Links: "links",
+    Arquivos: "files",
     Categorias: "categories",
     Cores: "colors",
     "Usuários": "users",
