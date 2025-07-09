@@ -10,6 +10,7 @@ import AdminCategories from './pages/AdminCategories'
 import AdminColors from './pages/AdminColors'
 import AdminUsers from './pages/AdminUsers'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminFiles from './pages/AdminFiles'
 import UserLinks from './pages/UserLinks'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
             <Route index element={<AdminLinks />} />
             <Route path=":id" element={<AdminLinks />} />
           </Route>
+          <Route path="files" element={<AdminFiles />} />
           <Route path="categories">
             <Route index element={<AdminCategories />} />
             <Route path=":id" element={<AdminCategories />} />
