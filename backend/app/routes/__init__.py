@@ -6,7 +6,8 @@ from pathlib import Path
 import json
 
 from ..extensions import db
-from ..models import User, Link, Category, Color, Schedule
+from ..models import User, Link, Schedule, Category, Color
+
 
 
 def login_required(func):
@@ -216,6 +217,69 @@ def create_api_blueprint():
         db.session.delete(link)
         db.session.commit()
         return {"message": "deleted"}
+
+    @bp.get("/schedules")
+    @login_required
+    def list_schedules():
+        user_id = session.get("user_id")
+        user = User.query.get(user_id)
+        if user.is_admin:
+            schedules = Schedule.query.all()
+        else:
+            schedules = Schedule.query.filter(
+                (Schedule.user_id == user_id) | (Schedule.user_id == None)
+            ).all()
+        return jsonify([s.to_dict() for s in schedules])
+
+    @bp.post("/schedules")
+    @login_required
+    def create_schedule():
+        data = request.get_json() or {}
+        title = data.get("title")
+        file_url = data.get("file_url")
+        if not title or not file_url:
+            return {"message": "Missing title or file_url"}, 400
+        current = User.query.get(session["user_id"])
+        owner_id = session["user_id"]
+        if current.is_admin and "user_id" in data:
+            owner_id = data["user_id"]
+        sched = Schedule(
+            title=title,
+            file_url=file_url,
+            user_id=owner_id,
+            category_id=data.get("category_id"),
+        )
+        db.session.add(sched)
+        db.session.commit()
+        return sched.to_dict(include_user=True), 201
+
+    @bp.patch("/schedules/<int:sched_id>")
+    @login_required
+    def update_schedule(sched_id):
+        sched = Schedule.query.get_or_404(sched_id)
+        user = User.query.get(session["user_id"])
+        if not user.is_admin and sched.user_id != user.id:
+            return {"message": "Forbidden"}, 403
+        data = request.get_json() or {}
+        for field in ["title", "file_url", "category_id"]:
+            if field in data:
+                setattr(sched, field, data[field])
+        if user.is_admin and "user_id" in data:
+            sched.user_id = data["user_id"]
+        db.session.commit()
+        return sched.to_dict(include_user=True)
+
+    @bp.delete("/schedules/<int:sched_id>")
+    @login_required
+    def delete_schedule(sched_id):
+        sched = Schedule.query.get_or_404(sched_id)
+        user = User.query.get(session["user_id"])
+        if not user.is_admin and sched.user_id != user.id:
+            return {"message": "Forbidden"}, 403
+        db.session.delete(sched)
+        db.session.commit()
+        return {"message": "deleted"}
+
 
     @bp.get("/categories")
     def list_categories():
