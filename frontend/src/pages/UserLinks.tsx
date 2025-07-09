@@ -11,6 +11,7 @@ import {
   Link2,
   Folder,
   Palette,
+  File as FileIcon,
   Users,
 } from "lucide-react";
 import * as Icons from "lucide-react";
@@ -39,6 +40,12 @@ interface LinkFormData {
   category_id: number | null;
   color: string;
   image_url: string;
+}
+
+interface FileItem {
+  id: number;
+  title: string;
+  fileUrl: string;
 }
 
 interface CurrentUser {
@@ -74,6 +81,9 @@ export default function UserLinks() {
   const [newHasFile, setNewHasFile] = useState(false);
   const [newFile, setNewFile] = useState<File | null>(null);
 
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [newLinkType, setNewLinkType] = useState<'link' | 'file'>('link');
+
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState<LinkFormData>({
@@ -89,6 +99,8 @@ export default function UserLinks() {
 
   const [editHasFile, setEditHasFile] = useState(false);
   const [editFile, setEditFile] = useState<File | null>(null);
+
+  const [editLinkType, setEditLinkType] = useState<'link' | 'file'>('link');
 
 
   const [page, setPage] = useState(1);
@@ -107,11 +119,12 @@ export default function UserLinks() {
 
   /* ---------------------------------------------------------------- */
   const refresh = async () => {
-    const [meRes, linkRes, catRes, colorRes] = await Promise.all([
+    const [meRes, linkRes, catRes, colorRes, fileRes] = await Promise.all([
       api.get("/auth/me"),
       api.get("/links"),
       api.get("/categories"),
       api.get("/colors"),
+      api.get("/schedules"),
     ]);
     setUser(meRes.data as CurrentUser);
     setLinks(
@@ -129,6 +142,7 @@ export default function UserLinks() {
         (a.name || a.value).localeCompare(b.name || b.value)
       )
     );
+    setFiles(fileRes.data as FileItem[]);
   };
 
   /* ---------------------------------------------------------------- */
@@ -149,6 +163,7 @@ export default function UserLinks() {
           color: l.color ?? "",
           image_url: l.imageUrl ?? "",
         });
+        setEditLinkType(l.fileUrl ? 'file' : 'link');
         setEditImageType("url");
         setEditImageFile(null);
         setEditHasFile(!!l.fileUrl);
@@ -158,6 +173,7 @@ export default function UserLinks() {
       setEditingId(null);
       setEditHasFile(false);
       setEditFile(null);
+      setEditLinkType('link');
 
     }
   }, [id, links]);
@@ -168,7 +184,11 @@ export default function UserLinks() {
     try {
       const payload: LinkFormData = { ...newLink };
 
-      if (newHasFile && newFile) {
+      if (newLinkType === 'file') {
+        payload.url = newLink.file_url;
+      }
+
+      if (newLinkType === 'link' && newHasFile && newFile) {
         const fd = new FormData();
         fd.append("file", newFile);
 
@@ -205,6 +225,7 @@ export default function UserLinks() {
       setNewImageType("url");
       setNewFile(null);
       setNewHasFile(false);
+      setNewLinkType('link');
 
     } catch {
       toast.error("Erro ao criar link");
@@ -235,7 +256,11 @@ export default function UserLinks() {
     try {
       const payload: LinkFormData = { ...editLink };
 
-      if (editHasFile && editFile) {
+      if (editLinkType === 'file') {
+        payload.url = editLink.file_url;
+      }
+
+      if (editLinkType === 'link' && editHasFile && editFile) {
         const fd = new FormData();
         fd.append("file", editFile);
 
@@ -243,7 +268,7 @@ export default function UserLinks() {
           headers: { "Content-Type": "multipart/form-data" },
         });
         payload.file_url = (res.data as { url: string }).url;
-      } else if (!editHasFile) {
+      } else if (editLinkType === 'link' && !editHasFile) {
         payload.file_url = null as any;
 
       }
@@ -266,6 +291,7 @@ export default function UserLinks() {
       setEditImageType("url");
       setEditFile(null);
       setEditHasFile(false);
+      setEditLinkType('link');
 
       await refresh();
       navigate("/user/links");
@@ -332,6 +358,17 @@ export default function UserLinks() {
                   }
                 >
                   <Link2 size={18} /> Links
+                </NavLink>
+                <NavLink
+                  to="/admin/files"
+                  className={({ isActive }) =>
+                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
+                  }
+                  style={({ isActive }) =>
+                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                  }
+                >
+                  <FileIcon size={18} /> Arquivos
                 </NavLink>
                 <NavLink
                   to="/admin/categories"
@@ -420,16 +457,48 @@ export default function UserLinks() {
               }
             />
 
-            <input
+            <select
               className={fieldClass}
-              placeholder="URL"
-              value={editingId ? editLink.url : newLink.url}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              value={editingId ? editLinkType : newLinkType}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 editingId
-                  ? setEditLink({ ...editLink, url: e.target.value })
-                  : setNewLink({ ...newLink, url: e.target.value })
+                  ? setEditLinkType(e.target.value as 'link' | 'file')
+                  : setNewLinkType(e.target.value as 'link' | 'file')
               }
-            />
+            >
+              <option value="link">Link</option>
+              <option value="file">Arquivo</option>
+            </select>
+
+            {(editingId ? editLinkType : newLinkType) === 'link' ? (
+              <input
+                className={fieldClass}
+                placeholder="URL"
+                value={editingId ? editLink.url : newLink.url}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  editingId
+                    ? setEditLink({ ...editLink, url: e.target.value })
+                    : setNewLink({ ...newLink, url: e.target.value })
+                }
+              />
+            ) : (
+              <select
+                className={fieldClass}
+                value={editingId ? editLink.file_url : newLink.file_url}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  editingId
+                    ? setEditLink({ ...editLink, file_url: e.target.value })
+                    : setNewLink({ ...newLink, file_url: e.target.value })
+                }
+              >
+                <option value="">Arquivo</option>
+                {files.map((f) => (
+                  <option key={f.id} value={f.fileUrl}>
+                    {f.title}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <select
               className={fieldClass}
@@ -508,6 +577,8 @@ export default function UserLinks() {
             }}
           />
         )}
+        {(editingId ? editLinkType : newLinkType) === 'link' && (
+          <>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -533,6 +604,8 @@ export default function UserLinks() {
             }}
           />
         )}
+          </>
+        )}
 
         <div className="flex gap-2">
               <button
@@ -549,6 +622,7 @@ export default function UserLinks() {
                     setEditingId(null);
                     setEditHasFile(false);
                     setEditFile(null);
+                    setEditLinkType('link');
 
                     navigate("/user/links");
                   }}
@@ -577,7 +651,28 @@ export default function UserLinks() {
                     style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
                   />
                   {Icon && <Icon size={16} className="opacity-70" />}
-                  <span className="flex-1">{l.title}</span>
+                  {l.url ? (
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 underline"
+                    >
+                      {l.title}
+                    </a>
+                  ) : (
+                    <span className="flex-1">{l.title}</span>
+                  )}
+                  {l.fileUrl && (
+                    <a
+                      href={l.fileUrl}
+                      className="underline mr-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      arquivo
+                    </a>
+                  )}
                   <button onClick={() => startEdit(l)} className="p-1 hover:text-[var(--accent-color)]">
                     <Pencil size={16} />
                   </button>
