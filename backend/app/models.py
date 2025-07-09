@@ -34,6 +34,7 @@ class Link(db.Model):
     category = db.relationship("Category", backref="links")
     color = db.Column(db.String(30))
     image_url = db.Column(db.String(255))
+    file_url = db.Column(db.String(255))
 
     def to_dict(self, include_user: bool = False):
         data = {
@@ -44,6 +45,7 @@ class Link(db.Model):
             "categoryId": self.category_id,
             "color": self.color,
             "imageUrl": self.image_url,
+            "fileUrl": self.file_url,
             "userId": self.user_id,
         }
         if include_user and self.user:
@@ -55,3 +57,5 @@ class Color(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), unique=True, nullable=False)
     name = db.Column(db.String(50))
+
+

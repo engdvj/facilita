@@ -168,8 +168,11 @@ def create_api_blueprint():
         data = request.get_json() or {}
         title = data.get("title")
         url = data.get("url")
-        if not title or not url:
+        file_url = data.get("file_url")
+        if not title or (not url and not file_url):
             return {"message": "Missing title or url"}, 400
+        if not url:
+            url = file_url
         current = User.query.get(session["user_id"])
         owner_id = session["user_id"]
         if current.is_admin and "user_id" in data:
@@ -177,6 +180,7 @@ def create_api_blueprint():
         link = Link(
             title=title,
             url=url,
+            file_url=file_url,
             user_id=owner_id,
             category_id=data.get("category_id"),
             color=data.get("color"),
@@ -194,7 +198,7 @@ def create_api_blueprint():
         if not user.is_admin and link.user_id != user.id:
             return {"message": "Forbidden"}, 403
         data = request.get_json() or {}
-        for field in ["title", "url", "category_id", "color", "image_url"]:
+        for field in ["title", "url", "file_url", "category_id", "color", "image_url"]:
             if field in data:
                 setattr(link, field, data[field])
         if user.is_admin and "user_id" in data:
@@ -212,6 +216,7 @@ def create_api_blueprint():
         db.session.delete(link)
         db.session.commit()
         return {"message": "deleted"}
+
 
     @bp.get("/categories")
     def list_categories():
