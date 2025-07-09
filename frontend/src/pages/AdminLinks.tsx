@@ -24,6 +24,7 @@ interface Color {
 interface LinkFormData {
   title: string;
   url: string;
+  file_url: string;
   user_id: number | null;
   category_id: number | null;
   color: string;
@@ -45,6 +46,7 @@ export default function AdminLinks() {
   const [newLink, setNewLink] = useState<LinkFormData>({
     title: "",
     url: "",
+    file_url: "",
     user_id: null,
     category_id: null,
     color: "",
@@ -52,11 +54,14 @@ export default function AdminLinks() {
   });
   const [newImageType, setNewImageType] = useState<"url" | "file">("url");
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [newFileType, setNewFileType] = useState<"url" | "file">("url");
+  const [newFileFile, setNewFileFile] = useState<File | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState<LinkFormData>({
     title: "",
     url: "",
+    file_url: "",
     user_id: null,
     category_id: null,
     color: "",
@@ -64,6 +69,8 @@ export default function AdminLinks() {
   });
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editFileType, setEditFileType] = useState<"url" | "file">("url");
+  const [editFileFile, setEditFileFile] = useState<File | null>(null);
 
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -121,6 +128,7 @@ export default function AdminLinks() {
         setEditLink({
           title: l.title,
           url: l.url,
+          file_url: l.fileUrl ?? "",
           user_id: l.userId ?? null,
           category_id: l.categoryId ?? null,
           color: l.color ?? "",
@@ -128,9 +136,13 @@ export default function AdminLinks() {
         });
         setEditImageType("url");
         setEditImageFile(null);
+        setEditFileType("url");
+        setEditFileFile(null);
       }
     } else {
       setEditingId(null);
+      setEditFileType("url");
+      setEditFileFile(null);
     }
   }, [id, links]);
 
@@ -139,6 +151,15 @@ export default function AdminLinks() {
     e.preventDefault();
     try {
       const payload: LinkFormData = { ...newLink };
+
+      if (newFileType === "file" && newFileFile) {
+        const fd = new FormData();
+        fd.append("file", newFileFile);
+        const res = await api.post("/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        payload.file_url = (res.data as { url: string }).url;
+      }
 
       if (newImageType === "file" && newImageFile) {
         const fd = new FormData();
@@ -149,6 +170,7 @@ export default function AdminLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
+      if (!payload.file_url) delete (payload as any).file_url;
 
       await api.post("/links", payload);
       toast.success("Link criado");
@@ -157,6 +179,7 @@ export default function AdminLinks() {
       setNewLink({
         title: "",
         url: "",
+        file_url: "",
         user_id: null,
         category_id: null,
         color: "",
@@ -164,6 +187,8 @@ export default function AdminLinks() {
       });
       setNewImageFile(null);
       setNewImageType("url");
+      setNewFileFile(null);
+      setNewFileType("url");
     } catch {
       toast.error("Erro ao criar link");
     }
@@ -175,6 +200,7 @@ export default function AdminLinks() {
     setEditLink({
       title: link.title,
       url: link.url,
+      file_url: link.fileUrl ?? "",
       user_id: link.userId ?? null,
       category_id: link.categoryId ?? null,
       color: link.color ?? "",
@@ -182,6 +208,8 @@ export default function AdminLinks() {
     });
     setEditImageType("url");
     setEditImageFile(null);
+    setEditFileType("url");
+    setEditFileFile(null);
   };
 
   const saveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -189,6 +217,15 @@ export default function AdminLinks() {
     if (editingId === null) return;
     try {
       const payload: LinkFormData = { ...editLink };
+
+      if (editFileType === "file" && editFileFile) {
+        const fd = new FormData();
+        fd.append("file", editFileFile);
+        const res = await api.post("/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        payload.file_url = (res.data as { url: string }).url;
+      }
 
       if (editImageType === "file" && editImageFile) {
         const fd = new FormData();
@@ -199,12 +236,15 @@ export default function AdminLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
+      if (!payload.file_url) delete (payload as any).file_url;
 
       await api.patch(`/links/${editingId}`, payload);
       toast.success("Link atualizado");
       setEditingId(null);
       setEditImageFile(null);
       setEditImageType("url");
+      setEditFileFile(null);
+      setEditFileType("url");
       await refresh();
       navigate("/admin/links");
     } catch {
@@ -352,7 +392,42 @@ export default function AdminLinks() {
           />
         )}
 
-            <div className="flex gap-2">
+        <select
+          className={fieldClass}
+          value={editingId ? editFileType : newFileType}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+            editingId
+              ? setEditFileType(e.target.value as "url" | "file")
+              : setNewFileType(e.target.value as "url" | "file")
+          }
+        >
+          <option value="url">URL do arquivo</option>
+          <option value="file">Upload de arquivo</option>
+        </select>
+
+        {(editingId ? editFileType : newFileType) === "url" ? (
+          <input
+            className={fieldClass}
+            placeholder="URL do arquivo"
+            value={editingId ? editLink.file_url : newLink.file_url}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              editingId
+                ? setEditLink({ ...editLink, file_url: e.target.value })
+                : setNewLink({ ...newLink, file_url: e.target.value })
+            }
+          />
+        ) : (
+          <input
+            type="file"
+            className={fieldClass}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const f = e.target.files?.[0] ?? null;
+              editingId ? setEditFileFile(f) : setNewFileFile(f);
+            }}
+          />
+        )}
+
+        <div className="flex gap-2">
               <button
                 type="submit"
                 className="btn-primary px-4 py-2 rounded"
@@ -365,6 +440,8 @@ export default function AdminLinks() {
                   type="button"
                   onClick={() => {
                     setEditingId(null);
+                    setEditFileType("url");
+                    setEditFileFile(null);
                     navigate("/admin/links");
                   }}
                   className="px-4 py-2 rounded border"
