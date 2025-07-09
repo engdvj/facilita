@@ -35,6 +35,7 @@ interface Color {
 interface LinkFormData {
   title: string;
   url: string;
+  file_url: string;
   category_id: number | null;
   color: string;
   image_url: string;
@@ -62,23 +63,29 @@ export default function UserLinks() {
   const [newLink, setNewLink] = useState<LinkFormData>({
     title: "",
     url: "",
+    file_url: "",
     category_id: null,
     color: "",
     image_url: "",
   });
   const [newImageType, setNewImageType] = useState<"url" | "file">("url");
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [newHasFile, setNewHasFile] = useState(false);
+  const [newFile, setNewFile] = useState<File | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState<LinkFormData>({
     title: "",
     url: "",
+    file_url: "",
     category_id: null,
     color: "",
     image_url: "",
   });
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editHasFile, setEditHasFile] = useState(false);
+  const [editFile, setEditFile] = useState<File | null>(null);
 
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -133,15 +140,20 @@ export default function UserLinks() {
         setEditLink({
           title: l.title,
           url: l.url,
+          file_url: l.fileUrl ?? "",
           category_id: l.categoryId ?? null,
           color: l.color ?? "",
           image_url: l.imageUrl ?? "",
         });
         setEditImageType("url");
         setEditImageFile(null);
+        setEditHasFile(!!l.fileUrl);
+        setEditFile(null);
       }
     } else {
       setEditingId(null);
+      setEditHasFile(false);
+      setEditFile(null);
     }
   }, [id, links]);
 
@@ -150,6 +162,15 @@ export default function UserLinks() {
     e.preventDefault();
     try {
       const payload: LinkFormData = { ...newLink };
+
+      if (newHasFile && newFile) {
+        const fd = new FormData();
+        fd.append("file", newFile);
+        const res = await api.post("/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        payload.file_url = (res.data as { url: string }).url;
+      }
 
       if (newImageType === "file" && newImageFile) {
         const fd = new FormData();
@@ -160,6 +181,7 @@ export default function UserLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
+      if (!payload.file_url) delete (payload as any).file_url;
 
       await api.post("/links", payload);
       toast.success("Link criado");
@@ -168,12 +190,15 @@ export default function UserLinks() {
       setNewLink({
         title: "",
         url: "",
+        file_url: "",
         category_id: null,
         color: "",
         image_url: "",
       });
       setNewImageFile(null);
       setNewImageType("url");
+      setNewFile(null);
+      setNewHasFile(false);
     } catch {
       toast.error("Erro ao criar link");
     }
@@ -185,12 +210,15 @@ export default function UserLinks() {
     setEditLink({
       title: link.title,
       url: link.url,
+      file_url: link.fileUrl ?? "",
       category_id: link.categoryId ?? null,
       color: link.color ?? "",
       image_url: link.imageUrl ?? "",
     });
     setEditImageType("url");
     setEditImageFile(null);
+    setEditHasFile(!!link.fileUrl);
+    setEditFile(null);
   };
 
   const saveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -198,6 +226,17 @@ export default function UserLinks() {
     if (editingId === null) return;
     try {
       const payload: LinkFormData = { ...editLink };
+
+      if (editHasFile && editFile) {
+        const fd = new FormData();
+        fd.append("file", editFile);
+        const res = await api.post("/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        payload.file_url = (res.data as { url: string }).url;
+      } else if (!editHasFile) {
+        payload.file_url = null as any;
+      }
 
       if (editImageType === "file" && editImageFile) {
         const fd = new FormData();
@@ -208,12 +247,15 @@ export default function UserLinks() {
         payload.image_url = (res.data as { url: string }).url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
+      if (!payload.file_url) delete (payload as any).file_url;
 
       await api.patch(`/links/${editingId}`, payload);
       toast.success("Link atualizado");
       setEditingId(null);
       setEditImageFile(null);
       setEditImageType("url");
+      setEditFile(null);
+      setEditHasFile(false);
       await refresh();
       navigate("/user/links");
     } catch {
@@ -456,7 +498,31 @@ export default function UserLinks() {
           />
         )}
 
-            <div className="flex gap-2">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={editingId ? editHasFile : newHasFile}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              editingId
+                ? setEditHasFile(e.target.checked)
+                : setNewHasFile(e.target.checked)
+            }
+          />
+          Possui arquivo
+        </label>
+
+        {(editingId ? editHasFile : newHasFile) && (
+          <input
+            type="file"
+            className={fieldClass}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const f = e.target.files?.[0] ?? null;
+              editingId ? setEditFile(f) : setNewFile(f);
+            }}
+          />
+        )}
+
+        <div className="flex gap-2">
               <button
                 type="submit"
                 className="btn-primary px-4 py-2 rounded"
@@ -469,6 +535,8 @@ export default function UserLinks() {
                   type="button"
                   onClick={() => {
                     setEditingId(null);
+                    setEditHasFile(false);
+                    setEditFile(null);
                     navigate("/user/links");
                   }}
                   className="px-4 py-2 rounded border"
