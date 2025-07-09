@@ -54,8 +54,9 @@ export default function AdminLinks() {
   });
   const [newImageType, setNewImageType] = useState<"url" | "file">("url");
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
-  const [newFileType, setNewFileType] = useState<"url" | "file">("url");
-  const [newFileFile, setNewFileFile] = useState<File | null>(null);
+  const [newHasFile, setNewHasFile] = useState(false);
+  const [newFile, setNewFile] = useState<File | null>(null);
+
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLink, setEditLink] = useState<LinkFormData>({
@@ -69,8 +70,9 @@ export default function AdminLinks() {
   });
   const [editImageType, setEditImageType] = useState<"url" | "file">("url");
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
-  const [editFileType, setEditFileType] = useState<"url" | "file">("url");
-  const [editFileFile, setEditFileFile] = useState<File | null>(null);
+  const [editHasFile, setEditHasFile] = useState(false);
+  const [editFile, setEditFile] = useState<File | null>(null);
+
 
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -136,13 +138,14 @@ export default function AdminLinks() {
         });
         setEditImageType("url");
         setEditImageFile(null);
-        setEditFileType("url");
-        setEditFileFile(null);
+        setEditHasFile(!!l.fileUrl);
+        setEditFile(null);
       }
     } else {
       setEditingId(null);
-      setEditFileType("url");
-      setEditFileFile(null);
+      setEditHasFile(false);
+      setEditFile(null);
+
     }
   }, [id, links]);
 
@@ -152,9 +155,9 @@ export default function AdminLinks() {
     try {
       const payload: LinkFormData = { ...newLink };
 
-      if (newFileType === "file" && newFileFile) {
+      if (newHasFile && newFile) {
         const fd = new FormData();
-        fd.append("file", newFileFile);
+        fd.append("file", newFile);
         const res = await api.post("/upload", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
@@ -187,8 +190,9 @@ export default function AdminLinks() {
       });
       setNewImageFile(null);
       setNewImageType("url");
-      setNewFileFile(null);
-      setNewFileType("url");
+      setNewFile(null);
+      setNewHasFile(false);
+
     } catch {
       toast.error("Erro ao criar link");
     }
@@ -208,8 +212,9 @@ export default function AdminLinks() {
     });
     setEditImageType("url");
     setEditImageFile(null);
-    setEditFileType("url");
-    setEditFileFile(null);
+    setEditHasFile(!!link.fileUrl);
+    setEditFile(null);
+
   };
 
   const saveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -218,13 +223,17 @@ export default function AdminLinks() {
     try {
       const payload: LinkFormData = { ...editLink };
 
-      if (editFileType === "file" && editFileFile) {
+      if (editHasFile && editFile) {
         const fd = new FormData();
-        fd.append("file", editFileFile);
+        fd.append("file", editFile);
+
         const res = await api.post("/upload", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         payload.file_url = (res.data as { url: string }).url;
+      } else if (!editHasFile) {
+        payload.file_url = null as any;
+
       }
 
       if (editImageType === "file" && editImageFile) {
@@ -243,8 +252,9 @@ export default function AdminLinks() {
       setEditingId(null);
       setEditImageFile(null);
       setEditImageType("url");
-      setEditFileFile(null);
-      setEditFileType("url");
+      setEditFile(null);
+      setEditHasFile(false);
+
       await refresh();
       navigate("/admin/links");
     } catch {
@@ -391,38 +401,28 @@ export default function AdminLinks() {
             }}
           />
         )}
-
-        <select
-          className={fieldClass}
-          value={editingId ? editFileType : newFileType}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-            editingId
-              ? setEditFileType(e.target.value as "url" | "file")
-              : setNewFileType(e.target.value as "url" | "file")
-          }
-        >
-          <option value="url">URL do arquivo</option>
-          <option value="file">Upload de arquivo</option>
-        </select>
-
-        {(editingId ? editFileType : newFileType) === "url" ? (
+        <label className="flex items-center gap-2">
           <input
-            className={fieldClass}
-            placeholder="URL do arquivo"
-            value={editingId ? editLink.file_url : newLink.file_url}
+            type="checkbox"
+            checked={editingId ? editHasFile : newHasFile}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               editingId
-                ? setEditLink({ ...editLink, file_url: e.target.value })
-                : setNewLink({ ...newLink, file_url: e.target.value })
+                ? setEditHasFile(e.target.checked)
+                : setNewHasFile(e.target.checked)
             }
           />
-        ) : (
+          Possui arquivo
+        </label>
+
+        {(editingId ? editHasFile : newHasFile) && (
+
           <input
             type="file"
             className={fieldClass}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const f = e.target.files?.[0] ?? null;
-              editingId ? setEditFileFile(f) : setNewFileFile(f);
+              editingId ? setEditFile(f) : setNewFile(f);
+
             }}
           />
         )}
@@ -440,8 +440,9 @@ export default function AdminLinks() {
                   type="button"
                   onClick={() => {
                     setEditingId(null);
-                    setEditFileType("url");
-                    setEditFileFile(null);
+                    setEditHasFile(false);
+                    setEditFile(null);
+
                     navigate("/admin/links");
                   }}
                   className="px-4 py-2 rounded border"
