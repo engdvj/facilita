@@ -1,4 +1,5 @@
 import json
+import io
 
 
 def login(client):
@@ -205,3 +206,65 @@ def test_user_theme_persistence(client):
     client.post("/api/auth/login", json={"username": "bob", "password": "pass"})
     res = client.get("/api/theme")
     assert res.get_json()["theme"] is None
+
+
+def test_create_link_with_file(client):
+    login(client)
+    res = client.post("/api/categories", json={"name": "escalas"})
+    assert res.status_code == 201
+    cat_id = res.get_json()["id"]
+
+    data = {"file": (io.BytesIO(b"data"), "sched.txt")}
+    res = client.post(
+        "/api/upload",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert res.status_code == 200
+    file_url = res.get_json()["url"]
+
+    res = client.post(
+        "/api/links",
+        json={"title": "Escala", "file_url": file_url, "category_id": cat_id},
+    )
+    assert res.status_code == 201
+    link_id = res.get_json()["id"]
+
+    res = client.get("/api/links")
+    assert any(l["id"] == link_id for l in res.get_json())
+
+
+def test_schedule_crud(client):
+    login(client)
+    res = client.post("/api/categories", json={"name": "escalas"})
+    assert res.status_code == 201
+    cat_id = res.get_json()["id"]
+
+    data = {"file": (io.BytesIO(b"data"), "sched.txt")}
+    res = client.post(
+        "/api/upload",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert res.status_code == 200
+    file_url = res.get_json()["url"]
+
+    res = client.post(
+        "/api/schedules",
+        json={"title": "Escala", "file_url": file_url, "category_id": cat_id},
+    )
+    assert res.status_code == 201
+    sched_id = res.get_json()["id"]
+
+    res = client.get("/api/schedules")
+    assert any(s["id"] == sched_id for s in res.get_json())
+
+    res = client.patch(f"/api/schedules/{sched_id}", json={"title": "Nova"})
+    assert res.status_code == 200
+    assert res.get_json()["title"] == "Nova"
+
+    res = client.delete(f"/api/schedules/{sched_id}")
+    assert res.status_code == 200
+
+    res = client.get("/api/schedules")
+    assert all(s["id"] != sched_id for s in res.get_json())

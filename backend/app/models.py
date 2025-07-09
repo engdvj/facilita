@@ -9,6 +9,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     theme = db.Column(db.Text)
     links = db.relationship("Link", backref="user")
+    schedules = db.relationship("Schedule", backref="user")
 
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
@@ -34,6 +35,7 @@ class Link(db.Model):
     category = db.relationship("Category", backref="links")
     color = db.Column(db.String(30))
     image_url = db.Column(db.String(255))
+    file_url = db.Column(db.String(255))
 
     def to_dict(self, include_user: bool = False):
         data = {
@@ -44,6 +46,29 @@ class Link(db.Model):
             "categoryId": self.category_id,
             "color": self.color,
             "imageUrl": self.image_url,
+            "fileUrl": self.file_url,
+            "userId": self.user_id,
+        }
+        if include_user and self.user:
+            data["user"] = self.user.username
+        return data
+
+
+class Schedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(120), nullable=False)
+    file_url = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    category_id = db.Column(db.Integer, db.ForeignKey("category.id"))
+    category = db.relationship("Category", backref="schedules")
+
+    def to_dict(self, include_user: bool = False):
+        data = {
+            "id": self.id,
+            "title": self.title,
+            "fileUrl": self.file_url,
+            "category": self.category.name if self.category else None,
+            "categoryId": self.category_id,
             "userId": self.user_id,
         }
         if include_user and self.user:
@@ -55,3 +80,5 @@ class Color(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), unique=True, nullable=False)
     name = db.Column(db.String(50))
+
+
