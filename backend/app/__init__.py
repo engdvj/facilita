@@ -1,6 +1,5 @@
 from flask import Flask, send_from_directory
 from sqlalchemy import inspect, text
-
 from .extensions import db, cors
 import os
 from dotenv import load_dotenv
@@ -11,7 +10,6 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 ROOT = Path(__file__).resolve().parents[2]
 DIST_DIR = ROOT / "frontend" / "dist"
 UPLOAD_DIR = ROOT / "uploads"
-
 
 def create_app(debug: bool = False):
     static_folder = str(DIST_DIR) if DIST_DIR.exists() else None
@@ -38,7 +36,6 @@ def create_app(debug: bool = False):
             raise RuntimeError("SECRET_KEY environment variable not set")
     app.config["SECRET_KEY"] = secret
     # allow session cookies to work when frontend and backend use different origins
-    # "None" garante o envio em requisicoes entre dominios
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "None")
     app.config.setdefault("SESSION_COOKIE_SECURE", not app.config.get("DEBUG"))
     domain = os.getenv("SESSION_COOKIE_DOMAIN")
@@ -71,7 +68,6 @@ def create_app(debug: bool = False):
                 text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0")
             )
             db.session.commit()
-            # make sure existing admin account keeps privileges
             db.session.execute(
                 text("UPDATE user SET is_admin = 1 WHERE username = 'admin'")
             )
@@ -83,17 +79,17 @@ def create_app(debug: bool = False):
         if "user_id" not in link_cols:
             db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
             db.session.commit()
-        # ensure a default admin user exists and has admin privileges
+
+        # ensure a default admin user exists and has admin privileges, always atualiza
         admin_user = os.getenv("ADMIN_USERNAME", "admin")
         admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
         admin = User.query.filter_by(username=admin_user).first()
         if not admin:
             admin = User(username=admin_user, is_admin=True)
-            admin.set_password(admin_pass)
             db.session.add(admin)
-        else:
-            if not admin.is_admin:
-                admin.is_admin = True
+        # Sempre atualiza a senha e admin
+        admin.set_password(admin_pass)
+        admin.is_admin = True
         db.session.commit()
 
     from .routes import create_api_blueprint
