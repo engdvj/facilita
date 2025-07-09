@@ -651,7 +651,28 @@ export default function UserLinks() {
                     style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
                   />
                   {Icon && <Icon size={16} className="opacity-70" />}
-                  <span className="flex-1">{l.title}</span>
+                  {l.url ? (
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 underline"
+                    >
+                      {l.title}
+                    </a>
+                  ) : (
+                    <span className="flex-1">{l.title}</span>
+                  )}
+                  {l.fileUrl && (
+                    <a
+                      href={l.fileUrl}
+                      className="underline mr-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      arquivo
+                    </a>
+                  )}
                   <button onClick={() => startEdit(l)} className="p-1 hover:text-[var(--accent-color)]">
                     <Pencil size={16} />
                   </button>

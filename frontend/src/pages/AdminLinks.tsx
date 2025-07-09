@@ -532,7 +532,28 @@ export default function AdminLinks() {
                     style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
                   />
                   {Icon && <Icon size={16} className="opacity-70" />}
-                  <span className="flex-1">{l.title}</span>
+                  {l.url ? (
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 underline"
+                    >
+                      {l.title}
+                    </a>
+                  ) : (
+                    <span className="flex-1">{l.title}</span>
+                  )}
+                  {l.fileUrl && (
+                    <a
+                      href={l.fileUrl}
+                      className="underline mr-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      arquivo
+                    </a>
+                  )}
                   {l.user && (
                     <span className="text-xs px-2 py-1 rounded bg-slate-700 opacity-80">
                       {l.user}
