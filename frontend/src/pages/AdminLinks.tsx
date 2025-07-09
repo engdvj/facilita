@@ -35,6 +35,10 @@ interface FileItem {
   id: number;
   title: string;
   fileUrl: string;
+  userId?: number;
+  user?: string;
+  categoryId?: number;
+  category?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -83,6 +87,20 @@ export default function AdminLinks() {
   const [editFile, setEditFile] = useState<File | null>(null);
 
   const [editLinkType, setEditLinkType] = useState<'link' | 'file'>('link');
+
+  useEffect(() => {
+    if (newLinkType === 'file') {
+      setNewHasFile(false);
+      setNewFile(null);
+    }
+  }, [newLinkType]);
+
+  useEffect(() => {
+    if (editLinkType === 'file') {
+      setEditHasFile(false);
+      setEditFile(null);
+    }
+  }, [editLinkType]);
 
 
   const [page, setPage] = useState(1);
@@ -346,16 +364,33 @@ export default function AdminLinks() {
               <select
                 className={fieldClass}
                 value={editingId ? editLink.file_url : newLink.file_url}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  editingId
-                    ? setEditLink({ ...editLink, file_url: e.target.value })
-                    : setNewLink({ ...newLink, file_url: e.target.value })
-                }
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  const fileUrl = e.target.value;
+                  if (editingId) {
+                    const f = files.find((fl) => fl.fileUrl === fileUrl);
+                    setEditLink({
+                      ...editLink,
+                      file_url: fileUrl,
+                      user_id: f?.userId ?? editLink.user_id,
+                      category_id: f?.categoryId ?? editLink.category_id,
+                    });
+                  } else {
+                    const f = files.find((fl) => fl.fileUrl === fileUrl);
+                    setNewLink({
+                      ...newLink,
+                      file_url: fileUrl,
+                      user_id: f?.userId ?? null,
+                      category_id: f?.categoryId ?? null,
+                    });
+                  }
+                }}
               >
                 <option value="">Arquivo</option>
                 {files.map((f) => (
                   <option key={f.id} value={f.fileUrl}>
                     {f.title}
+                    {f.category ? ` [${f.category}]` : ""}
+                    {f.user ? ` - ${f.user}` : ""}
                   </option>
                 ))}
               </select>
