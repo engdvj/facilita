@@ -208,7 +208,9 @@ def test_user_theme_persistence(client):
     assert res.get_json()["theme"] is None
 
 
-def test_create_and_list_schedule(client):
+
+def test_create_link_with_file(client):
+
     login(client)
     res = client.post("/api/categories", json={"name": "escalas"})
     assert res.status_code == 201
@@ -221,14 +223,15 @@ def test_create_and_list_schedule(client):
         content_type="multipart/form-data",
     )
     assert res.status_code == 200
-    url = res.get_json()["url"]
+    file_url = res.get_json()["url"]
 
     res = client.post(
-        "/api/schedules",
-        json={"title": "Escala", "file_url": url, "category_id": cat_id},
+        "/api/links",
+        json={"title": "Escala", "file_url": file_url, "category_id": cat_id},
     )
     assert res.status_code == 201
-    sched_id = res.get_json()["id"]
+    link_id = res.get_json()["id"]
 
-    res = client.get("/api/schedules")
-    assert any(s["id"] == sched_id for s in res.get_json())
+    res = client.get("/api/links")
+    assert any(l["id"] == link_id for l in res.get_json())
+
