@@ -25,7 +25,7 @@ pip install -r requirements.txt
 FLASK_DEBUG=0 FLASK_HOST=0.0.0.0 python wsgi.py
 ```
 
-Se novos modelos forem adicionados ao backend, basta reiniciar o servidor. O `create_app()` garante que tabelas ausentes sejam criadas automaticamente e que o usuário administrador exista.
+Se novos modelos ou colunas forem adicionados ao backend, basta reiniciar o servidor. O `create_app()` garante que tabelas e colunas ausentes sejam criadas automaticamente e que o usuário administrador exista.
 
 ### Frontend
 

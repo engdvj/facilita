@@ -79,6 +79,9 @@ def create_app(debug: bool = False):
         if "user_id" not in link_cols:
             db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
             db.session.commit()
+        if "file_url" not in link_cols:
+            db.session.execute(text("ALTER TABLE link ADD COLUMN file_url VARCHAR(255)"))
+            db.session.commit()
 
         # ensure a default admin user exists and has admin privileges, always atualiza
         admin_user = os.getenv("ADMIN_USERNAME", "admin")
