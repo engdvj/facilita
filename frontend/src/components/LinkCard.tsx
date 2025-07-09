@@ -5,6 +5,7 @@ export interface LinkData {
   id: number;
   title: string;
   url: string;
+  fileUrl?: string;
   userId?: number;
   user?: string;
   categoryId?: number;
