@@ -4,3 +4,4 @@ node_modules/
 instance/
 *.sqlite
 .env
+uploads/*.txt

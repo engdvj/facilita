@@ -175,6 +175,8 @@ def create_api_blueprint():
         if not url:
             url = file_url
         current = User.query.get(session["user_id"])
+        if not current.is_admin and file_url:
+            return {"message": "Forbidden"}, 403
         owner_id = session["user_id"]
         if current.is_admin and "user_id" in data:
             owner_id = data.get("user_id")
@@ -199,6 +201,8 @@ def create_api_blueprint():
         if not user.is_admin and link.user_id != user.id:
             return {"message": "Forbidden"}, 403
         data = request.get_json() or {}
+        if not user.is_admin and "file_url" in data:
+            return {"message": "Forbidden"}, 403
         for field in ["title", "url", "file_url", "category_id", "color", "image_url"]:
             if field in data:
                 setattr(link, field, data[field])
