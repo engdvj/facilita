@@ -102,10 +102,21 @@ export default function UserLinks() {
 
   const [editLinkType, setEditLinkType] = useState<'link' | 'file'>('link');
 
-
+  
   const [page, setPage] = useState(1);
   const perPage = 5;
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (user && !user.isAdmin) {
+      setNewLinkType('link');
+      setNewHasFile(false);
+      setNewFile(null);
+      setEditLinkType('link');
+      setEditHasFile(false);
+      setEditFile(null);
+    }
+  }, [user]);
 
   /* --------- classe reutilizável de input ------------------------- */
   const fieldClass =
@@ -163,7 +174,7 @@ export default function UserLinks() {
           color: l.color ?? "",
           image_url: l.imageUrl ?? "",
         });
-        setEditLinkType(l.fileUrl ? 'file' : 'link');
+        setEditLinkType(user?.isAdmin && l.fileUrl ? 'file' : 'link');
         setEditImageType("url");
         setEditImageFile(null);
         setEditHasFile(!!l.fileUrl);
@@ -184,7 +195,7 @@ export default function UserLinks() {
     try {
       const payload: LinkFormData = { ...newLink };
 
-      if (newLinkType === 'file') {
+      if (newLinkType === 'file' && user?.isAdmin) {
         payload.url = newLink.file_url;
       }
 
@@ -205,6 +216,10 @@ export default function UserLinks() {
           headers: { "Content-Type": "multipart/form-data" },
         });
         payload.image_url = (res.data as { url: string }).url;
+      }
+      if (!user?.isAdmin) {
+        payload.url = newLink.url;
+        delete (payload as any).file_url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
       if (!payload.file_url) delete (payload as any).file_url;
@@ -256,11 +271,11 @@ export default function UserLinks() {
     try {
       const payload: LinkFormData = { ...editLink };
 
-      if (editLinkType === 'file') {
+      if (editLinkType === 'file' && user?.isAdmin) {
         payload.url = editLink.file_url;
       }
 
-      if (editLinkType === 'link' && editHasFile && editFile) {
+      if (editLinkType === 'link' && editHasFile && editFile && user?.isAdmin) {
         const fd = new FormData();
         fd.append("file", editFile);
 
@@ -268,7 +283,7 @@ export default function UserLinks() {
           headers: { "Content-Type": "multipart/form-data" },
         });
         payload.file_url = (res.data as { url: string }).url;
-      } else if (editLinkType === 'link' && !editHasFile) {
+      } else if (editLinkType === 'link' && !editHasFile && user?.isAdmin) {
         payload.file_url = null as any;
 
       }
@@ -280,6 +295,9 @@ export default function UserLinks() {
           headers: { "Content-Type": "multipart/form-data" },
         });
         payload.image_url = (res.data as { url: string }).url;
+      }
+      if (!user?.isAdmin) {
+        delete (payload as any).file_url;
       }
       if (payload.category_id === null) delete (payload as any).category_id;
       if (!payload.file_url) delete (payload as any).file_url;
@@ -457,20 +475,22 @@ export default function UserLinks() {
               }
             />
 
-            <select
-              className={fieldClass}
-              value={editingId ? editLinkType : newLinkType}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                editingId
-                  ? setEditLinkType(e.target.value as 'link' | 'file')
-                  : setNewLinkType(e.target.value as 'link' | 'file')
-              }
-            >
-              <option value="link">Link</option>
-              <option value="file">Arquivo</option>
-            </select>
+            {user?.isAdmin && (
+              <select
+                className={fieldClass}
+                value={editingId ? editLinkType : newLinkType}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  editingId
+                    ? setEditLinkType(e.target.value as 'link' | 'file')
+                    : setNewLinkType(e.target.value as 'link' | 'file')
+                }
+              >
+                <option value="link">Link</option>
+                <option value="file">Arquivo</option>
+              </select>
+            )}
 
-            {(editingId ? editLinkType : newLinkType) === 'link' ? (
+            {(editingId ? editLinkType : newLinkType) === 'link' || !user?.isAdmin ? (
               <input
                 className={fieldClass}
                 placeholder="URL"
@@ -577,7 +597,7 @@ export default function UserLinks() {
             }}
           />
         )}
-        {(editingId ? editLinkType : newLinkType) === 'link' && (
+        {user?.isAdmin && (editingId ? editLinkType : newLinkType) === 'link' && (
           <>
         <label className="flex items-center gap-2">
           <input
