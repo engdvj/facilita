@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import api from '../api'
+import toast from 'react-hot-toast'
 import { User, Lock, ArrowRightToLine } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [remember, setRemember] = useState(false)
   const navigate = useNavigate()
 
@@ -14,19 +17,38 @@ export default function Login() {
       sessionStorage.getItem('loggedIn') === 'true' ||
       localStorage.getItem('loggedIn') === 'true'
     if (loggedIn) {
-      navigate('/dashboard')
+      api.get('/auth/me').then(({ data }) => {
+        navigate(data.isAdmin ? '/admin' : '/user/links')
+      })
     }
   }, [navigate])
 
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
-    sessionStorage.setItem('loggedIn', 'true')
-    if (remember) {
-      localStorage.setItem('loggedIn', 'true')
-    } else {
-      localStorage.removeItem('loggedIn')
+    try {
+      await api.post('/auth/login', { username, password })
+      sessionStorage.setItem('loggedIn', 'true')
+      if (remember) {
+        localStorage.setItem('loggedIn', 'true')
+      } else {
+        localStorage.removeItem('loggedIn')
+      }
+      const me = await api.get('/auth/me')
+      try {
+        const { data } = await api.get('/theme')
+        if (data.theme) {
+          Object.entries(data.theme).forEach(([k, v]) => {
+            document.documentElement.style.setProperty(k, v as string)
+          })
+          localStorage.setItem('theme-custom', JSON.stringify(data.theme))
+        }
+      } catch {}
+      toast.success('Login realizado')
+      navigate(me.data.isAdmin ? '/admin' : '/user/links')
+    } catch (err) {
+      setError('Credenciais inválidas')
+      toast.error('Credenciais inválidas')
     }
-    navigate('/dashboard')
   }
 
   return (
@@ -61,6 +83,11 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          {error && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 italic mt-1">
+              {error}
+            </motion.p>
+          )}
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md hover:scale-105 transition"
