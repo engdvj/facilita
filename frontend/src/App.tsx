@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import Home from './pages/Home'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 import Register from './pages/Register'
 import ChangePassword from './pages/ChangePassword'
 import Admin from './pages/Admin'
@@ -17,7 +18,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/change-password" element={<ChangePassword />} />
