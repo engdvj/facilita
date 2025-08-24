@@ -1,31 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Palette, Star, User } from 'lucide-react';
+import { Check, Palette, Star, User, Edit3, Trash2 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeId, ThemeDefinition } from '../../types/theme';
-import CustomThemeEditor from './CustomThemeEditor';
+import CustomThemeEditor, { CustomThemeEditorRef } from './CustomThemeEditor';
 import { themeService, CustomTheme } from '../../services/themeService';
 
 export default function EnhancedThemeSelector() {
   const { currentThemeId, currentTheme, availableThemes, setTheme, applyTheme } = useTheme();
   const { user } = useAuth();
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>([]);
-  const [selectedThemeId, setSelectedThemeId] = useState(currentThemeId);
+  const [selectedThemeId, setSelectedThemeId] = useState(() => {
+    return localStorage.getItem('selectedCustomTheme') || currentThemeId;
+  });
+  const themeEditorRef = useRef<CustomThemeEditorRef>(null);
 
   useEffect(() => {
     // Load custom themes for current user
     const userThemes = themeService.getCustomThemes(user?.id);
     setCustomThemes(userThemes);
-  }, [user?.id]);
+    
+    // Check if current selected theme is custom and still exists
+    const selectedCustomTheme = localStorage.getItem('selectedCustomTheme');
+    if (selectedCustomTheme) {
+      const customTheme = userThemes.find(t => t.id === selectedCustomTheme);
+      if (customTheme) {
+        applyTheme(customTheme);
+        setSelectedThemeId(selectedCustomTheme);
+      } else {
+        // Custom theme no longer exists, fallback to default
+        localStorage.removeItem('selectedCustomTheme');
+        setSelectedThemeId(currentThemeId);
+      }
+    }
+  }, [user?.id, currentThemeId]);
 
   const handleThemeSelect = (theme: ThemeDefinition | CustomTheme, isCustom = false) => {
     if (isCustom) {
       setSelectedThemeId(theme.id);
+      localStorage.setItem('selectedCustomTheme', theme.id);
+      localStorage.removeItem('selectedTheme'); // Remove default theme selection
       applyTheme(theme);
     } else {
       setTheme(theme.id as ThemeId);
       setSelectedThemeId(theme.id);
+      localStorage.removeItem('selectedCustomTheme'); // Remove custom theme selection
     }
   };
 
@@ -34,7 +54,20 @@ export default function EnhancedThemeSelector() {
   };
 
   const handleDeleteCustomTheme = (themeId: string) => {
-    setCustomThemes(prev => prev.filter(t => t.id !== themeId));
+    if (themeService.deleteCustomTheme(themeId)) {
+      setCustomThemes(prev => prev.filter(t => t.id !== themeId));
+      
+      // If deleted theme was selected, switch to default
+      if (selectedThemeId === themeId) {
+        localStorage.removeItem('selectedCustomTheme');
+        setTheme('midnight');
+        setSelectedThemeId('midnight');
+      }
+    }
+  };
+
+  const handleUpdateCustomTheme = (themeId: string, updatedTheme: CustomTheme) => {
+    setCustomThemes(prev => prev.map(t => t.id === themeId ? updatedTheme : t));
   };
 
   return (
@@ -80,7 +113,12 @@ export default function EnhancedThemeSelector() {
                   isSelected={selectedThemeId === theme.id}
                   onSelect={() => handleThemeSelect(theme, true)}
                   isCustom
-                  onDelete={() => handleDeleteCustomTheme(theme.id)}
+                  onDelete={() => {
+                    if (confirm('Tem certeza que deseja excluir este tema?')) {
+                      handleDeleteCustomTheme(theme.id);
+                    }
+                  }}
+                  onEdit={() => themeEditorRef.current?.editTheme(theme)}
                 />
               ))}
             </div>
@@ -102,8 +140,10 @@ export default function EnhancedThemeSelector() {
       {/* Custom Theme Editor */}
       <div className="border-t pt-4" style={{ borderColor: 'var(--border-primary)' }}>
         <CustomThemeEditor
+          ref={themeEditorRef}
           onSave={handleSaveCustomTheme}
           onDelete={handleDeleteCustomTheme}
+          onUpdate={handleUpdateCustomTheme}
           customThemes={customThemes}
         />
       </div>
@@ -117,10 +157,11 @@ interface ThemeCardProps {
   onSelect: () => void;
   isCustom?: boolean;
   onDelete?: () => void;
+  onEdit?: (theme: CustomTheme) => void;
 }
 
 // Compact Theme Card for better space utilization
-function CompactThemeCard({ theme, isSelected, onSelect, isCustom = false, onDelete }: ThemeCardProps) {
+function CompactThemeCard({ theme, isSelected, onSelect, isCustom = false, onDelete, onEdit }: ThemeCardProps) {
   return (
     <motion.div
       className={`
@@ -167,6 +208,38 @@ function CompactThemeCard({ theme, isSelected, onSelect, isCustom = false, onDel
             {theme.description}
           </p>
         </div>
+        
+        {/* Actions for custom themes */}
+        {isCustom && (
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onEdit) {
+                    onEdit(theme as CustomTheme);
+                  }
+                }}
+                className="p-1 rounded hover:bg-white/10 transition-colors"
+                title="Editar tema"
+              >
+                <Edit3 size={12} style={{ color: 'var(--text-secondary)' }} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1 rounded hover:bg-red-500/20 transition-colors"
+                title="Excluir tema"
+              >
+                <Trash2 size={12} style={{ color: 'var(--error)' }} />
+              </button>
+            )}
+          </div>
+        )}
         
         {/* Selection Indicator */}
         {isSelected && (

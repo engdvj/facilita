@@ -93,38 +93,19 @@ export default function Home() {
 
   /* ---------- UI ---------- */
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-hidden">
       <Header
         onMenuClick={isAuthenticated ? () => setOpen((o) => !o) : undefined}
         sidebarOpen={open}
         sticky
       />
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden">
         {isAuthenticated && (
           <motion.aside
-            className="overflow-y-auto custom-scrollbar"
-            style={{ 
-              position: 'fixed !important',
-              top: '0px !important',
-              left: '0px !important',
-              bottom: '0px !important',
-              width: '16rem',
-              paddingTop: '5rem',
-              paddingBottom: '1.5rem',
-              paddingLeft: '1.5rem',
-              paddingRight: '1.5rem',
-              zIndex: 1000,
-              backgroundColor: 'var(--sidebar-background)', 
-              color: 'var(--sidebar-text)',
-              backdropFilter: 'blur(20px)',
-              borderRight: '1px solid var(--border-primary)',
-              transform: open ? 'translateX(0px)' : 'translateX(-16rem)',
-              transition: 'transform 0.3s ease-in-out',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem'
-            }}
+            className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
+            style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
             initial={false}
+            animate={{ x: open ? 0 : -256 }}
           >
             <NavLink
               to="/"
@@ -223,24 +204,22 @@ export default function Home() {
         )}
 
         <main
-          className={`flex-1 ${isAuthenticated ? 'p-4 md:p-8 transition-all' : ''} ${
-            isAuthenticated ? (open ? 'md:ml-64' : 'md:ml-0') : ''
-          }`}
+          className={`flex-1 p-2 sm:p-4 md:p-6 lg:p-8 transition-all ${open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0'}`}
         >
           <Hero />
 
           {/* ---------- WRAPPER CENTRAL ---------- */}
           <motion.div
-            className="pb-8"
+            className="py-3 sm:py-4 lg:py-5 xl:py-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <div className="mx-auto w-full max-w-7xl px-4">
+            <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl">
               {/* ---------- BUSCA ---------- */}
-              <div className="flex items-center gap-2 mb-4">
-                <div className="relative flex-1 max-w-xs mx-auto sm:max-w-none">
+              <div className="flex justify-center mb-3 sm:mb-4 lg:mb-5">
+                <div className="relative w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
                   <Search
-                    size={18}
+                    size={16}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                   />
                   <input
@@ -249,19 +228,19 @@ export default function Home() {
                       setSearch(e.target.value)
                     }
                     placeholder="Buscar..."
-                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black py-1 px-2 text-sm sm:text-base shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white/90 backdrop-blur-sm text-black text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   />
                 </div>
               </div>
 
               {/* ---------- CATEGORIAS ---------- */}
-              <div className="flex flex-wrap justify-center gap-2 pb-4 mb-4">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-3 lg:gap-4 xl:gap-5 pb-3 mb-4 sm:mb-5 lg:mb-6 max-w-6xl mx-auto px-2 overflow-hidden">
                 <button
                   onClick={() => setCategoryId('all')}
-                  className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  className={`px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap transition-all duration-200 ${
                     categoryId === 'all'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-700 hover:bg-white hover:shadow-sm'
                   }`}
                 >
                   Todos
@@ -276,15 +255,15 @@ export default function Home() {
                     <button
                       key={c.id}
                       onClick={() => setCategoryId(c.id)}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      className={`flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap transition-all duration-200 min-w-0 max-w-32 sm:max-w-none ${
                         active
-                          ? textColor
-                          : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
+                          ? `${textColor} shadow-md`
+                          : 'bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-700 hover:bg-white hover:shadow-sm'
                       }`}
                       style={active ? { backgroundColor: c.color } : undefined}
                     >
-                      {Icon && <Icon size={16} />}
-                      {c.name}
+                      {Icon && <Icon size={12} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 flex-shrink-0" />}
+                      <span className="truncate">{c.name}</span>
                     </button>
                   )
                 })}
@@ -294,11 +273,9 @@ export default function Home() {
               {filtered.length ? (
                 <div
                   className="
-                    grid gap-4
-                    grid-cols-[repeat(auto-fill,minmax(150px,1fr))]
-                    sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]
-                    justify-center
-                    lg:justify-start
+                    grid gap-4 sm:gap-5 md:gap-6 lg:gap-7 xl:gap-8 justify-items-center
+                    grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7
+                    max-w-[85rem] mx-auto px-4
                   "
                 >
                   {filtered.map(link => (

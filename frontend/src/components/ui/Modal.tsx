@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Button from './Button';
 
@@ -87,27 +88,54 @@ export default function Modal({
   if (!isOpen) return null;
 
   const modalContent = (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
-      onClick={handleOverlayClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={title ? 'modal-title' : undefined}
-    >
-      <div
-        ref={modalRef}
-        className={`
-          relative w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl
-          max-h-[90vh] overflow-hidden focus:outline-none
-          ${sizeClasses[size]} ${className}
-        `}
-        tabIndex={-1}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+        }}
+        onClick={handleOverlayClick}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? 'modal-title' : undefined}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
       >
+        <motion.div
+          ref={modalRef}
+          className={`
+            relative w-full rounded-lg shadow-xl
+            max-h-[90vh] overflow-hidden focus:outline-none
+            ${sizeClasses[size]} ${className}
+          `}
+          style={{
+            backgroundColor: 'var(--background-card, white)',
+            color: 'var(--text-primary, #000)',
+            border: '1px solid var(--border-primary, #e5e7eb)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+          }}
+          tabIndex={-1}
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div 
+            className="flex items-center justify-between p-4 border-b"
+            style={{ borderColor: 'var(--border-secondary, #e5e7eb)' }}
+          >
             {title && (
-              <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 
+                id="modal-title" 
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary, #000)' }}
+              >
                 {title}
               </h2>
             )}
@@ -127,8 +155,9 @@ export default function Modal({
         <div className="p-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
           {children}
         </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 
   // Render modal in portal

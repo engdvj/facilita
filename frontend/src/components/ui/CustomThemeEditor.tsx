@@ -8,9 +8,14 @@ import { themeService, CustomTheme } from '../../services/themeService';
 
 // Remove duplicate interface definition as it's now imported from themeService
 
+export interface CustomThemeEditorRef {
+  editTheme: (theme: CustomTheme) => void;
+}
+
 interface CustomThemeEditorProps {
   onSave?: (theme: CustomTheme) => void;
   onDelete?: (themeId: string) => void;
+  onUpdate?: (themeId: string, theme: CustomTheme) => void;
   customThemes?: CustomTheme[];
 }
 
@@ -84,10 +89,11 @@ const colorGroups = [
   }
 ];
 
-export default function CustomThemeEditor({ onSave, onDelete, customThemes = [] }: CustomThemeEditorProps) {
+const CustomThemeEditor = React.forwardRef<CustomThemeEditorRef, CustomThemeEditorProps>(({ onSave, onDelete, onUpdate, customThemes = [] }, ref) => {
   const { currentTheme, applyTheme } = useTheme();
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
   const [themeName, setThemeName] = useState('');
   const [themeDescription, setThemeDescription] = useState('');
   const [editingColors, setEditingColors] = useState<ThemeColors>(defaultCustomTheme);
@@ -122,29 +128,65 @@ export default function CustomThemeEditor({ onSave, onDelete, customThemes = [] 
     if (!themeName.trim()) return;
     
     try {
-      const customTheme = themeService.saveCustomTheme({
-        name: themeName,
-        description: themeDescription || 'Tema personalizado',
-        colors: editingColors,
-        preview: {
-          primary: extractColorFromString(editingColors.backgroundMain),
-          secondary: extractColorFromString(editingColors.buttonPrimary),
-          accent: extractColorFromString(editingColors.textAccent)
+      if (editingThemeId) {
+        // Update existing theme
+        const updatedTheme = themeService.updateCustomTheme(editingThemeId, {
+          name: themeName,
+          description: themeDescription || 'Tema personalizado',
+          colors: editingColors,
+          preview: {
+            primary: extractColorFromString(editingColors.backgroundMain),
+            secondary: extractColorFromString(editingColors.buttonPrimary),
+            accent: extractColorFromString(editingColors.textAccent)
+          }
+        });
+        
+        if (updatedTheme) {
+          onUpdate?.(editingThemeId, updatedTheme);
         }
-      }, user?.id);
-      
-      onSave?.(customTheme);
+      } else {
+        // Create new theme
+        const customTheme = themeService.saveCustomTheme({
+          name: themeName,
+          description: themeDescription || 'Tema personalizado',
+          colors: editingColors,
+          preview: {
+            primary: extractColorFromString(editingColors.backgroundMain),
+            secondary: extractColorFromString(editingColors.buttonPrimary),
+            accent: extractColorFromString(editingColors.textAccent)
+          }
+        }, user?.id);
+        
+        onSave?.(customTheme);
+      }
       
       // Reset form
-      setThemeName('');
-      setThemeDescription('');
-      setEditingColors(defaultCustomTheme);
-      setIsEditing(false);
+      resetForm();
     } catch (error) {
       console.error('Failed to save theme:', error);
-      // Could show a toast notification here
     }
   };
+
+  const resetForm = () => {
+    setThemeName('');
+    setThemeDescription('');
+    setEditingColors(defaultCustomTheme);
+    setIsEditing(false);
+    setEditingThemeId(null);
+  };
+
+  const handleEditTheme = (theme: CustomTheme) => {
+    setEditingThemeId(theme.id);
+    setThemeName(theme.name);
+    setThemeDescription(theme.description);
+    setEditingColors(theme.colors);
+    setIsEditing(true);
+  };
+
+  // Expose methods to parent through ref
+  React.useImperativeHandle(ref, () => ({
+    editTheme: handleEditTheme
+  }));
 
   const handleDeleteTheme = (themeId: string) => {
     if (themeService.deleteCustomTheme(themeId)) {
@@ -356,4 +398,8 @@ export default function CustomThemeEditor({ onSave, onDelete, customThemes = [] 
       )}
     </div>
   );
-}
+});
+
+CustomThemeEditor.displayName = 'CustomThemeEditor';
+
+export default CustomThemeEditor;

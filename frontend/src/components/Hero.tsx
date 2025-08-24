@@ -2,15 +2,15 @@ import { motion } from 'framer-motion'
 
 export default function Hero() {
   return (
-    <section className="py-8 mb-6">
+    <section className="py-2 sm:py-3 lg:py-4 xl:py-5 mb-2 sm:mb-3 lg:mb-4 xl:mb-5">
       <motion.div
-        className="container text-center px-4"
+        className="container text-center px-4 mx-auto max-w-4xl"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-xl sm:text-3xl font-heading font-bold mb-1">Bem-vindo ao FACILITA CHVC</h1>
-        <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: 'var(--text-color)' }}>
-          Encontre rapidamente links úteis e recursos organizados em categorias.
+        <h3 className="text-lg sm:text-2xl md:text-3xl lg:text-3xl xl:text-4xl font-heading font-bold mb-1 lg:mb-2">FACILITA</h3>
+        <p className="text-xs sm:text-sm md:text-base max-w-2xl mx-auto" style={{ color: 'var(--text-color)' }}>
+          Links organizados por categoria
         </p>
       </motion.div>
     </section>

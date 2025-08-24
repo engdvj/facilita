@@ -1,14 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, User, Settings, LogOut } from 'lucide-react';
+import { Home, User, Settings, LogOut, Palette, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Button } from '../ui';
+import { Button, Modal } from '../ui';
+import { LargeThemeSelector } from '../ui/ThemeSelector';
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+  sidebarOpen?: boolean;
+  sticky?: boolean;
+}
+
+export default function Header({ onMenuClick, sidebarOpen, sticky = false }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
 
   const isAdminArea = location.pathname.startsWith('/admin');
   const isHomePage = location.pathname === '/';
@@ -19,18 +27,30 @@ export default function Header() {
       <div className="backdrop-blur-md bg-white/10 border-b border-white/20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Logo / Brand */}
-            <Link 
-              to="/"
-              className="flex items-center space-x-3 text-white hover:text-white/90 transition-colors"
-            >
+            {/* Menu button and Logo */}
+            <div className="flex items-center space-x-3">
+              {onMenuClick && isAuthenticated && (
+                <button
+                  onClick={onMenuClick}
+                  className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200 md:hidden"
+                  aria-label="Toggle menu"
+                >
+                  {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+              )}
+              
+              <Link 
+                to="/"
+                className="flex items-center space-x-3 text-white hover:text-white/90 transition-colors"
+              >
               <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-600 rounded-lg flex items-center justify-center">
                 <Home size={18} className="text-white" />
               </div>
               <span className="text-xl font-bold">
                 FACILITA <span className="text-blue-300">CHVC</span>
               </span>
-            </Link>
+              </Link>
+            </div>
 
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-6">
@@ -68,16 +88,17 @@ export default function Header() {
             <div className="flex items-center space-x-4">
               {/* Theme Toggle */}
               <button
-                onClick={toggleTheme}
+                onClick={() => setThemeModalOpen(true)}
                 className="
                   p-2 rounded-lg
                   text-white/60 hover:text-white
                   hover:bg-white/10
                   transition-all duration-200
                 "
-                aria-label={`Mudar para tema ${theme === 'dark' ? 'claro' : 'escuro'}`}
+                aria-label="Personalizar tema"
+                title="Personalizar tema"
               >
-                {theme === 'dark' ? '🌙' : '☀️'}
+                <Palette size={20} />
               </button>
 
               {isAuthenticated ? (
@@ -130,6 +151,16 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Modal de personalização de tema */}
+      <Modal
+        isOpen={themeModalOpen}
+        onClose={() => setThemeModalOpen(false)}
+        title="Personalizar Tema"
+        size="lg"
+      >
+        <LargeThemeSelector />
+      </Modal>
 
       {/* Admin Navigation Bar */}
       {isAdminArea && isAuthenticated && user?.is_admin && (

@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import api from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import EnhancedThemeSelector from './ui/EnhancedThemeSelector'
+import Modal from './ui/Modal'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -129,78 +130,38 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
         </nav>
       </div>
 
-      {/* Modal de personalização */}
-      {open && (
-        <div
-          className="overflow-y-auto"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            padding: '2rem 1rem'
-          }}
-        >
-          <motion.div
-            className="w-full rounded-2xl border shadow-2xl"
-            style={{
-              maxWidth: '80rem',
-              minHeight: 'fit-content',
-              backgroundColor: 'var(--background-card)',
-              borderColor: 'var(--border-primary)',
-              backdropFilter: 'blur(20px)',
-              padding: '2rem',
-              marginTop: '2rem',
-              marginBottom: '2rem'
-            }}
-            initial={{ scale: 0.95, opacity: 0, y: -20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <Palette size={24} style={{ color: 'var(--text-accent)' }} />
-                <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  Personalizar Aparência
-                </h2>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-2 rounded-lg transition-colors hover:scale-105"
-                style={{
-                  color: 'var(--text-secondary)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <EnhancedThemeSelector />
-
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={() => setOpen(false)}
-                className="px-6 py-3 rounded-xl font-medium transition-all hover:scale-105 shadow-lg"
-                style={{
-                  backgroundColor: 'var(--button-primary)',
-                  color: 'white'
-                }}
-              >
-                Pronto
-              </button>
-            </div>
-          </motion.div>
+      {/* Modal de personalização de tema */}
+      <Modal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title="Personalizar Aparência"
+        size="lg"
+        className="theme-modal"
+      >
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Palette size={24} style={{ color: 'var(--text-accent)' }} />
+            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+              Escolha o tema que mais combina com você
+            </p>
+          </div>
+          
+          <EnhancedThemeSelector />
+          
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={() => setOpen(false)}
+              className="px-6 py-3 rounded-xl font-medium transition-all hover:scale-105 shadow-lg"
+              style={{
+                backgroundColor: 'var(--button-primary)',
+                color: 'white'
+              }}
+            >
+              Concluído
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </motion.header>
   )
 }
