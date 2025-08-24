@@ -210,13 +210,13 @@ export default function Home() {
 
           {/* ---------- WRAPPER CENTRAL ---------- */}
           <motion.div
-            className="py-3 sm:py-4 lg:py-5 xl:py-6"
+            className="py-2 sm:py-3 lg:py-4 xl:py-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl">
+            <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-20 max-w-[98%]">
               {/* ---------- BUSCA ---------- */}
-              <div className="flex justify-center mb-3 sm:mb-4 lg:mb-5">
+              <div className="flex justify-center mb-2 sm:mb-3 lg:mb-4">
                 <div className="relative w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
                   <Search
                     size={16}
@@ -234,7 +234,7 @@ export default function Home() {
               </div>
 
               {/* ---------- CATEGORIAS ---------- */}
-              <div className="flex flex-wrap justify-center gap-2 sm:gap-3 lg:gap-4 xl:gap-5 pb-3 mb-4 sm:mb-5 lg:mb-6 max-w-6xl mx-auto px-2 overflow-hidden">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-3 lg:gap-4 xl:gap-5 pb-2 mb-3 sm:mb-4 lg:mb-5 max-w-6xl mx-auto px-2 overflow-hidden">
                 <button
                   onClick={() => setCategoryId('all')}
                   className={`px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap transition-all duration-200 ${
@@ -273,9 +273,10 @@ export default function Home() {
               {filtered.length ? (
                 <div
                   className="
+                    widescreen-grid
                     grid gap-4 sm:gap-5 md:gap-6 lg:gap-7 xl:gap-8 justify-items-center
-                    grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7
-                    max-w-[85rem] mx-auto px-4
+                    grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-9
+                    max-w-[95%] mx-auto px-6
                   "
                 >
                   {filtered.map(link => (

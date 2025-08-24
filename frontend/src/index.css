@@ -51,3 +51,24 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Full HD grid for 1920px+ displays */
+@media (min-width: 1920px) {
+  .widescreen-grid {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+}
+
+/* Widescreen grid for 2560px+ displays */
+@media (min-width: 2560px) {
+  .widescreen-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+/* Ultra-wide grid for 3440px+ displays */
+@media (min-width: 3440px) {
+  .widescreen-grid {
+    grid-template-columns: repeat(15, minmax(0, 1fr));
+  }
+}

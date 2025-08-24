@@ -77,7 +77,7 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
             className="text-lg sm:text-2xl font-bold whitespace-nowrap"
             style={{ color: 'var(--header-text)' }}
           >
-            FACILITA CHVC
+            FACILITA
           </Link>
         </div>
 
