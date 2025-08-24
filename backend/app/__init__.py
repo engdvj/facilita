@@ -52,43 +52,101 @@ def create_app(debug: bool = False):
     with app.app_context():
         db.create_all()
         inspector = inspect(db.engine)
-        color_cols = [c["name"] for c in inspector.get_columns("color")]
-        if "name" not in color_cols:
-            db.session.execute(text("ALTER TABLE color ADD COLUMN name VARCHAR(50)"))
-            db.session.commit()
-        category_cols = [c["name"] for c in inspector.get_columns("category")]
-        if "admin_only" not in category_cols:
-            db.session.execute(
-                text("ALTER TABLE category ADD COLUMN admin_only BOOLEAN DEFAULT 0")
-            )
-            db.session.commit()
-        user_cols = [c["name"] for c in inspector.get_columns("user")]
-        if "is_admin" not in user_cols:
-            db.session.execute(
-                text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0")
-            )
-            db.session.commit()
-            db.session.execute(
-                text("UPDATE user SET is_admin = 1 WHERE username = 'admin'")
-            )
-            db.session.commit()
-        if "theme" not in user_cols:
-            db.session.execute(text("ALTER TABLE user ADD COLUMN theme TEXT"))
-            db.session.commit()
-        link_cols = [c["name"] for c in inspector.get_columns("link")]
-        if "user_id" not in link_cols:
-            db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
-            db.session.commit()
-        if "file_url" not in link_cols:
-            db.session.execute(text("ALTER TABLE link ADD COLUMN file_url VARCHAR(255)"))
-            db.session.commit()
+        # Check if tables exist with new names, otherwise use legacy migration
+        existing_tables = inspector.get_table_names()
+        
+        # Handle colors table - check if it exists after create_all
+        if "colors" in existing_tables:
+            try:
+                color_cols = [c["name"] for c in inspector.get_columns("colors")]
+                if "name" not in color_cols:
+                    db.session.execute(text("ALTER TABLE colors ADD COLUMN name VARCHAR(50)"))
+                    db.session.commit()
+            except Exception as e:
+                print(f"Warning: Could not check colors table: {e}")
+        elif "color" in existing_tables:
+            try:
+                color_cols = [c["name"] for c in inspector.get_columns("color")]
+                if "name" not in color_cols:
+                    db.session.execute(text("ALTER TABLE color ADD COLUMN name VARCHAR(50)"))
+                    db.session.commit()
+            except Exception as e:
+                print(f"Warning: Could not check color table: {e}")
+        
+        # Handle categories table
+        if "categories" in existing_tables:
+            category_cols = [c["name"] for c in inspector.get_columns("categories")]
+            if "admin_only" not in category_cols:
+                db.session.execute(
+                    text("ALTER TABLE categories ADD COLUMN admin_only BOOLEAN DEFAULT 0")
+                )
+                db.session.commit()
+        elif "category" in existing_tables:
+            category_cols = [c["name"] for c in inspector.get_columns("category")]
+            if "admin_only" not in category_cols:
+                db.session.execute(
+                    text("ALTER TABLE category ADD COLUMN admin_only BOOLEAN DEFAULT 0")
+                )
+                db.session.commit()
+        
+        # Handle users table
+        if "users" in existing_tables:
+            user_cols = [c["name"] for c in inspector.get_columns("users")]
+            if "is_admin" not in user_cols:
+                db.session.execute(
+                    text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0")
+                )
+                db.session.commit()
+                db.session.execute(
+                    text("UPDATE users SET is_admin = 1 WHERE username = 'admin'")
+                )
+                db.session.commit()
+            if "theme" not in user_cols:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN theme TEXT"))
+                db.session.commit()
+        elif "user" in existing_tables:
+            user_cols = [c["name"] for c in inspector.get_columns("user")]
+            if "is_admin" not in user_cols:
+                db.session.execute(
+                    text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0")
+                )
+                db.session.commit()
+                db.session.execute(
+                    text("UPDATE user SET is_admin = 1 WHERE username = 'admin'")
+                )
+                db.session.commit()
+            if "theme" not in user_cols:
+                db.session.execute(text("ALTER TABLE user ADD COLUMN theme TEXT"))
+                db.session.commit()
+        
+        # Handle links table  
+        if "links" in existing_tables:
+            link_cols = [c["name"] for c in inspector.get_columns("links")]
+            if "user_id" not in link_cols:
+                db.session.execute(text("ALTER TABLE links ADD COLUMN user_id INTEGER"))
+                db.session.commit()
+            if "file_url" not in link_cols:
+                db.session.execute(text("ALTER TABLE links ADD COLUMN file_url VARCHAR(255)"))
+                db.session.commit()
+        elif "link" in existing_tables:
+            link_cols = [c["name"] for c in inspector.get_columns("link")]
+            if "user_id" not in link_cols:
+                db.session.execute(text("ALTER TABLE link ADD COLUMN user_id INTEGER"))
+                db.session.commit()
+            if "file_url" not in link_cols:
+                db.session.execute(text("ALTER TABLE link ADD COLUMN file_url VARCHAR(255)"))
+                db.session.commit()
 
         # ensure a default admin user exists and has admin privileges, always atualiza
         admin_user = os.getenv("ADMIN_USERNAME", "admin")
         admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
         admin = User.query.filter_by(username=admin_user).first()
         if not admin:
-            admin = User(username=admin_user, is_admin=True)
+            admin = User()
+            admin.username = admin_user
+            admin.name = "Administrator"
+            admin.email = f"{admin_user}@facilita.local"
+            admin.is_admin = True
             db.session.add(admin)
         # Sempre atualiza a senha e admin
         admin.set_password(admin_pass)

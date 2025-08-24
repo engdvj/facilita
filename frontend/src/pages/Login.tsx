@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import api from '../api'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import toast from 'react-hot-toast'
 import { User, Lock, ArrowRightToLine } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -11,43 +11,37 @@ export default function Login() {
   const [error, setError] = useState('')
   const [remember, setRemember] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login, isAuthenticated, user, loading } = useAuth()
+
+  // Get the redirect path from location state or use default
+  const from = location.state?.from?.pathname || '/'
 
   useEffect(() => {
-    const loggedIn =
-      sessionStorage.getItem('loggedIn') === 'true' ||
-      localStorage.getItem('loggedIn') === 'true'
-    if (loggedIn) {
-      api.get('/auth/me').then(({ data }) => {
-        navigate(data.isAdmin ? '/admin' : '/user/links')
-      })
+    if (isAuthenticated && user && !loading) {
+      // Navigate to the intended page or dashboard based on user role
+      const redirectPath = from !== '/' 
+        ? from 
+        : user.is_admin 
+          ? '/admin' 
+          : '/dashboard'
+      
+      navigate(redirectPath, { replace: true })
     }
-  }, [navigate])
+  }, [isAuthenticated, user, loading, navigate, from])
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    
     try {
-      await api.post('/auth/login', { username, password })
-      sessionStorage.setItem('loggedIn', 'true')
-      if (remember) {
-        localStorage.setItem('loggedIn', 'true')
-      } else {
-        localStorage.removeItem('loggedIn')
-      }
-      const me = await api.get('/auth/me')
-      try {
-        const { data } = await api.get('/theme')
-        if (data.theme) {
-          Object.entries(data.theme).forEach(([k, v]) => {
-            document.documentElement.style.setProperty(k, v as string)
-          })
-          localStorage.setItem('theme-custom', JSON.stringify(data.theme))
-        }
-      } catch {}
+      // Use username as email for now (the backend might expect email)
+      await login(username, password)
       toast.success('Login realizado')
-      navigate(me.data.isAdmin ? '/admin' : '/user/links')
-    } catch (err) {
-      setError('Credenciais inválidas')
-      toast.error('Credenciais inválidas')
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Credenciais inválidas'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 

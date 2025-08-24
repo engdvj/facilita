@@ -1,0 +1,1 @@
+export { default as ProtectedRoute, AdminRoute } from './ProtectedRoute';

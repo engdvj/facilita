@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 import api from '../api'
 import Header from '../components/Header'
@@ -45,9 +46,8 @@ export default function Home() {
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<number | 'all'>('all')
 
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [user, setUser] = useState<{ username: string; isAdmin: boolean } | null>(null)
   const [open, setOpen] = useState(false)
+  const { user, isAuthenticated } = useAuth()
 
   /* ---------- carregar dados ---------- */
   useEffect(() => {
@@ -67,19 +67,6 @@ export default function Home() {
         [...data].sort((a, b) => a.name.localeCompare(b.name)),
       ),
     )
-  }, [])
-
-  useEffect(() => {
-    const li =
-      sessionStorage.getItem('loggedIn') === 'true' ||
-      localStorage.getItem('loggedIn') === 'true'
-    setLoggedIn(li)
-    if (li) {
-      api
-        .get('/auth/me')
-        .then(({ data }) => setUser(data))
-        .catch(() => setUser(null))
-    }
   }, [])
 
   /* ---------- filtros ---------- */
@@ -106,25 +93,38 @@ export default function Home() {
 
   /* ---------- UI ---------- */
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{
-        backgroundColor: 'var(--background-main)',
-        color: 'var(--text-color)',
-      }}
-    >
+    <div className="min-h-screen flex flex-col">
       <Header
-        onMenuClick={loggedIn ? () => setOpen((o) => !o) : undefined}
+        onMenuClick={isAuthenticated ? () => setOpen((o) => !o) : undefined}
         sidebarOpen={open}
         sticky
       />
       <div className="flex flex-1 overflow-hidden relative">
-        {loggedIn && (
+        {isAuthenticated && (
           <motion.aside
-            className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
-            style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+            className="overflow-y-auto custom-scrollbar"
+            style={{ 
+              position: 'fixed !important',
+              top: '0px !important',
+              left: '0px !important',
+              bottom: '0px !important',
+              width: '16rem',
+              paddingTop: '5rem',
+              paddingBottom: '1.5rem',
+              paddingLeft: '1.5rem',
+              paddingRight: '1.5rem',
+              zIndex: 1000,
+              backgroundColor: 'var(--sidebar-background)', 
+              color: 'var(--sidebar-text)',
+              backdropFilter: 'blur(20px)',
+              borderRight: '1px solid var(--border-primary)',
+              transform: open ? 'translateX(0px)' : 'translateX(-16rem)',
+              transition: 'transform 0.3s ease-in-out',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem'
+            }}
             initial={false}
-            animate={{ x: open ? 0 : -256 }}
           >
             <NavLink
               to="/"
@@ -135,7 +135,7 @@ export default function Home() {
             </NavLink>
 
             <nav className="flex flex-col gap-2">
-              {user?.isAdmin ? (
+              {user?.is_admin ? (
                 <>
                   <NavLink
                     end
@@ -144,7 +144,7 @@ export default function Home() {
                       `hover:underline flex items-center gap-1 px-2 py-1 rounded`
                     }
                     style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
                     }
                   >
                     <HomeIcon size={18} /> Dashboard
@@ -155,7 +155,7 @@ export default function Home() {
                       `hover:underline flex items-center gap-1 px-2 py-1 rounded`
                     }
                     style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
                     }
                   >
                     <Link2 size={18} /> Links
@@ -166,7 +166,7 @@ export default function Home() {
                       `hover:underline flex items-center gap-1 px-2 py-1 rounded`
                     }
                     style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
                     }
                   >
                     <FileIcon size={18} /> Arquivos
@@ -177,7 +177,7 @@ export default function Home() {
                       `hover:underline flex items-center gap-1 px-2 py-1 rounded`
                     }
                     style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
                     }
                   >
                     <Folder size={18} /> Categorias
@@ -188,7 +188,7 @@ export default function Home() {
                       `hover:underline flex items-center gap-1 px-2 py-1 rounded`
                     }
                     style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
                     }
                   >
                     <Palette size={18} /> Cores
@@ -199,7 +199,7 @@ export default function Home() {
                       `hover:underline flex items-center gap-1 px-2 py-1 rounded`
                     }
                     style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
+                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
                     }
                   >
                     <Users size={18} /> Usuários
@@ -223,8 +223,8 @@ export default function Home() {
         )}
 
         <main
-          className={`flex-1 ${loggedIn ? 'p-4 md:p-8 transition-all' : ''} ${
-            loggedIn ? (open ? 'md:ml-64' : 'md:ml-0') : ''
+          className={`flex-1 ${isAuthenticated ? 'p-4 md:p-8 transition-all' : ''} ${
+            isAuthenticated ? (open ? 'md:ml-64' : 'md:ml-0') : ''
           }`}
         >
           <Hero />
