@@ -8,10 +8,7 @@ export default function Hero() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h3 className="text-lg sm:text-2xl md:text-3xl lg:text-3xl xl:text-4xl font-heading font-bold mb-1 lg:mb-2">FACILITA</h3>
-        <p className="text-xs sm:text-sm md:text-base max-w-2xl mx-auto" style={{ color: 'var(--text-color)' }}>
-          Links organizados por categoria
-        </p>
+
       </motion.div>
     </section>
   )

@@ -7,7 +7,6 @@ import {
 import { motion } from 'framer-motion'
 import * as Icons from 'lucide-react'
 import {
-  Search,
   Home as HomeIcon,
   Link2,
   File as FileIcon,
@@ -15,13 +14,13 @@ import {
   Palette,
   Users,
   X,
+  Search,
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 import api from '../api'
 import Header from '../components/Header'
-import Hero from '../components/Hero'
 import LinkCard, { LinkData } from '../components/LinkCard'
 
 /* ---------- helpers ---------- */
@@ -98,6 +97,12 @@ export default function Home() {
         onMenuClick={isAuthenticated ? () => setOpen((o) => !o) : undefined}
         sidebarOpen={open}
         sticky
+        search={search}
+        onSearchChange={setSearch}
+        showSearch={true}
+        categories={categories}
+        selectedCategory={categoryId}
+        onCategoryChange={setCategoryId}
       />
       <div className="flex flex-1 overflow-hidden">
         {isAuthenticated && (
@@ -204,81 +209,39 @@ export default function Home() {
         )}
 
         <main
-          className={`flex-1 p-2 sm:p-4 md:p-6 lg:p-8 transition-all ${open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0'}`}
+          className={`flex-1 transition-all ${open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0'}`}
         >
-          <Hero />
-
-          {/* ---------- WRAPPER CENTRAL ---------- */}
+          {/* ---------- LAYOUT PROFISSIONAL - ESTILO GOOGLE/MICROSOFT ---------- */}
           <motion.div
-            className="py-2 sm:py-3 lg:py-4 xl:py-4"
+            className="min-h-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-20 max-w-[98%]">
-              {/* ---------- BUSCA ---------- */}
-              <div className="flex justify-center mb-2 sm:mb-3 lg:mb-4">
-                <div className="relative w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
-                  <Search
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    value={search}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      setSearch(e.target.value)
-                    }
-                    placeholder="Buscar..."
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white/90 backdrop-blur-sm text-black text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                  />
+            {/* Container principal com padding responsivo - Otimizado para widescreen */}
+            <div className="max-w-none mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8" style={{ 
+              paddingLeft: 'clamp(1rem, 8vw, 8rem)', 
+              paddingRight: 'clamp(1rem, 8vw, 8rem)' 
+            }}>
+              
+              {/* Header de estatísticas (opcional) */}
+              {filtered.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      {filtered.length} {filtered.length === 1 ? 'link encontrado' : 'links encontrados'}
+                      {categoryId !== 'all' && (
+                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                          {categories.find(c => c.id === categoryId)?.name}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* ---------- CATEGORIAS ---------- */}
-              <div className="flex flex-wrap justify-center gap-2 sm:gap-3 lg:gap-4 xl:gap-5 pb-2 mb-3 sm:mb-4 lg:mb-5 max-w-6xl mx-auto px-2 overflow-hidden">
-                <button
-                  onClick={() => setCategoryId('all')}
-                  className={`px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap transition-all duration-200 ${
-                    categoryId === 'all'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-700 hover:bg-white hover:shadow-sm'
-                  }`}
-                >
-                  Todos
-                </button>
-
-                {sortedCategories.map(c => {
-                  const Icon = (Icons as any)[c.icon || '']
-                  const active = categoryId === c.id
-                  const textColor =
-                    c.color && isLight(c.color) ? 'text-black' : 'text-white'
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setCategoryId(c.id)}
-                      className={`flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm lg:text-base font-medium whitespace-nowrap transition-all duration-200 min-w-0 max-w-32 sm:max-w-none ${
-                        active
-                          ? `${textColor} shadow-md`
-                          : 'bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-700 hover:bg-white hover:shadow-sm'
-                      }`}
-                      style={active ? { backgroundColor: c.color } : undefined}
-                    >
-                      {Icon && <Icon size={12} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 flex-shrink-0" />}
-                      <span className="truncate">{c.name}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* ---------- LISTA DE LINKS ---------- */}
+              {/* Grid de Links - Cards Menores e Centralizados */}
               {filtered.length ? (
-                <div
-                  className="
-                    widescreen-grid
-                    grid gap-4 sm:gap-5 md:gap-6 lg:gap-7 xl:gap-8 justify-items-center
-                    grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-9
-                    max-w-[95%] mx-auto px-6
-                  "
-                >
+                <div className="widescreen-responsive-grid">
                   {filtered.map(link => (
                     <LinkCard
                       key={link.id}
@@ -290,9 +253,22 @@ export default function Home() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 dark:text-gray-400 py-10">
-                  Nenhum link encontrado.
-                </p>
+                <div className="text-center py-16">
+                  <div className="max-w-md mx-auto">
+                    <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Search className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Nenhum link encontrado
+                    </h3>
+                    <p className="text-gray-500">
+                      {search ? 
+                        `Não encontramos resultados para "${search}". Tente uma busca diferente.` :
+                        'Não há links disponíveis nesta categoria.'
+                      }
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </motion.div>

@@ -5,14 +5,17 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button, Modal } from '../ui';
 import { LargeThemeSelector } from '../ui/ThemeSelector';
+import SearchBar from '../features/SearchBar';
 
 interface HeaderProps {
   onMenuClick?: () => void;
   sidebarOpen?: boolean;
   sticky?: boolean;
+  onSearch?: (query: string) => void;
+  showSearchBar?: boolean;
 }
 
-export default function Header({ onMenuClick, sidebarOpen, sticky = false }: HeaderProps) {
+export default function Header({ onMenuClick, sidebarOpen, sticky = false, onSearch, showSearchBar = false }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -26,7 +29,7 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
       {/* Glassmorphism header */}
       <div className="backdrop-blur-md bg-white/10 border-b border-white/20">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+          <div className={`flex items-center justify-between ${showSearchBar ? 'h-20' : 'h-16'}`}>
             {/* Menu button and Logo */}
             <div className="flex items-center space-x-3">
               {onMenuClick && isAuthenticated && (
@@ -51,6 +54,17 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
               </span>
               </Link>
             </div>
+
+            {/* Search Bar - Centralizada na navbar */}
+            {showSearchBar && onSearch && (
+              <div className="flex-1 max-w-2xl mx-8">
+                <SearchBar 
+                  onSearch={onSearch}
+                  placeholder="Buscar..."
+                  className="w-full"
+                />
+              </div>
+            )}
 
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-6">

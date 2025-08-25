@@ -1,19 +1,40 @@
-// src/pages/AdminDashboard.tsx
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Pencil,
   Trash2,
   Plus,
   Search,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  Download,
+  Check,
+  X,
+  User,
+  FileIcon,
+  Folder,
+  Palette,
+  Users,
+  Link2,
+  Settings,
+  RefreshCw,
 } from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
+import { Category, Color, FileData } from "../types/admin";
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  isAdmin: boolean;
+  createdAt: string;
+}
+import DashboardLayout from "../components/layout/DashboardLayout";
+import DashboardStats from "../components/common/DashboardStats";
+import DashboardColumn from "../components/common/DashboardColumn";
+import ListItem from "../components/common/ListItem";
+import ActionButton from "../components/common/ActionButton";
 
 /* ------------------------------------------------------------------ */
 /* Componente                                                          */
@@ -21,18 +42,27 @@ import { LinkData } from "../components/LinkCard";
 export default function AdminDashboard() {
   /* ---------- estado geral ----------------------------------------- */
   const [links, setLinks] = useState<LinkData[]>([]);
-  const [categories, setCategories] = useState<
-    { id: number; name: string; color: string; icon: string }[]
-  >([]);
-  const [colors, setColors] = useState<
-    { id: number; value: string; name?: string }[]
-  >([]);
-  const [users, setUsers] = useState<
-    { id: number; username: string; isAdmin: boolean }[]
-  >([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [colors, setColors] = useState<Color[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [files, setFiles] = useState<FileData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [focusedSection, setFocusedSection] = useState<string | null>(null);
+
+  // Listen for sidebar navigation events
+  useEffect(() => {
+    const handleFocusSection = (event: CustomEvent) => {
+      setFocusedSection(event.detail);
+    };
+
+    window.addEventListener('focusSection', handleFocusSection as EventListener);
+    return () => {
+      window.removeEventListener('focusSection', handleFocusSection as EventListener);
+    };
+  }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   /* ---------- edição de cor --------------------------------------- */
   const [editColorId, setEditColorId] = useState<number | null>(null);
@@ -67,14 +97,15 @@ export default function AdminDashboard() {
   }, []);
 
   const refresh = async () => {
-    const results = await Promise.allSettled([
-      api.get("/links"),
-      api.get("/categories"),
-      api.get("/colors"),
-      api.get("/users"),
-      api.get("/schedules"),
-    ]);
-    const [linkRes, catRes, colorRes, userRes, fileRes] = results;
+    try {
+      const results = await Promise.allSettled([
+        api.get("/links"),
+        api.get("/categories"),
+        api.get("/colors"),
+        api.get("/users"),
+        api.get("/schedules"),
+      ]);
+      const [linkRes, catRes, colorRes, userRes, fileRes] = results;
 
     if (linkRes.status === "fulfilled") {
       setLinks(
@@ -106,6 +137,11 @@ export default function AdminDashboard() {
           a.title.localeCompare(b.title)
         )
       );
+    }
+    } catch (error) {
+      console.error('Error refreshing dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -240,575 +276,434 @@ export default function AdminDashboard() {
     return m;
   }, [users]);
 
-  /* ---------------------------------------------------------------- */
-  /* JSX                                                               */
-  /* ---------------------------------------------------------------- */
-  return (
-    <div
-      className="max-w-7xl mx-auto px-4 py-8 overflow-x-hidden"
-      style={{ color: "var(--text-color)" }}
-    >
-      <div className="grid gap-8 md:grid-cols-3">
-        {/* --------------------- COLUNA LINKS ------------------------ */}
-        <LinksColumn
-          links={paginatedLinks}
-          total={links.length}
-          page={linkPage}
-          pageCount={linkPageCount}
-          setPage={setLinkPage}
-          query={linkQuery}
-          setQuery={setLinkQuery}
-          removeLink={removeLink}
-          categoryMap={categoryMap}
-        />
+  const statsData = [
+    { title: "Links", count: loading ? "..." : links.length, color: "#2563eb", icon: "Link2" as const, key: "links" },
+    { title: "Arquivos", count: loading ? "..." : files.length, color: "#16a34a", icon: "FileIcon" as const, key: "files" },
+    { title: "Categorias", count: loading ? "..." : categories.length, color: "#9333ea", icon: "Folder" as const, key: "categories" },
+    { title: "Cores", count: loading ? "..." : colors.length, color: "#e11d48", icon: "Palette" as const, key: "colors" },
+    { title: "Usuários", count: loading ? "..." : users.length, color: "#6366f1", icon: "Users" as const, key: "users" },
+  ];
 
-        {/* --------------------- COLUNA ARQUIVOS --------------------- */}
-        <FilesColumn
-          files={paginatedFiles}
-          total={files.length}
-          page={filePage}
-          pageCount={filePageCount}
-          setPage={setFilePage}
-          query={fileQuery}
-          setQuery={setFileQuery}
-          removeFile={removeFile}
-          categoryMap={fileCategoryMap}
-          userMap={userMap}
-        />
-
-        {/* ------------------- COLUNA CATEGORIAS --------------------- */}
-        <CategoriesColumn
-          cats={paginatedCats}
-          total={categories.length}
-          page={catPage}
-          pageCount={catPageCount}
-          setPage={setCatPage}
-          query={catQuery}
-          setQuery={setCatQuery}
-          startEditCat={startEditCat}
-          removeCat={removeCat}
-        />
-
-        {/* ---------------------- COLUNA CORES ----------------------- */}
-        <ColorsColumn
-          items={paginatedColors}
-          total={colors.length}
-          page={colorPage}
-          pageCount={colorPageCount}
-          setPage={setColorPage}
-          query={colorQuery}
-          setQuery={setColorQuery}
-          editColorId={editColorId}
-          editColor={editColor}
-          editColorName={editColorName}
-          setEditColor={setEditColor}
-          setEditColorName={setEditColorName}
-          startEditColor={startEditColor}
-          saveColor={saveColor}
-          removeColor={removeColor}
-          colorInputClass={colorInputClass}
-        />
-
-        {/* ---------------------- COLUNA USUÁRIOS -------------------- */}
-        <UsersColumn
-          users={paginatedUsers}
-          total={users.length}
-          page={userPage}
-          pageCount={userPageCount}
-          setPage={setUserPage}
-          query={userQuery}
-          setQuery={setUserQuery}
-          startEditUser={startEditUser}
-          removeUser={removeUser}
-        />
-      </div>
+  const dashboardActions = (
+    <div className="flex items-center gap-2">
+      <ActionButton
+        variant="secondary"
+        size="md"
+        icon={RefreshCw}
+        onClick={refresh}
+        title="Atualizar dados"
+      >
+        Atualizar
+      </ActionButton>
+      <ActionButton
+        variant="secondary"
+        size="md"
+        icon={Download}
+        onClick={() => {/* TODO: Export function */}}
+        title="Exportar dados"
+      >
+        Exportar
+      </ActionButton>
     </div>
   );
-}
 
-/* ================================================================== */
-/*  COMPONENTES AUXILIARES (colunas)                                  */
-/* ================================================================== */
-
-interface LinksColumnProps {
-  links: LinkData[];
-  total: number;
-  page: number;
-  pageCount: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-  query: string;
-  setQuery: React.Dispatch<React.SetStateAction<string>>;
-  removeLink: (id: number) => Promise<void>;
-  categoryMap: Record<number, { color: string; icon: string }>;
-}
-
-interface FileData {
-  id: number;
-  title: string;
-  fileUrl: string;
-  userId?: number;
-  user?: string;
-  categoryId?: number;
-  category?: string;
-}
-
-interface FilesColumnProps {
-  files: FileData[];
-  total: number;
-  page: number;
-  pageCount: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-  query: string;
-  setQuery: React.Dispatch<React.SetStateAction<string>>;
-  removeFile: (id: number) => Promise<void>;
-  categoryMap: Record<number, string>;
-  userMap: Record<number, string>;
-}
-
-function LinksColumn({
-  links,
-  total,
-  page,
-  pageCount,
-  setPage,
-  query,
-  setQuery,
-  removeLink,
-  categoryMap,
-}: LinksColumnProps) {
   return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
-      <Header title="Links" total={total} />
-      <SearchBar value={query} onChange={setQuery} />
-
-      <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {links.map((l) => {
-          const CatIcon =
-            (Icons as any)[categoryMap[l.categoryId || 0]?.icon || "Link2"];
-          return (
-            <motion.li
-              key={l.id}
-              layout
-              className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
-            >
-              <span
-                className="w-4 h-4 rounded"
+    <div className="p-4">
+      {/* Header */}
+      <div className="mb-2">
+        
+        {/* Stats */}
+        <div className="grid grid-cols-5 gap-3 mb-2">
+          {statsData.map((stat, index) => {
+            const isActive = focusedSection === stat.key;
+            return (
+              <motion.div 
+                key={stat.title}
+                className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  isActive ? 'ring-2 ring-offset-2' : ''
+                }`}
                 style={{
-                  backgroundColor: categoryMap[l.categoryId || 0]?.color,
+                  background: 'var(--card-background)',
+                  borderColor: isActive ? stat.color : 'var(--card-border)',
+                  ringColor: isActive ? stat.color : 'transparent',
+                  boxShadow: isActive ? `0 0 20px ${stat.color}40` : 'none'
                 }}
+                onClick={() => {
+                  console.log('Card clicked:', stat.key);
+                  setFocusedSection(focusedSection === stat.key ? null : stat.key);
+                  // Toggle focused section - click again to deselect
+                }}
+                whileHover={{ 
+                  scale: 1.02,
+                  boxShadow: `0 8px 25px ${stat.color}30`
+                }}
+                whileTap={{ 
+                  scale: 0.98,
+                  transition: { duration: 0.1 }
+                }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ 
+                  opacity: 1, 
+                  y: 0,
+                  scale: isActive ? 1.05 : 1,
+                  rotate: isActive ? [0, 1, -1, 0] : 0
+                }}
+                transition={{ 
+                  duration: 0.3,
+                  delay: index * 0.1
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <motion.div 
+                    className="w-6 h-6 rounded flex items-center justify-center text-white"
+                    style={{ backgroundColor: stat.color }}
+                    whileHover={{ 
+                      rotate: [0, -10, 10, 0],
+                      transition: { duration: 0.3 }
+                    }}
+                  >
+                    {(() => {
+                      const IconComponent = Icons[stat.icon as keyof typeof Icons];
+                      return IconComponent ? <IconComponent className="w-3 h-3" /> : null;
+                    })()}
+                  </motion.div>
+                  <div>
+                    <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                      {stat.count}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {stat.title}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content Grid */}
+      {focusedSection ? (
+        <div className="focused-content">
+          {renderFocusedContent()}
+        </div>
+      ) : (
+        <div className="admin-dashboard-grid">
+      {/* Links */}
+      <DashboardColumn
+        title="Links"
+        total={links.length}
+        icon={<Link2 className="w-4 h-4 text-blue-600" />}
+        onAdd={() => navigate('/admin/links/new')}
+        page={linkPage}
+        pageCount={linkPageCount}
+        onPageChange={setLinkPage}
+      >
+        {paginatedLinks.map((link) => (
+          <ListItem
+            key={link.id}
+            title={link.title}
+            subtitle={link.url}
+            icon={Link2}
+            iconColor="#2563eb"
+            actions={[
+              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/links/${link.id}`) },
+              { icon: Trash2, label: 'Excluir', onClick: () => removeLink(link.id), variant: 'danger' }
+            ]}
+          />
+        ))}
+      </DashboardColumn>
+
+      {/* Arquivos */}
+      <DashboardColumn
+        title="Arquivos"
+        total={files.length}
+        icon={<FileIcon className="w-4 h-4 text-green-600" />}
+        onAdd={() => navigate('/admin/files/new')}
+        page={filePage}
+        pageCount={filePageCount}
+        onPageChange={setFilePage}
+      >
+        {paginatedFiles.map((file) => (
+          <ListItem
+            key={file.id}
+            title={file.title}
+            subtitle={fileCategoryMap[file.categoryId] || 'Sem categoria'}
+            icon={FileIcon}
+            iconColor="#16a34a"
+            actions={[
+              { icon: Download, label: 'Download', onClick: () => window.open(file.fileUrl, '_blank') },
+              { icon: Trash2, label: 'Excluir', onClick: () => removeFile(file.id), variant: 'danger' }
+            ]}
+          />
+        ))}
+      </DashboardColumn>
+
+      {/* Categorias */}
+      <DashboardColumn
+        title="Categorias"
+        total={categories.length}
+        icon={<Folder className="w-4 h-4 text-purple-600" />}
+        onAdd={() => navigate('/admin/categories/new')}
+        page={catPage}
+        pageCount={catPageCount}
+        onPageChange={setCatPage}
+      >
+        {paginatedCats.map((category) => (
+          <ListItem
+            key={category.id}
+            title={category.name}
+            subtitle={category.color}
+            icon={Icons[category.icon as keyof typeof Icons] || Folder}
+            iconColor={category.color}
+            actions={[
+              { icon: Pencil, label: 'Editar', onClick: () => startEditCat(category) },
+              { icon: Trash2, label: 'Excluir', onClick: () => removeCat(category.id), variant: 'danger' }
+            ]}
+          />
+        ))}
+      </DashboardColumn>
+
+      {/* Cores */}
+      <DashboardColumn
+        title="Cores"
+        total={colors.length}
+        icon={<Palette className="w-4 h-4 text-pink-600" />}
+        onAdd={() => navigate('/admin/colors/new')}
+        page={colorPage}
+        pageCount={colorPageCount}
+        onPageChange={setColorPage}
+      >
+        {paginatedColors.map((color) => (
+          <ListItem
+            key={color.id}
+            title={color.name || color.value}
+            subtitle={color.value}
+            icon={<div className="w-4 h-4 rounded-full" style={{ backgroundColor: color.value }} />}
+            actions={[
+              { icon: Pencil, label: 'Editar', onClick: () => startEditColor(color) },
+              { icon: Trash2, label: 'Excluir', onClick: () => removeColor(color.id), variant: 'danger' }
+            ]}
+          />
+        ))}
+      </DashboardColumn>
+
+      {/* Usuários */}
+      <DashboardColumn
+        title="Usuários"
+        total={users.length}
+        icon={<Users className="w-4 h-4 text-indigo-600" />}
+        onAdd={() => navigate('/admin/users/new')}
+        page={userPage}
+        pageCount={userPageCount}
+        onPageChange={setUserPage}
+      >
+        {paginatedUsers.map((user) => (
+          <ListItem
+            key={user.id}
+            title={user.username}
+            subtitle={user.email}
+            icon={User}
+            iconColor="#6366f1"
+            badge={user.isAdmin ? { text: 'Admin', variant: 'info' } : undefined}
+            actions={[
+              { icon: Pencil, label: 'Editar', onClick: () => startEditUser(user) },
+              { icon: Trash2, label: 'Excluir', onClick: () => removeUser(user.id), variant: 'danger' }
+            ]}
+          />
+        ))}
+      </DashboardColumn>
+        </div>
+      )}
+    </div>
+  );
+
+  function renderFocusedContent() {
+    console.log('renderFocusedContent called, focusedSection:', focusedSection);
+    if (!focusedSection) return null;
+
+    const currentStat = statsData.find(s => s.key === focusedSection);
+    if (!currentStat) {
+      console.log('No currentStat found for:', focusedSection);
+      return null;
+    }
+    console.log('Rendering focused content for:', currentStat);
+
+    return (
+      <motion.div 
+        key={focusedSection}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-2"
+      >
+
+        {/* Focused content based on section */}
+        <div className="grid grid-cols-5 gap-4 h-[calc(100vh-200px)] overflow-hidden">
+          <div className="col-span-2">
+            {renderSectionList(focusedSection)}
+          </div>
+          <div className="col-span-3">
+            {renderSectionForm(focusedSection)}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  function renderSectionList(section: string | null) {
+    if (!section) return null;
+
+    if (section === 'links') {
+      return (
+        <div className="h-full p-4 rounded-lg border overflow-y-auto" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Links ({filteredLinks.length})
+          </h3>
+          {paginatedLinks.map((link) => (
+            <div key={link.id} className="p-3 border rounded-lg mb-2" style={{ borderColor: 'var(--card-border)', background: 'var(--card-background)' }}>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                    {link.title}
+                  </h4>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    {link.url}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    onClick={() => window.open(link.url, '_blank')}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button 
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-red-500"
+                    onClick={() => deleteLink(link.id)}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="h-full p-4 rounded-lg border" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          {section === 'files' && 'Arquivos'}
+          {section === 'categories' && 'Categorias'}
+          {section === 'colors' && 'Cores'}
+          {section === 'users' && 'Usuários'}
+        </h3>
+      </div>
+    );
+  }
+
+  function renderSectionForm(section: string | null) {
+    if (!section) return null;
+
+    if (section === 'links') {
+      return (
+        <div className="h-full p-4 rounded-lg border overflow-y-auto" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Criar Novo Link
+          </h3>
+          <form className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                Título
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-lg border"
+                style={{ 
+                  background: 'var(--input-background)', 
+                  borderColor: 'var(--input-border)', 
+                  color: 'var(--text-primary)' 
+                }}
+                placeholder="Digite o título do link"
               />
-              {CatIcon && <CatIcon size={16} className="opacity-70" />}
-              <span className="flex-1">{l.title}</span>
-              {l.user && (
-                <span className="text-xs px-2 py-1 rounded bg-slate-700 opacity-80">
-                  {l.user}
-                </span>
-              )}
-              <Link
-                to={`/admin/links/${l.id}`}
-                className="p-1 hover:text-[var(--accent-color)]"
-              >
-                <Pencil size={16} />
-              </Link>
-              <button
-                onClick={() => removeLink(l.id)}
-                className="p-1 hover:text-red-400"
-              >
-                <Trash2 size={16} />
-              </button>
-            </motion.li>
-          );
-        })}
-      </motion.ul>
-
-      <Paginator {...{ page, pageCount, setPage }} />
-    </section>
-  );
-}
-
-function FilesColumn({
-  files,
-  total,
-  page,
-  pageCount,
-  setPage,
-  query,
-  setQuery,
-  removeFile,
-  categoryMap,
-  userMap,
-}: FilesColumnProps) {
-  return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
-      <Header title="Arquivos" total={total} />
-      <SearchBar value={query} onChange={setQuery} />
-
-      <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {files.map((f) => (
-          <motion.li
-            key={f.id}
-            layout
-            className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
-          >
-            <span className="flex-1">
-              {f.title}
-              {f.categoryId && (
-                <span className="ml-2 text-xs opacity-80">[{categoryMap[f.categoryId]}]</span>
-              )}
-              {f.userId && (
-                <span className="ml-2 text-xs opacity-80">@{userMap[f.userId]}</span>
-              )}
-            </span>
-            <a
-              href={f.fileUrl}
-              className="underline mr-2"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              arquivo
-            </a>
-            <button onClick={() => removeFile(f.id)} className="p-1 hover:text-red-400">
-              <Trash2 size={16} />
-            </button>
-          </motion.li>
-        ))}
-      </motion.ul>
-
-      <Paginator {...{ page, pageCount, setPage }} />
-    </section>
-  );
-}
-
-interface CategoriesColumnProps {
-  cats: { id: number; name: string; color: string; icon: string }[];
-  total: number;
-  page: number;
-  pageCount: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-  query: string;
-  setQuery: React.Dispatch<React.SetStateAction<string>>;
-  startEditCat: (cat: { id: number }) => void;
-  removeCat: (id: number) => Promise<void>;
-}
-
-function CategoriesColumn({
-  cats,
-  total,
-  page,
-  pageCount,
-  setPage,
-  query,
-  setQuery,
-  startEditCat,
-  removeCat,
-}: CategoriesColumnProps) {
-  return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
-      <Header title="Categorias" total={total} />
-      <SearchBar value={query} onChange={setQuery} />
-
-      <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {cats.map((c) => {
-          const Icon = (Icons as any)[c.icon || "Folder"];
-          return (
-            <motion.li
-              key={c.id}
-              layout
-              className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
-            >
-              <span
-                className="w-4 h-4 rounded"
-                style={{ backgroundColor: c.color }}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                URL
+              </label>
+              <input
+                type="url"
+                className="w-full px-3 py-2 rounded-lg border"
+                style={{ 
+                  background: 'var(--input-background)', 
+                  borderColor: 'var(--input-border)', 
+                  color: 'var(--text-primary)' 
+                }}
+                placeholder="https://exemplo.com"
               />
-              {Icon && <Icon size={16} className="opacity-70" />}
-              <span className="flex-1">{c.name}</span>
-              <button
-                onClick={() => startEditCat(c)}
-                className="p-1 hover:text-[var(--accent-color)]"
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                Descrição
+              </label>
+              <textarea
+                className="w-full px-3 py-2 rounded-lg border h-24"
+                style={{ 
+                  background: 'var(--input-background)', 
+                  borderColor: 'var(--input-border)', 
+                  color: 'var(--text-primary)' 
+                }}
+                placeholder="Descrição opcional do link"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                Categoria
+              </label>
+              <select
+                className="w-full px-3 py-2 rounded-lg border"
+                style={{ 
+                  background: 'var(--input-background)', 
+                  borderColor: 'var(--input-border)', 
+                  color: 'var(--text-primary)' 
+                }}
               >
-                <Pencil size={16} />
-              </button>
-              <button
-                onClick={() => removeCat(c.id)}
-                className="p-1 hover:text-red-400"
-              >
-                <Trash2 size={16} />
-              </button>
-            </motion.li>
-          );
-        })}
-      </motion.ul>
-
-      <Paginator {...{ page, pageCount, setPage }} />
-    </section>
-  );
-}
-
-interface ColorsColumnProps {
-  items: { id: number; value: string; name?: string }[];
-  total: number;
-  page: number;
-  pageCount: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-  query: string;
-  setQuery: React.Dispatch<React.SetStateAction<string>>;
-  editColorId: number | null;
-  editColor: string;
-  editColorName: string;
-  setEditColor: React.Dispatch<React.SetStateAction<string>>;
-  setEditColorName: React.Dispatch<React.SetStateAction<string>>;
-  startEditColor: (c: { id: number; value: string; name?: string }) => void;
-  saveColor: () => Promise<void>;
-  removeColor: (id: number) => Promise<void>;
-  colorInputClass: string;
-}
-
-function ColorsColumn({
-  items,
-  total,
-  page,
-  pageCount,
-  setPage,
-  query,
-  setQuery,
-  editColorId,
-  editColor,
-  editColorName,
-  setEditColor,
-  setEditColorName,
-  startEditColor,
-  saveColor,
-  removeColor,
-  colorInputClass,
-}: ColorsColumnProps) {
-  return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
-      <Header title="Cores" total={total} />
-      <SearchBar value={query} onChange={setQuery} />
-
-      <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        {items.map((c) => (
-          <motion.li
-            key={c.id}
-            layout
-            className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl shadow-md hover:shadow-xl text-white w-full"
-          >
-            <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
-            {editColorId === c.id ? (
-              <>
-                {/* valor hex */}
-                <input
-                  type="text"
-                  value={editColor}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setEditColor(e.target.value)
-                  }
-                  className={`${colorInputClass} w-24 h-8 px-2 font-mono`}
-                />
-                {/* nome opcional */}
-                <input
-                  type="text"
-                  placeholder="Nome"
-                  value={editColorName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setEditColorName(e.target.value)
-                  }
-                  className={`${colorInputClass} w-28 h-8 px-2`}
-                />
-                <span
-                  className="w-6 h-6 rounded border"
-                  style={{ backgroundColor: editColor }}
-                />
-                <button onClick={saveColor} className="p-1 text-green-400">
-                  <ChevronDown size={16} />
-                </button>
-                <button
-                  onClick={() => setEditColorId(null)}
-                  className="p-1 text-yellow-400"
-                >
-                  <ChevronDown size={16} className="rotate-180" />
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 font-mono">
-                  {c.value}
-                  {c.name ? ` - ${c.name}` : ""}
-                </span>
-                <button
-                  onClick={() => startEditColor(c)}
-                  className="p-1 hover:text-[var(--accent-color)]"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={() => removeColor(c.id)}
-                  className="p-1 hover:text-red-400"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </>
-            )}
-          </motion.li>
-        ))}
-      </motion.ul>
-
-      <Paginator {...{ page, pageCount, setPage }} />
-    </section>
-  );
-}
-
-interface UsersColumnProps {
-  users: { id: number; username: string; isAdmin: boolean }[];
-  total: number;
-  page: number;
-  pageCount: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-  query: string;
-  setQuery: React.Dispatch<React.SetStateAction<string>>;
-  startEditUser: (u: { id: number }) => void;
-  removeUser: (id: number) => Promise<void>;
-}
-
-function UsersColumn({
-  users,
-  total,
-  page,
-  pageCount,
-  setPage,
-  query,
-  setQuery,
-  startEditUser,
-  removeUser,
-}: UsersColumnProps) {
-  return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
-      <Header title="Usuários" total={total} />
-      <SearchBar value={query} onChange={setQuery} />
-
-      <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        {users.map((u) => (
-          <motion.li
-            key={u.id}
-            layout
-            className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
-          >
-            <span className="flex-1">{u.username}</span>
-            {u.isAdmin && (
-              <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">ADM</span>
-            )}
-            <button onClick={() => startEditUser(u)} className="p-1 hover:text-[var(--accent-color)]">
-              <Pencil size={16} />
+                <option>Selecione uma categoria</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="w-full py-2 px-4 rounded-lg font-medium transition-colors"
+              style={{
+                background: '#2563eb',
+                color: 'white'
+              }}
+            >
+              Criar Link
             </button>
-            <button onClick={() => removeUser(u.id)} className="p-1 hover:text-red-400">
-              <Trash2 size={16} />
-            </button>
-          </motion.li>
-        ))}
-      </motion.ul>
+          </form>
+        </div>
+      );
+    }
 
-      <Paginator {...{ page, pageCount, setPage }} />
-    </section>
-  );
-}
-
-/* ================================================================== */
-/*  COMPONENTES PEQUENOS                                               */
-/* ================================================================== */
-
-function Header({ title, total }: { title: string; total: number }) {
-  const pathMap: Record<string, string> = {
-    Links: "links",
-    Arquivos: "files",
-    Categorias: "categories",
-    Cores: "colors",
-    "Usuários": "users",
-  };
-  const path = pathMap[title] || title.toLowerCase();
-
-  return (
-    <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
-      <h2 className="text-lg font-semibold flex items-center gap-2">
-        {title}
-        <span className="bg-[var(--accent-color)] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-          {total}
-        </span>
-      </h2>
-      <Link
-        to={`/admin/${path}`}
-        className="px-3 py-1.5 rounded-md bg-[var(--accent-color)] text-white text-sm hover:bg-[var(--hover-effect)] flex items-center gap-1"
-      >
-        <Plus size={16} /> Novo
-      </Link>
-    </div>
-  );
-}
-
-function SearchBar({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex items-center mb-2">
-      <Search size={16} className="mr-2 opacity-70" />
-      <input
-        className="flex-1 bg-transparent border-b border-gray-600 focus:outline-none text-sm"
-        placeholder="Buscar"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-function Paginator({
-  page,
-  pageCount,
-  setPage,
-}: {
-  page: number;
-  pageCount: number;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-}) {
-  if (pageCount <= 1) return null;
-  return (
-    <div className="flex justify-center gap-2 mt-2">
-      <button
-        disabled={page === 1}
-        onClick={() => setPage((p) => Math.max(1, p - 1))}
-        className="px-3 py-1 rounded border disabled:opacity-50"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <span className="self-center">
-        {page} / {pageCount}
-      </span>
-      <button
-        disabled={page === pageCount}
-        onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-        className="px-3 py-1 rounded border disabled:opacity-50"
-      >
-        <ChevronRight size={16} />
-      </button>
-    </div>
-  );
+    return (
+      <div className="h-full p-4 rounded-lg border" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          {section === 'files' && 'Upload de Arquivo'}
+          {section === 'categories' && 'Nova Categoria'}
+          {section === 'colors' && 'Nova Cor'}
+          {section === 'users' && 'Novo Usuário'}
+        </h3>
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Formulário aparecerá aqui...
+        </p>
+      </div>
+    );
+  }
 }

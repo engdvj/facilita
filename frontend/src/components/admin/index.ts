@@ -1,0 +1,10 @@
+// Export all admin components for easy importing
+export { default as StatCard } from './StatCard';
+export { default as ModernHeader } from './ModernHeader';
+export { default as ModernSearchBar } from './ModernSearchBar';
+export { default as ModernPaginator } from './ModernPaginator';
+export { default as LinksColumn } from './LinksColumn';
+export { default as FilesColumn } from './FilesColumn';
+export { default as CategoriesColumn } from './CategoriesColumn';
+export { default as ColorsColumn } from './ColorsColumn';
+export { default as UsersColumn } from './UsersColumn';

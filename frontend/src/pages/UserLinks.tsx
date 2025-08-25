@@ -1,23 +1,17 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { NavLink, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { motion } from "framer-motion";
-import {
-  Pencil,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Home as HomeIcon,
-  Link2,
-  Folder,
-  Palette,
-  File as FileIcon,
-  Users,
-} from "lucide-react";
+import { Pencil, Trash2, Link2, Plus, ExternalLink } from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
-import Header from "../components/Header";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import Sidebar, { SidebarSection } from "../components/layout/Sidebar";
+import AppNavigation from "../components/layout/AppNavigation";
+import DashboardColumn from "../components/common/DashboardColumn";
+import ListItem from "../components/common/ListItem";
+import DashboardCard from "../components/common/DashboardCard";
+import ActionButton from "../components/common/ActionButton";
 
 /* ------------------------------------------------------------------ */
 /* Tipos auxiliares                                                    */
@@ -330,405 +324,55 @@ export default function UserLinks() {
   const pageCount = Math.ceil(sortedLinks.length / perPage) || 1;
   const paginatedLinks = sortedLinks.slice((page - 1) * perPage, page * perPage);
 
-  /* ---------------------------------------------------------------- */
+  const sidebarContent = (
+    <Sidebar>
+      <SidebarSection
+        icon={<Link2 className="w-3 h-3" style={{ color: 'var(--text-on-dark)' }} />}
+        title="Dashboard"
+        subtitle="Gerencie seus links"
+      >
+        <AppNavigation user={user} />
+      </SidebarSection>
+    </Sidebar>
+  );
+
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+    <DashboardLayout
+      title="Meus Links"
+      subtitle="Gerencie seus links pessoais"
+      sidebar={sidebarContent}
+      className="grid gap-4 grid-cols-1"
     >
-      <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
-      <div className="flex flex-1 overflow-hidden relative">
-        <motion.aside
-          className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
-          style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
-          initial={false}
-          animate={{ x: open ? 0 : -256 }}
-        >
-          <NavLink
-            to="/"
-            onClick={() => setOpen(false)}
-            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
-          >
-            <HomeIcon size={18} /> Início
-          </NavLink>
-          <nav className="flex flex-col gap-2">
-            {user?.isAdmin ? (
-              <>
-                <NavLink
-                  end
-                  to="/admin"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <HomeIcon size={18} /> Dashboard
-                </NavLink>
-                <NavLink
-                  to="/admin/links"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <Link2 size={18} /> Links
-                </NavLink>
-                <NavLink
-                  to="/admin/files"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <FileIcon size={18} /> Arquivos
-                </NavLink>
-                <NavLink
-                  to="/admin/categories"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <Folder size={18} /> Categorias
-                </NavLink>
-                <NavLink
-                  to="/admin/colors"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <Palette size={18} /> Cores
-                </NavLink>
-                <NavLink
-                  to="/admin/users"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <Users size={18} /> Usuários
-                </NavLink>
-              </>
-            ) : (
-              <NavLink
-                to="/user/links"
-                className={({ isActive }) =>
-                  `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                }
-                style={({ isActive }) =>
-                  isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                }
-              >
-                <Link2 size={18} /> Links
-              </NavLink>
-            )}
-          </nav>
-        </motion.aside>
-        <main
-          className={`flex-1 p-4 md:p-8 transition-all ${open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0'}`}
-        >
-          <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
-            <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Links Gerais</h2>
-          <ul className="space-y-2">
-            {generalLinks.map((l) => {
-              const Icon = (Icons as any)[categoryMap[l.categoryId || 0]?.icon || 'Link2']
-              return (
-                <li key={l.id} className="flex items-center gap-2">
-                  {Icon && <Icon size={16} className="opacity-70" />}
-                  <a href={l.url} target="_blank" className="flex-1 underline">
-                    {l.title}
-                  </a>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar Link" : "Novo Link"}</h2>
-          <form
-            onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
-            className="flex flex-col gap-3"
-          >
-            <input
-              className={fieldClass}
-              placeholder="Título"
-              value={editingId ? editLink.title : newLink.title}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                editingId
-                  ? setEditLink({ ...editLink, title: e.target.value })
-                  : setNewLink({ ...newLink, title: e.target.value })
-              }
+      {/* User Links */}
+      <DashboardColumn
+        title="Meus Links"
+        subtitle={`${userLinks.length} links criados`}
+        icon={<Link2 className="w-4 h-4 text-blue-600" />}
+        page={page}
+        pageCount={pageCount}
+        onPageChange={setPage}
+        onAdd={() => navigate('/user/links/new')}
+        addLabel="Novo Link"
+      >
+        {paginatedLinks.map((link) => {
+          const category = categoryMap[link.categoryId || 0];
+          return (
+            <ListItem
+              key={link.id}
+              title={link.title}
+              subtitle={link.url || 'Sem URL'}
+              icon={Link2}
+              iconColor={link.color || category?.color || '#3b82f6'}
+              badge={category ? { text: category.name, variant: 'default' } : undefined}
+              actions={[
+                { icon: ExternalLink, label: 'Abrir', onClick: () => window.open(link.url, '_blank') },
+                { icon: Pencil, label: 'Editar', onClick: () => navigate(`/user/links/edit/${link.id}`) },
+                { icon: Trash2, label: 'Excluir', onClick: () => remove(link.id), variant: 'danger' }
+              ]}
             />
-
-            {user?.isAdmin && (
-              <select
-                className={fieldClass}
-                value={editingId ? editLinkType : newLinkType}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  editingId
-                    ? setEditLinkType(e.target.value as 'link' | 'file')
-                    : setNewLinkType(e.target.value as 'link' | 'file')
-                }
-              >
-                <option value="link">Link</option>
-                <option value="file">Arquivo</option>
-              </select>
-            )}
-
-            {(editingId ? editLinkType : newLinkType) === 'link' || !user?.isAdmin ? (
-              <input
-                className={fieldClass}
-                placeholder="URL"
-                value={editingId ? editLink.url : newLink.url}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  editingId
-                    ? setEditLink({ ...editLink, url: e.target.value })
-                    : setNewLink({ ...newLink, url: e.target.value })
-                }
-              />
-            ) : (
-              <select
-                className={fieldClass}
-                value={editingId ? editLink.file_url : newLink.file_url}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  editingId
-                    ? setEditLink({ ...editLink, file_url: e.target.value })
-                    : setNewLink({ ...newLink, file_url: e.target.value })
-                }
-              >
-                <option value="">Arquivo</option>
-                {files.map((f) => (
-                  <option key={f.id} value={f.fileUrl}>
-                    {f.title}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            <select
-              className={fieldClass}
-              value={
-                editingId ? editLink.category_id ?? "" : newLink.category_id ?? ""
-              }
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                const parsed = e.target.value === "" ? null : Number(e.target.value);
-                editingId
-                  ? setEditLink({ ...editLink, category_id: parsed })
-                  : setNewLink({ ...newLink, category_id: parsed });
-              }}
-            >
-              <option value="">Categoria</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-        <select
-          className={fieldClass}
-          value={editingId ? editLink.color : newLink.color}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-            editingId
-              ? setEditLink({ ...editLink, color: e.target.value })
-              : setNewLink({ ...newLink, color: e.target.value })
-          }
-        >
-          <option value="">Cor do card</option>
-          {colors.map((c) => (
-            <option
-              key={c.id}
-              value={c.value}
-              style={{ backgroundColor: c.value, color: "#000" }}
-            >
-              {c.name ? `${c.name} - ${c.value}` : c.value}
-
-            </option>
-          ))}
-        </select>
-
-        <select
-          className={fieldClass}
-          value={editingId ? editImageType : newImageType}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-            editingId
-              ? setEditImageType(e.target.value as "url" | "file")
-              : setNewImageType(e.target.value as "url" | "file")
-          }
-        >
-          <option value="url">URL</option>
-          <option value="file">Upload</option>
-        </select>
-
-        {(editingId ? editImageType : newImageType) === "url" ? (
-          <input
-            className={fieldClass}
-            placeholder="URL da imagem"
-            value={editingId ? editLink.image_url : newLink.image_url}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              editingId
-                ? setEditLink({ ...editLink, image_url: e.target.value })
-                : setNewLink({ ...newLink, image_url: e.target.value })
-            }
-          />
-        ) : (
-          <input
-            type="file"
-            accept="image/*"
-            className={fieldClass}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              const file = e.target.files?.[0] ?? null;
-              editingId ? setEditImageFile(file) : setNewImageFile(file);
-            }}
-          />
-        )}
-        {user?.isAdmin && (editingId ? editLinkType : newLinkType) === 'link' && (
-          <>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={editingId ? editHasFile : newHasFile}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              editingId
-                ? setEditHasFile(e.target.checked)
-                : setNewHasFile(e.target.checked)
-            }
-          />
-          Possui arquivo
-        </label>
-
-        {(editingId ? editHasFile : newHasFile) && (
-
-          <input
-            type="file"
-            className={fieldClass}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              const f = e.target.files?.[0] ?? null;
-              editingId ? setEditFile(f) : setNewFile(f);
-
-            }}
-          />
-        )}
-          </>
-        )}
-
-        <div className="flex gap-2">
-              <button
-                type="submit"
-                className="btn-primary px-4 py-2 rounded"
-              >
-                {editingId ? "Salvar" : "Adicionar"}
-              </button>
-
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(null);
-                    setEditHasFile(false);
-                    setEditFile(null);
-                    setEditLinkType('link');
-
-                    navigate("/user/links");
-                  }}
-                  className="px-4 py-2 rounded border"
-                >
-                  Cancelar
-                </button>
-              )}
-            </div>
-          </form>
-        </section>
-
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
-          <h2 className="text-lg font-semibold mb-4">Seus Links ({userLinks.length})</h2>
-          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {paginatedLinks.map((l) => {
-              const Icon = (Icons as any)[categoryMap[l.categoryId || 0]?.icon || "Link2"];
-              return (
-                <motion.li
-                  key={l.id}
-                  layout
-                  className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
-                >
-                  <span
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: l.color || categoryMap[l.categoryId || 0]?.color }}
-                  />
-                  {Icon && <Icon size={16} className="opacity-70" />}
-                  {l.url ? (
-                    <a
-                      href={l.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 underline"
-                    >
-                      {l.title}
-                    </a>
-                  ) : (
-                    <span className="flex-1">{l.title}</span>
-                  )}
-                  {l.fileUrl && (
-                    <a
-                      href={l.fileUrl}
-                      className="underline mr-2"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      arquivo
-                    </a>
-                  )}
-                  <button onClick={() => startEdit(l)} className="p-1 hover:text-[var(--accent-color)]">
-                    <Pencil size={16} />
-                  </button>
-                  <button onClick={() => remove(l.id)} className="p-1 hover:text-red-400">
-                    <Trash2 size={16} />
-                  </button>
-                </motion.li>
-              );
-            })}
-          </motion.ul>
-          {pageCount > 1 && (
-            <div className="flex justify-center gap-2 mt-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="self-center">
-                {page} / {pageCount}
-              </span>
-              <button
-                disabled={page === pageCount}
-                onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
-        </section>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
+          );
+        })}
+      </DashboardColumn>
+    </DashboardLayout>
   );
 }

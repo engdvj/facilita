@@ -32,6 +32,7 @@ import AdminColors from './pages/AdminColors';
 import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminFiles from './pages/AdminFiles';
+import UserLinkCreate from './pages/UserLinkCreate';
 
 export default function App() {
   return (
@@ -65,13 +66,19 @@ export default function App() {
                   <ProtectedRoute>
                     <LazyUserLinks />
                   </ProtectedRoute>
-                }>
-                  <Route path=":id" element={
-                    <ProtectedRoute>
-                      <LazyUserLinks />
-                    </ProtectedRoute>
-                  } />
-                </Route>
+                } />
+                
+                <Route path="/user/links/new" element={
+                  <ProtectedRoute>
+                    <UserLinkCreate />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/user/links/edit/:id" element={
+                  <ProtectedRoute>
+                    <UserLinkCreate />
+                  </ProtectedRoute>
+                } />
                 
                 {/* Protected admin routes */}
                 <Route path="/admin" element={

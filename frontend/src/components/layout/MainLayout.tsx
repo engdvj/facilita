@@ -6,9 +6,13 @@ import { ErrorBoundary } from '../common';
 
 interface MainLayoutProps {
   children?: React.ReactNode;
+  headerProps?: {
+    showSearchBar?: boolean;
+    onSearch?: (query: string) => void;
+  };
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function MainLayout({ children, headerProps }: MainLayoutProps) {
   return (
     <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
       {/* Enhanced Background Elements */}
@@ -39,9 +43,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Main content */}
       <div className="relative z-10 flex flex-col min-h-screen">
         <ErrorBoundary level="layout">
-          <Header />
+          <Header {...headerProps} />
           
-          <main className="flex-1 container-xl py-6 sm:py-8 md:py-12">
+          <main className="flex-1">
             <div className="animate-in fade-in slide-up">
               {children || <Outlet />}
             </div>

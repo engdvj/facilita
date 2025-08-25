@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import './responsive.css';
 
 @tailwind base;
 @tailwind components;
@@ -593,39 +594,188 @@ body {
 /* Responsive Breakpoint Grids */
 .grid-responsive {
   display: grid;
-  gap: var(--space-4);
+  gap: 1rem;
   grid-template-columns: 1fr;
+  width: 100%;
+  padding: 0;
 }
 
+/* Admin Search Pages - Same responsive system as dashboard */
+.admin-search-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: minmax(350px, max-content);
+}
+
+/* Smart content reduction for admin search pages */
+@media (max-width: 1536px) {
+  .admin-search-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .admin-search-grid .subtitle {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .admin-search-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  .admin-search-grid .description {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin-search-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  .admin-search-grid h3 {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-search-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+/* Mobile - 1 coluna */
+@media (min-width: 480px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* Tablet - 2-3 colunas */
 @media (min-width: 640px) {
   .grid-responsive {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-6);
+    gap: 1.5rem;
   }
 }
 
 @media (min-width: 768px) {
   .grid-responsive {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
   }
 }
 
+/* Desktop - 3-4 colunas */
 @media (min-width: 1024px) {
   .grid-responsive {
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-8);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
   }
 }
 
+/* Large Desktop - 5-6 colunas */
 @media (min-width: 1280px) {
   .grid-responsive {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2rem;
   }
 }
 
+/* Extra Large Desktop - 6-7 colunas */
 @media (min-width: 1536px) {
   .grid-responsive {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* Widescreen (2560x1080) - 7-8 colunas */
+@media (min-width: 1920px) {
+  .grid-responsive {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2.5rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  .grid-responsive {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2.5rem;
+  }
+}
+
+@media (min-width: 3200px) {
+  .grid-responsive {
+    grid-template-columns: repeat(10, 1fr);
+    gap: 3rem;
+  }
+}
+
+/* Widescreen Responsive Grid - Cards Menores (5-7 por linha) */
+.widescreen-responsive-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  justify-content: center;
+  justify-items: center;
+}
+
+/* Mobile - 2-3 cards */
+@media (max-width: 639px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Tablet - 3-4 cards */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+/* Desktop - 5-6 cards */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Large Desktop - 6-7 cards */
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Extra Large Desktop - 7-8 cards */
+@media (min-width: 1536px) and (max-width: 2559px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.75rem;
+  }
+}
+
+/* Ultra Wide - 2560x1080 - 8-10 cards */
+@media (min-width: 2560px) and (max-width: 3199px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 2rem;
+  }
+}
+
+/* Super Ultra Wide - 3200+ - 10+ cards */
+@media (min-width: 3200px) {
+  .widescreen-responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 2rem;
   }
 }
 
@@ -697,13 +847,210 @@ body {
   }
 }
 
+/* Dashboard Specific Styles */
+.dashboard-card {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.dashboard-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* Responsive Admin Dashboard Grid */
+.admin-dashboard-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: minmax(350px, max-content);
+}
+
+/* Ultra wide screens - 5 columns always */
+@media (min-width: 2560px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* Extra large screens - 5 columns */
+@media (min-width: 1920px) and (max-width: 2559px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+/* Large screens - 4 columns, reduce content */
+@media (min-width: 1536px) and (max-width: 1919px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .list-item .subtitle {
+    display: none;
+  }
+}
+
+/* Desktop - 5 columns, hide descriptions */
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+  .list-item .subtitle,
+  .list-item .description {
+    display: none;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+}
+
+/* Medium desktop - 5 columns, compact stats */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+  .dashboard-column {
+    height: 300px;
+  }
+}
+
+/* Tablet - 2 columns */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  .dashboard-column {
+    height: 280px;
+  }
+  .list-item {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Mobile - 1 column, minimal content */
+@media (max-width: 767px) {
+  .admin-dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.25rem;
+  }
+  .dashboard-column {
+    height: 250px;
+  }
+  .list-item {
+    padding: 0.5rem;
+    font-size: 0.7rem;
+  }
+  .list-item .subtitle,
+  .list-item .description {
+    display: none;
+  }
+}
+
+.dashboard-column {
+  height: fit-content;
+  max-height: 80vh;
+}
+
+.dashboard-column .column-content {
+  min-height: 150px;
+}
+
+.list-item {
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.list-item:hover {
+  transform: translateY(-1px);
+}
+
+.action-button:hover {
+  transform: scale(1.02);
+}
+
+.action-button:active {
+  transform: scale(0.98);
+}
+
+/* Form Styles */
+input, select, textarea {
+  transition: border-color var(--duration-fast) var(--ease-out), 
+              box-shadow var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 1px var(--border-focus);
+}
+
+input:hover, select:hover, textarea:hover {
+  border-color: var(--border-accent);
+}
+
+/* Dashboard Grid Responsive */
+.dashboard-content {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-content.grid {
+    display: grid;
+  }
+}
+
+/* Scrollbar styling for dashboard columns */
+.dashboard-column .column-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dashboard-column .column-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.dashboard-column .column-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.dashboard-column .column-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {
   .animate-in,
   .transition-all,
   .transition-colors,
   .transition-transform,
-  .transition-opacity {
+  .transition-opacity,
+  .dashboard-card,
+  .list-item,
+  .action-button {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -712,7 +1059,9 @@ body {
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .glass {
+  .glass,
+  .dashboard-card,
+  .list-item {
     border-width: 2px;
   }
   

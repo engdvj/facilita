@@ -109,8 +109,8 @@ export default function AdminCategories() {
   const paginatedCats = sortedCats.slice((page - 1) * perPage, page * perPage);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
-      <div className="grid gap-8 md:grid-cols-2">
+    <div className="p-4" style={{ color: 'var(--text-color)' }}>
+      <div className="admin-search-grid">
         <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar" : "Nova"} Categoria</h2>
           <form
