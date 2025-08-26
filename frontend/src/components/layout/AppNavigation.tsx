@@ -25,23 +25,33 @@ interface NavItemProps {
   customAction?: boolean;
 }
 
-function NavItem({ to, icon, children, onClick, end = false, customAction = false }: NavItemProps) {
+interface CustomNavItemProps extends NavItemProps {
+  sectionKey?: string;
+  activeSection?: string | null;
+}
+
+function NavItem({ to, icon, children, onClick, end = false, customAction = false, sectionKey, activeSection }: CustomNavItemProps) {
   if (customAction) {
+    const isActive = activeSection === sectionKey;
     return (
       <button
         onClick={onClick}
-        className="nav-link flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all w-full text-left"
+        className={`nav-link flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all w-full text-left ${isActive ? 'active' : ''}`}
         style={{
-          color: 'var(--sidebar-text)',
-          background: 'transparent'
+          color: isActive ? 'var(--sidebar-active-text)' : 'var(--sidebar-text)',
+          background: isActive ? 'var(--sidebar-active-background)' : 'transparent'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'var(--sidebar-hover-background)';
-          e.currentTarget.style.color = 'var(--sidebar-hover-text)';
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = 'var(--sidebar-hover-background)';
+            e.currentTarget.style.color = 'var(--sidebar-hover-text)';
+          }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.color = 'var(--sidebar-text)';
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = 'var(--sidebar-text)';
+          }
         }}
       >
         {icon}
@@ -105,24 +115,42 @@ function NavSection({ title, children }: NavSectionProps) {
 }
 
 export default function AppNavigation({ user, onLinkClick }: AppNavigationProps) {
+  const [activeSection, setActiveSection] = React.useState<string | null>('dashboard');
+
+  React.useEffect(() => {
+    const handleUpdateSelection = (event: CustomEvent) => {
+      setActiveSection(event.detail);
+    };
+
+    window.addEventListener('updateSidebarSelection', handleUpdateSelection as EventListener);
+    return () => {
+      window.removeEventListener('updateSidebarSelection', handleUpdateSelection as EventListener);
+    };
+  }, []);
   return (
     <nav className="space-y-0">
-      <NavItem 
-        to="/" 
-        icon={<Globe size={16} />} 
-        onClick={onLinkClick}
-        end
-      >
-        Início
-      </NavItem>
-      
       <div className="mt-6">
       {user?.isAdmin ? (
         <NavSection title="Admin">
           <NavItem 
+            to="/" 
+            icon={<Globe size={16} />} 
+            onClick={onLinkClick}
+            end
+          >
+            Início
+          </NavItem>
+          <NavItem 
             to="/admin" 
             icon={<HomeIcon size={16} />} 
-            onClick={onLinkClick}
+            customAction={true}
+            sectionKey="dashboard"
+            activeSection={activeSection}
+            onClick={() => {
+              if (onLinkClick) onLinkClick();
+              // Set dashboard as active and clear focused section
+              window.dispatchEvent(new CustomEvent('focusSection', { detail: null }));
+            }}
             end
           >
             Dashboard
@@ -130,6 +158,9 @@ export default function AppNavigation({ user, onLinkClick }: AppNavigationProps)
           <NavItem 
             to="/admin" 
             icon={<Link2 size={16} />} 
+            customAction={true}
+            sectionKey="links"
+            activeSection={activeSection}
             onClick={() => {
               if (onLinkClick) onLinkClick();
               // Trigger links section focus on dashboard
@@ -139,43 +170,77 @@ export default function AppNavigation({ user, onLinkClick }: AppNavigationProps)
             Links
           </NavItem>
           <NavItem 
-            to="/admin/files" 
+            to="/admin" 
             icon={<FileIcon size={16} />} 
-            onClick={onLinkClick}
+            customAction={true}
+            sectionKey="files"
+            activeSection={activeSection}
+            onClick={() => {
+              if (onLinkClick) onLinkClick();
+              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'files' }));
+            }}
           >
             Arquivos
           </NavItem>
           <NavItem 
-            to="/admin/categories" 
+            to="/admin" 
             icon={<Folder size={16} />} 
-            onClick={onLinkClick}
+            customAction={true}
+            sectionKey="categories"
+            activeSection={activeSection}
+            onClick={() => {
+              if (onLinkClick) onLinkClick();
+              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'categories' }));
+            }}
           >
             Categorias
           </NavItem>
           <NavItem 
-            to="/admin/colors" 
+            to="/admin" 
             icon={<Palette size={16} />} 
-            onClick={onLinkClick}
+            customAction={true}
+            sectionKey="colors"
+            activeSection={activeSection}
+            onClick={() => {
+              if (onLinkClick) onLinkClick();
+              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'colors' }));
+            }}
           >
             Cores
           </NavItem>
           <NavItem 
-            to="/admin/users" 
+            to="/admin" 
             icon={<Users size={16} />} 
-            onClick={onLinkClick}
+            customAction={true}
+            sectionKey="users"
+            activeSection={activeSection}
+            onClick={() => {
+              if (onLinkClick) onLinkClick();
+              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'users' }));
+            }}
           >
             Usuários
           </NavItem>
         </NavSection>
       ) : (
-        <NavSection title="Usuário">
+        <>
           <NavItem 
-            to="/user/links" 
-            icon={<Link2 size={16} />} 
+            to="/" 
+            icon={<Globe size={16} />} 
             onClick={onLinkClick}
+            end
           >
-            Meus Links
+            Início
           </NavItem>
+          <div className="mt-4">
+          <NavSection title="Usuário">
+            <NavItem 
+              to="/user/links" 
+              icon={<Link2 size={16} />} 
+              onClick={onLinkClick}
+            >
+              Meus Links
+            </NavItem>
           <NavItem 
             to="/user/links/new" 
             icon={<Plus size={16} />} 
@@ -183,7 +248,9 @@ export default function AppNavigation({ user, onLinkClick }: AppNavigationProps)
           >
             Novo Link
           </NavItem>
-        </NavSection>
+          </NavSection>
+          </div>
+        </>
       )}
       </div>
     </nav>

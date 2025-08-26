@@ -10,6 +10,7 @@ interface ListItemProps {
   icon?: LucideIcon | ReactNode;
   iconColor?: string;
   iconBg?: string;
+  imageUrl?: string;
   badge?: {
     text: string;
     variant?: 'success' | 'warning' | 'error' | 'info' | 'default';
@@ -67,6 +68,7 @@ export default function ListItem({
   icon,
   iconColor,
   iconBg,
+  imageUrl,
   badge,
   actions = [],
   onClick,
@@ -98,18 +100,40 @@ export default function ListItem({
       target={target}
       rel={target === '_blank' ? 'noopener noreferrer' : undefined}
     >
-      {/* Icon */}
-      {(icon || IconComponent) && (
+      {/* Icon or Image */}
+      {(imageUrl || icon || IconComponent) && (
         <div 
-          className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+          className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 overflow-hidden"
           style={{ 
-            background: iconBg || 'var(--dashboard-stat-icon-bg)',
+            background: imageUrl ? 'transparent' : (iconBg || 'var(--dashboard-stat-icon-bg)'),
             color: iconColor || 'var(--dashboard-stat-icon)'
           }}
         >
-          {React.isValidElement(icon) ? icon : 
-           IconComponent ? <IconComponent className="w-3 h-3" /> : null
-          }
+          {imageUrl ? (
+            <img 
+              src={imageUrl} 
+              alt={title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Se a imagem falhar, mostrar o ícone padrão
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && (icon || IconComponent)) {
+                  parent.style.background = iconBg || 'var(--dashboard-stat-icon-bg)';
+                  const iconElement = React.isValidElement(icon) ? icon : 
+                    IconComponent ? React.createElement(IconComponent, { className: "w-3 h-3" }) : null;
+                  if (iconElement) {
+                    const container = document.createElement('div');
+                    parent.appendChild(container);
+                  }
+                }
+              }}
+            />
+          ) : (
+            React.isValidElement(icon) ? icon : 
+            IconComponent ? <IconComponent className="w-3 h-3" /> : null
+          )}
         </div>
       )}
 

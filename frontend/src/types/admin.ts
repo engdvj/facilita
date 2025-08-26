@@ -3,6 +3,7 @@ import { LinkData } from "../components/LinkCard";
 export interface FileData {
   id: number;
   title: string;
+  description?: string;
   fileUrl: string;
   userId?: number;
   user?: string;

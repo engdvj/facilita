@@ -55,16 +55,6 @@ export default function DashboardColumn({
             {title} ({total || 0})
           </h3>
         </div>
-        {onAdd && (
-          <ActionButton
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onClick={onAdd}
-            iconOnly
-            title={addLabel}
-          />
-        )}
       </div>
 
       {/* Content */}

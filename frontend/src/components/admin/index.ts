@@ -8,3 +8,10 @@ export { default as FilesColumn } from './FilesColumn';
 export { default as CategoriesColumn } from './CategoriesColumn';
 export { default as ColorsColumn } from './ColorsColumn';
 export { default as UsersColumn } from './UsersColumn';
+
+// New modular components
+export { default as AdminStats } from './AdminStats';
+export { default as AdminLinkForm } from './AdminLinkForm';
+export { default as AdminLinkList } from './AdminLinkList';
+export { default as AdminFileForm } from './AdminFileForm';
+export { default as AdminFileList } from './AdminFileList';

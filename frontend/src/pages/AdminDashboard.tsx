@@ -1,6 +1,7 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   Pencil,
   Trash2,
@@ -22,6 +23,13 @@ import * as Icons from "lucide-react";
 import api from "../api";
 import { LinkData } from "../components/LinkCard";
 import { Category, Color, FileData } from "../types/admin";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import DashboardStats from "../components/common/DashboardStats";
+import DashboardColumn from "../components/common/DashboardColumn";
+import ListItem from "../components/common/ListItem";
+import ActionButton from "../components/common/ActionButton";
+import { AdminStats, AdminLinkForm, AdminLinkList, AdminFileForm, AdminFileList } from "../components/admin";
+import PreviewModal from "../components/common/PreviewModal";
 
 interface User {
   id: number;
@@ -30,11 +38,6 @@ interface User {
   isAdmin: boolean;
   createdAt: string;
 }
-import DashboardLayout from "../components/layout/DashboardLayout";
-import DashboardStats from "../components/common/DashboardStats";
-import DashboardColumn from "../components/common/DashboardColumn";
-import ListItem from "../components/common/ListItem";
-import ActionButton from "../components/common/ActionButton";
 
 /* ------------------------------------------------------------------ */
 /* Componente                                                          */
@@ -48,11 +51,41 @@ export default function AdminDashboard() {
   const [files, setFiles] = useState<FileData[]>([]);
   const [loading, setLoading] = useState(true);
   const [focusedSection, setFocusedSection] = useState<string | null>(null);
+  const [editingLink, setEditingLink] = useState<LinkData | null>(null);
+  const [editingFile, setEditingFile] = useState<FileData | null>(null);
+  const [previewModal, setPreviewModal] = useState<{type: 'image' | 'file', url: string, name?: string} | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    url: '',
+    categoryId: '',
+    imageUrl: '',
+    imageFile: null as File | null,
+    fileUrl: '',
+    attachedFile: null as File | null,
+    imageInputType: 'link' as 'link' | 'upload',
+    fileInputType: 'link' as 'link' | 'upload',
+    hasFile: false,
+    isPublic: false,
+    isFavorite: false,
+    linkType: 'url' as 'url' | 'file',
+    selectedFileId: ''
+  });
+
+  const [fileFormData, setFileFormData] = useState({
+    title: '',
+    description: '',
+    categoryId: '',
+    fileUrl: '',
+    attachedFile: null as File | null,
+    fileInputType: 'upload' as 'link' | 'upload'
+  });
 
   // Listen for sidebar navigation events
   useEffect(() => {
     const handleFocusSection = (event: CustomEvent) => {
       setFocusedSection(event.detail);
+      // Update sidebar selection - set to section or 'dashboard' if null
+      window.dispatchEvent(new CustomEvent('updateSidebarSelection', { detail: event.detail || 'dashboard' }));
     };
 
     window.addEventListener('focusSection', handleFocusSection as EventListener);
@@ -308,87 +341,27 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="mb-2">
-        
-        {/* Stats */}
-        <div className="grid grid-cols-5 gap-3 mb-2">
-          {statsData.map((stat, index) => {
-            const isActive = focusedSection === stat.key;
-            return (
-              <motion.div 
-                key={stat.title}
-                className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-lg ${
-                  isActive ? 'ring-2 ring-offset-2' : ''
-                }`}
-                style={{
-                  background: 'var(--card-background)',
-                  borderColor: isActive ? stat.color : 'var(--card-border)',
-                  ringColor: isActive ? stat.color : 'transparent',
-                  boxShadow: isActive ? `0 0 20px ${stat.color}40` : 'none'
-                }}
-                onClick={() => {
-                  console.log('Card clicked:', stat.key);
-                  setFocusedSection(focusedSection === stat.key ? null : stat.key);
-                  // Toggle focused section - click again to deselect
-                }}
-                whileHover={{ 
-                  scale: 1.02,
-                  boxShadow: `0 8px 25px ${stat.color}30`
-                }}
-                whileTap={{ 
-                  scale: 0.98,
-                  transition: { duration: 0.1 }
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ 
-                  opacity: 1, 
-                  y: 0,
-                  scale: isActive ? 1.05 : 1,
-                  rotate: isActive ? [0, 1, -1, 0] : 0
-                }}
-                transition={{ 
-                  duration: 0.3,
-                  delay: index * 0.1
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <motion.div 
-                    className="w-6 h-6 rounded flex items-center justify-center text-white"
-                    style={{ backgroundColor: stat.color }}
-                    whileHover={{ 
-                      rotate: [0, -10, 10, 0],
-                      transition: { duration: 0.3 }
-                    }}
-                  >
-                    {(() => {
-                      const IconComponent = Icons[stat.icon as keyof typeof Icons];
-                      return IconComponent ? <IconComponent className="w-3 h-3" /> : null;
-                    })()}
-                  </motion.div>
-                  <div>
-                    <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                      {stat.count}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {stat.title}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
+    <div className="p-4 pt-2">
+      {/* Stats */}
+      <AdminStats 
+        statsData={statsData}
+        focusedSection={focusedSection}
+        onStatClick={(statKey) => {
+          console.log('Card clicked:', statKey);
+          const newSection = focusedSection === statKey ? null : statKey;
+          setFocusedSection(newSection);
+          window.dispatchEvent(new CustomEvent('updateSidebarSelection', { detail: newSection || 'dashboard' }));
+        }}
+        loading={loading}
+      />
 
       {/* Content Grid */}
       {focusedSection ? (
-        <div className="focused-content">
+        <div className="focused-content mt-8">
           {renderFocusedContent()}
         </div>
       ) : (
-        <div className="admin-dashboard-grid">
+        <div className="admin-dashboard-grid mt-6">
       {/* Links */}
       <DashboardColumn
         title="Links"
@@ -404,6 +377,7 @@ export default function AdminDashboard() {
             key={link.id}
             title={link.title}
             subtitle={link.url}
+            imageUrl={link.imageUrl}
             icon={Link2}
             iconColor="#2563eb"
             actions={[
@@ -432,6 +406,7 @@ export default function AdminDashboard() {
             icon={FileIcon}
             iconColor="#16a34a"
             actions={[
+              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/files/${file.id}`) },
               { icon: Download, label: 'Download', onClick: () => window.open(file.fileUrl, '_blank') },
               { icon: Trash2, label: 'Excluir', onClick: () => removeFile(file.id), variant: 'danger' }
             ]}
@@ -457,7 +432,7 @@ export default function AdminDashboard() {
             icon={Icons[category.icon as keyof typeof Icons] || Folder}
             iconColor={category.color}
             actions={[
-              { icon: Pencil, label: 'Editar', onClick: () => startEditCat(category) },
+              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/categories/${category.id}`) },
               { icon: Trash2, label: 'Excluir', onClick: () => removeCat(category.id), variant: 'danger' }
             ]}
           />
@@ -481,7 +456,7 @@ export default function AdminDashboard() {
             subtitle={color.value}
             icon={<div className="w-4 h-4 rounded-full" style={{ backgroundColor: color.value }} />}
             actions={[
-              { icon: Pencil, label: 'Editar', onClick: () => startEditColor(color) },
+              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/colors`) },
               { icon: Trash2, label: 'Excluir', onClick: () => removeColor(color.id), variant: 'danger' }
             ]}
           />
@@ -507,7 +482,7 @@ export default function AdminDashboard() {
             iconColor="#6366f1"
             badge={user.isAdmin ? { text: 'Admin', variant: 'info' } : undefined}
             actions={[
-              { icon: Pencil, label: 'Editar', onClick: () => startEditUser(user) },
+              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/users/${user.id}`) },
               { icon: Trash2, label: 'Excluir', onClick: () => removeUser(user.id), variant: 'danger' }
             ]}
           />
@@ -540,12 +515,16 @@ export default function AdminDashboard() {
       >
 
         {/* Focused content based on section */}
-        <div className="grid grid-cols-5 gap-4 h-[calc(100vh-200px)] overflow-hidden">
+        <div className="grid grid-cols-5 gap-3">
           <div className="col-span-2">
-            {renderSectionList(focusedSection)}
+            <div className="sticky top-0" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+              {renderSectionList(focusedSection)}
+            </div>
           </div>
           <div className="col-span-3">
-            {renderSectionForm(focusedSection)}
+            <div style={{ minHeight: '300px' }}>
+              {renderSectionForm(focusedSection)}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -557,46 +536,63 @@ export default function AdminDashboard() {
 
     if (section === 'links') {
       return (
-        <div className="h-full p-4 rounded-lg border overflow-y-auto" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Links ({filteredLinks.length})
-          </h3>
-          {paginatedLinks.map((link) => (
-            <div key={link.id} className="p-3 border rounded-lg mb-2" style={{ borderColor: 'var(--card-border)', background: 'var(--card-background)' }}>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h4 className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                    {link.title}
-                  </h4>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                    {link.url}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    onClick={() => window.open(link.url, '_blank')}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button 
-                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-red-500"
-                    onClick={() => deleteLink(link.id)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <AdminLinkList
+          links={paginatedLinks}
+          onEdit={(link) => {
+            setEditingLink(link);
+            setFormData({
+              title: link.title,
+              url: link.url,
+              categoryId: link.categoryId?.toString() || '',
+              imageUrl: link.imageUrl || '',
+              imageFile: null,
+              fileUrl: link.fileUrl || '',
+              attachedFile: null,
+              imageInputType: link.imageUrl ? 'link' : 'upload',
+              fileInputType: link.fileUrl ? 'link' : 'upload',
+              hasFile: !!(link.fileUrl),
+              isPublic: link.isPublic || false,
+              isFavorite: link.isFavorite || false,
+              linkType: 'url', // Por padrão, links existentes são URL
+              selectedFileId: ''
+            });
+          }}
+          onDelete={removeLink}
+        />
+      );
+    }
+
+    if (section === 'files') {
+      return (
+        <AdminFileList
+          files={paginatedFiles}
+          onDownload={(file) => {
+            try {
+              if (file.fileUrl) {
+                // Cria um elemento <a> temporário para forçar download
+                const link = document.createElement('a');
+                link.href = file.fileUrl;
+                link.download = file.title || 'arquivo';
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } else {
+                toast.error('Arquivo sem URL para download');
+              }
+            } catch (error) {
+              console.error('Erro ao fazer download:', error);
+              toast.error('Erro ao fazer download do arquivo');
+            }
+          }}
+          onDelete={removeFile}
+        />
       );
     }
 
     return (
       <div className="h-full p-4 rounded-lg border" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
         <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-          {section === 'files' && 'Arquivos'}
           {section === 'categories' && 'Categorias'}
           {section === 'colors' && 'Cores'}
           {section === 'users' && 'Usuários'}
@@ -610,83 +606,309 @@ export default function AdminDashboard() {
 
     if (section === 'links') {
       return (
+        <AdminLinkForm
+          editingLink={editingLink}
+          formData={formData}
+          setFormData={setFormData}
+          categories={categories}
+          files={files}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              // Preparar dados para envio
+              let submitData = { ...formData };
+              
+              // Se tipo for arquivo, definir URL a partir do arquivo selecionado
+              if (formData.linkType === 'file' && formData.selectedFileId) {
+                const selectedFile = files.find(f => f.id.toString() === formData.selectedFileId);
+                if (selectedFile) {
+                  submitData.url = selectedFile.fileUrl;
+                  // Para links tipo arquivo, não enviamos anexos
+                  submitData.hasFile = false;
+                  submitData.fileUrl = '';
+                  submitData.attachedFile = null;
+                }
+              }
+              
+              if (editingLink) {
+                await api.put(`/links/${editingLink.id}`, submitData);
+                toast.success('Link atualizado!');
+              } else {
+                await api.post('/links', submitData);
+                toast.success('Link criado!');
+              }
+              
+              setEditingLink(null);
+              setFormData({ 
+                title: '', 
+                url: '', 
+                categoryId: '', 
+                imageUrl: '', 
+                imageFile: null, 
+                fileUrl: '', 
+                attachedFile: null, 
+                imageInputType: 'link', 
+                fileInputType: 'link', 
+                hasFile: false, 
+                isPublic: false, 
+                isFavorite: false,
+                linkType: 'url',
+                selectedFileId: ''
+              });
+              await refresh();
+            } catch (error) {
+              toast.error('Erro ao salvar link');
+            }
+          }}
+          onCancel={() => {
+            setEditingLink(null);
+            setFormData({ 
+              title: '', 
+              url: '', 
+              categoryId: '', 
+              imageUrl: '', 
+              imageFile: null, 
+              fileUrl: '', 
+              attachedFile: null, 
+              imageInputType: 'link', 
+              fileInputType: 'link', 
+              hasFile: false, 
+              isPublic: false, 
+              isFavorite: false,
+              linkType: 'url',
+              selectedFileId: ''
+            });
+          }}
+          onImagePreview={() => {
+            const url = formData.imageUrl || (formData.imageFile ? URL.createObjectURL(formData.imageFile) : '');
+            const name = formData.imageFile?.name || 'Imagem';
+            if (url) setPreviewModal({type: 'image', url, name});
+          }}
+          onFilePreview={() => {
+            const url = formData.fileUrl || (formData.attachedFile ? URL.createObjectURL(formData.attachedFile) : '');
+            const name = formData.attachedFile?.name || 'Arquivo';
+            if (url) {
+              if (formData.fileUrl) {
+                window.open(url, '_blank');
+              } else {
+                setPreviewModal({type: 'file', url, name});
+              }
+            }
+          }}
+        />
+      );
+    }
+
+    if (section === 'files') {
+      return (
+        <AdminFileForm
+          formData={fileFormData}
+          setFormData={setFileFormData}
+          categories={categories}
+          editingFile={editingFile}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              // Validação básica
+              if (!fileFormData.title.trim()) {
+                toast.error('Título é obrigatório');
+                return;
+              }
+              
+              if (fileFormData.fileInputType === 'upload' && !fileFormData.attachedFile) {
+                toast.error('Selecione um arquivo para upload');
+                return;
+              }
+              
+              if (fileFormData.fileInputType === 'link' && !fileFormData.fileUrl.trim()) {
+                toast.error('URL do arquivo é obrigatória');
+                return;
+              }
+
+              let fileUrl = '';
+              
+              // Se for upload, primeiro envia o arquivo
+              if (fileFormData.fileInputType === 'upload' && fileFormData.attachedFile) {
+                console.log('Uploading file:', fileFormData.attachedFile.name, fileFormData.attachedFile.type, fileFormData.attachedFile.size);
+                const uploadData = new FormData();
+                uploadData.append('file', fileFormData.attachedFile);
+                const uploadRes = await api.post('/upload', uploadData, { 
+                  headers: { 'Content-Type': 'multipart/form-data' } 
+                });
+                fileUrl = (uploadRes.data as { url: string }).url;
+              } else if (fileFormData.fileInputType === 'link' && fileFormData.fileUrl.trim()) {
+                fileUrl = fileFormData.fileUrl.trim();
+              }
+              
+              // Agora cria o schedule com o padrão correto
+              const payload = {
+                title: fileFormData.title.trim(),
+                file_url: fileUrl,
+                ...(fileFormData.description.trim() && { description: fileFormData.description.trim() }),
+                ...(fileFormData.categoryId && { category_id: parseInt(fileFormData.categoryId) })
+              };
+              
+              console.log('Schedule payload:', payload);
+
+              if (editingFile) {
+                await api.put(`/schedules/${editingFile.id}`, payload);
+                toast.success('Arquivo atualizado!');
+              } else {
+                await api.post('/schedules', payload);
+                toast.success('Arquivo enviado!');
+              }
+              
+              setEditingFile(null);
+              setFileFormData({ 
+                title: '', 
+                description: '', 
+                categoryId: '', 
+                fileUrl: '', 
+                attachedFile: null, 
+                fileInputType: 'upload' 
+              });
+              await refresh();
+            } catch (error: any) {
+              console.error('Erro ao salvar arquivo:', error);
+              
+              // Tratamento mais específico de erros
+              if (error.response) {
+                const status = error.response.status;
+                const message = error.response.data?.message || error.response.data?.error;
+                
+                if (status === 400) {
+                  toast.error(`Erro de validação: ${message || 'Dados inválidos'}`);
+                } else if (status === 413) {
+                  toast.error('Arquivo muito grande. Tente um arquivo menor.');
+                } else if (status === 415) {
+                  toast.error('Tipo de arquivo não suportado.');
+                } else if (status >= 500) {
+                  toast.error('Erro no servidor. Tente novamente mais tarde.');
+                } else {
+                  toast.error(`Erro: ${message || 'Erro desconhecido'}`);
+                }
+              } else if (error.request) {
+                toast.error('Erro de conexão. Verifique sua internet.');
+              } else {
+                toast.error('Erro ao processar arquivo');
+              }
+            }
+          }}
+          onCancel={() => {
+            setEditingFile(null);
+            setFileFormData({ 
+              title: '', 
+              description: '', 
+              categoryId: '', 
+              fileUrl: '', 
+              attachedFile: null, 
+              fileInputType: 'upload' 
+            });
+          }}
+          onFilePreview={() => {
+            try {
+              let url = '';
+              let name = 'Arquivo';
+              
+              if (fileFormData.fileInputType === 'link' && fileFormData.fileUrl) {
+                url = fileFormData.fileUrl;
+                name = fileFormData.title || 'Arquivo via link';
+                window.open(url, '_blank');
+              } else if (fileFormData.fileInputType === 'upload' && fileFormData.attachedFile) {
+                url = URL.createObjectURL(fileFormData.attachedFile);
+                name = fileFormData.attachedFile.name;
+                setPreviewModal({type: 'file', url, name});
+                
+                // Cleanup do URL object após um tempo
+                setTimeout(() => {
+                  URL.revokeObjectURL(url);
+                }, 60000); // 1 minuto
+              } else {
+                toast.error('Nenhum arquivo para visualizar');
+              }
+            } catch (error) {
+              console.error('Erro ao visualizar arquivo:', error);
+              toast.error('Erro ao visualizar arquivo');
+            }
+          }}
+        />
+      );
+    }
+
+    if (section === 'categories') {
+      return (
+        <div className="p-4 rounded-lg border" style={{ 
+          background: 'var(--card-background)', 
+          borderColor: 'var(--card-border)',
+          height: 'fit-content',
+          maxHeight: '80vh',
+          overflow: 'auto'
+        }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Nova Categoria
+          </h3>
+          <form className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Nome</label>
+              <input type="text" className="w-full px-3 py-2 rounded-lg border" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} placeholder="Nome da categoria" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Descrição</label>
+              <textarea className="w-full px-3 py-2 rounded-lg border h-20" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} placeholder="Descrição da categoria" />
+            </div>
+            <button type="submit" className="w-full py-2 px-4 rounded-lg font-medium" style={{ background: '#9333ea', color: 'white' }}>Criar Categoria</button>
+          </form>
+        </div>
+      );
+    }
+
+    if (section === 'colors') {
+      return (
         <div className="h-full p-4 rounded-lg border overflow-y-auto" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Criar Novo Link
+            Nova Cor
           </h3>
           <form className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Título
-              </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 rounded-lg border"
-                style={{ 
-                  background: 'var(--input-background)', 
-                  borderColor: 'var(--input-border)', 
-                  color: 'var(--text-primary)' 
-                }}
-                placeholder="Digite o título do link"
-              />
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Nome</label>
+              <input type="text" className="w-full px-3 py-2 rounded-lg border" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} placeholder="Nome da cor" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                URL
-              </label>
-              <input
-                type="url"
-                className="w-full px-3 py-2 rounded-lg border"
-                style={{ 
-                  background: 'var(--input-background)', 
-                  borderColor: 'var(--input-border)', 
-                  color: 'var(--text-primary)' 
-                }}
-                placeholder="https://exemplo.com"
-              />
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Código da Cor</label>
+              <input type="color" className="w-full h-12 rounded-lg border" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)' }} />
+            </div>
+            <button type="submit" className="w-full py-2 px-4 rounded-lg font-medium" style={{ background: '#e11d48', color: 'white' }}>Criar Cor</button>
+          </form>
+        </div>
+      );
+    }
+
+    if (section === 'users') {
+      return (
+        <div className="h-full p-4 rounded-lg border overflow-y-auto" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Novo Usuário
+          </h3>
+          <form className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Nome de Usuário</label>
+              <input type="text" className="w-full px-3 py-2 rounded-lg border" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} placeholder="Nome do usuário" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Descrição
-              </label>
-              <textarea
-                className="w-full px-3 py-2 rounded-lg border h-24"
-                style={{ 
-                  background: 'var(--input-background)', 
-                  borderColor: 'var(--input-border)', 
-                  color: 'var(--text-primary)' 
-                }}
-                placeholder="Descrição opcional do link"
-              />
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Email</label>
+              <input type="email" className="w-full px-3 py-2 rounded-lg border" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} placeholder="email@exemplo.com" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Categoria
-              </label>
-              <select
-                className="w-full px-3 py-2 rounded-lg border"
-                style={{ 
-                  background: 'var(--input-background)', 
-                  borderColor: 'var(--input-border)', 
-                  color: 'var(--text-primary)' 
-                }}
-              >
-                <option>Selecione uma categoria</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Senha</label>
+              <input type="password" className="w-full px-3 py-2 rounded-lg border" style={{ background: 'var(--input-background)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }} placeholder="Senha" />
             </div>
-            <button
-              type="submit"
-              className="w-full py-2 px-4 rounded-lg font-medium transition-colors"
-              style={{
-                background: '#2563eb',
-                color: 'white'
-              }}
-            >
-              Criar Link
-            </button>
+            <div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" />
+                <span style={{ color: 'var(--text-primary)' }}>É Administrador</span>
+              </label>
+            </div>
+            <button type="submit" className="w-full py-2 px-4 rounded-lg font-medium" style={{ background: '#6366f1', color: 'white' }}>Criar Usuário</button>
           </form>
         </div>
       );
@@ -695,15 +917,232 @@ export default function AdminDashboard() {
     return (
       <div className="h-full p-4 rounded-lg border" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
         <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-          {section === 'files' && 'Upload de Arquivo'}
-          {section === 'categories' && 'Nova Categoria'}
-          {section === 'colors' && 'Nova Cor'}
-          {section === 'users' && 'Novo Usuário'}
+          Formulário
         </h3>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Formulário aparecerá aqui...
+          Conteúdo aparecerá aqui...
         </p>
       </div>
     );
   }
+
+  return (
+    <>
+      {/* Content Grid */}
+      {focusedSection ? (
+        <div className="focused-content">
+          {renderFocusedContent()}
+        </div>
+      ) : (
+        <div className="p-4">
+          {/* Header */}
+          <div className="mb-2">
+            
+            {/* Stats */}
+            <div className="grid grid-cols-5 gap-2 mb-6">
+              {statsData.map((stat, index) => {
+                const isActive = focusedSection === stat.key;
+                return (
+                  <motion.div 
+                    key={stat.title}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                      isActive ? 'ring-2 ring-offset-2' : ''
+                    }`}
+                    style={{
+                      background: 'var(--card-background)',
+                      borderColor: isActive ? stat.color : 'var(--card-border)',
+                      ringColor: isActive ? stat.color : 'transparent',
+                      boxShadow: isActive ? `0 0 20px ${stat.color}40` : 'none'
+                    }}
+                    onClick={() => {
+                      console.log('Card clicked:', stat.key);
+                      const newSection = focusedSection === stat.key ? null : stat.key;
+                      setFocusedSection(newSection);
+                      // Update sidebar selection - dashboard when null, section when active
+                      window.dispatchEvent(new CustomEvent('updateSidebarSelection', { detail: newSection || 'dashboard' }));
+                    }}
+                    whileHover={{ 
+                      scale: 1.02,
+                      boxShadow: `0 8px 25px ${stat.color}30`
+                    }}
+                    whileTap={{ 
+                      scale: 0.98,
+                      transition: { duration: 0.1 }
+                    }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ 
+                      opacity: 1, 
+                      y: 0,
+                      scale: isActive ? 1.05 : 1,
+                      rotate: isActive ? [0, 1, -1, 0] : 0
+                    }}
+                    transition={{ 
+                      duration: 0.3,
+                      delay: index * 0.1
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <motion.div 
+                        className="w-6 h-6 rounded flex items-center justify-center text-white"
+                        style={{ backgroundColor: stat.color }}
+                        whileHover={{ 
+                          rotate: [0, -10, 10, 0],
+                          transition: { duration: 0.3 }
+                        }}
+                      >
+                        {(() => {
+                          const IconComponent = Icons[stat.icon as keyof typeof Icons];
+                          return IconComponent ? <IconComponent className="w-3 h-3" /> : null;
+                        })()}
+                      </motion.div>
+                      <div>
+                        <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {stat.count}
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          {stat.title}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="admin-dashboard-grid mt-8">
+            {/* Links */}
+            <DashboardColumn
+              title="Links"
+              total={links.length}
+              icon={<Link2 className="w-4 h-4 text-blue-600" />}
+              onAdd={() => navigate('/admin/links/new')}
+              page={linkPage}
+              pageCount={linkPageCount}
+              onPageChange={setLinkPage}
+            >
+              {paginatedLinks.map((link) => (
+                <ListItem
+                  key={link.id}
+                  title={link.title}
+                  subtitle={link.url}
+                  icon={Link2}
+                  iconColor="#2563eb"
+                  actions={[
+                    { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/links/${link.id}`) },
+                    { icon: Trash2, label: 'Excluir', onClick: () => removeLink(link.id), variant: 'danger' }
+                  ]}
+                />
+              ))}
+            </DashboardColumn>
+
+            {/* Arquivos */}
+            <DashboardColumn
+              title="Arquivos"
+              total={files.length}
+              icon={<FileIcon className="w-4 h-4 text-green-600" />}
+              onAdd={() => navigate('/admin/files/new')}
+              page={filePage}
+              pageCount={filePageCount}
+              onPageChange={setFilePage}
+            >
+              {paginatedFiles.map((file) => (
+                <ListItem
+                  key={file.id}
+                  title={file.title}
+                  subtitle={fileCategoryMap[file.categoryId] || 'Sem categoria'}
+                  icon={FileIcon}
+                  iconColor="#16a34a"
+                  actions={[
+                    { icon: Download, label: 'Download', onClick: () => window.open(file.fileUrl, '_blank') },
+                    { icon: Trash2, label: 'Excluir', onClick: () => removeFile(file.id), variant: 'danger' }
+                  ]}
+                />
+              ))}
+            </DashboardColumn>
+
+            {/* Categorias */}
+            <DashboardColumn
+              title="Categorias"
+              total={categories.length}
+              icon={<Folder className="w-4 h-4 text-purple-600" />}
+              onAdd={() => navigate('/admin/categories/new')}
+              page={catPage}
+              pageCount={catPageCount}
+              onPageChange={setCatPage}
+            >
+              {paginatedCats.map((category) => (
+                <ListItem
+                  key={category.id}
+                  title={category.name}
+                  subtitle={category.color}
+                  icon={Icons[category.icon as keyof typeof Icons] || Folder}
+                  iconColor={category.color}
+                  actions={[
+                    { icon: Pencil, label: 'Editar', onClick: () => startEditCat(category) },
+                    { icon: Trash2, label: 'Excluir', onClick: () => removeCat(category.id), variant: 'danger' }
+                  ]}
+                />
+              ))}
+            </DashboardColumn>
+
+            {/* Cores */}
+            <DashboardColumn
+              title="Cores"
+              total={colors.length}
+              icon={<Palette className="w-4 h-4 text-pink-600" />}
+              onAdd={() => navigate('/admin/colors/new')}
+              page={colorPage}
+              pageCount={colorPageCount}
+              onPageChange={setColorPage}
+            >
+              {paginatedColors.map((color) => (
+                <ListItem
+                  key={color.id}
+                  title={color.name || color.value}
+                  subtitle={color.value}
+                  icon={<div className="w-4 h-4 rounded-full" style={{ backgroundColor: color.value }} />}
+                  actions={[
+                    { icon: Pencil, label: 'Editar', onClick: () => startEditColor(color) },
+                    { icon: Trash2, label: 'Excluir', onClick: () => removeColor(color.id), variant: 'danger' }
+                  ]}
+                />
+              ))}
+            </DashboardColumn>
+
+            {/* Usuários */}
+            <DashboardColumn
+              title="Usuários"
+              total={users.length}
+              icon={<Users className="w-4 h-4 text-indigo-600" />}
+              onAdd={() => navigate('/admin/users/new')}
+              page={userPage}
+              pageCount={userPageCount}
+              onPageChange={setUserPage}
+            >
+              {paginatedUsers.map((user) => (
+                <ListItem
+                  key={user.id}
+                  title={user.username}
+                  subtitle={user.email}
+                  icon={User}
+                  iconColor="#6366f1"
+                  badge={user.isAdmin ? { text: 'Admin', variant: 'info' } : undefined}
+                  actions={[
+                    { icon: Pencil, label: 'Editar', onClick: () => startEditUser(user) },
+                    { icon: Trash2, label: 'Excluir', onClick: () => removeUser(user.id), variant: 'danger' }
+                  ]}
+                />
+              ))}
+            </DashboardColumn>
+          </div>
+        </div>
+      )}
+      
+      <PreviewModal 
+        previewData={previewModal}
+        onClose={() => setPreviewModal(null)}
+      />
+    </>
+  );
 }

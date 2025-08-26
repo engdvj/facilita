@@ -6,9 +6,14 @@
       "Bash(find:*)",
       "Read(/C:\\c\\Users\\HGVC\\Documents\\GitHub\\facilita\\frontend\\src\\types/**)",
       "Bash(mv:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Read(/C:\\c\\Users\\HGVC\\Documents\\GitHub\\facilita/**)",
+      "Read(/C:\\c\\Users\\HGVC\\Documents\\GitHub\\facilita/**)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\HGVC\\Documents\\GitHub\\facilita"
+    ]
   }
 }
