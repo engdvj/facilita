@@ -12,6 +12,8 @@ class Link(BaseModel):
     image_url = db.Column(db.String(2048))
     file_url = db.Column(db.String(2048))
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    is_public = db.Column(db.Boolean, default=False, nullable=False)
+    is_favorite = db.Column(db.Boolean, default=False, nullable=False)
     click_count = db.Column(db.Integer, default=0)
     sort_order = db.Column(db.Integer, default=0)
     
@@ -34,6 +36,8 @@ class Link(BaseModel):
             "imageUrl": self.image_url,
             "fileUrl": self.file_url,
             "isActive": self.is_active,
+            "isPublic": self.is_public,
+            "isFavorite": self.is_favorite,
             "sortOrder": self.sort_order,
             "userId": self.user_id,
             "categoryId": self.category_id,

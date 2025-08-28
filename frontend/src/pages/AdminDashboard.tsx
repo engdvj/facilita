@@ -18,6 +18,8 @@ import {
   Link2,
   Settings,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import * as Icons from "lucide-react";
 import api from "../api";
@@ -341,7 +343,7 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="p-4 pt-2">
+    <div className="px-4 pt-0 pb-4">
       {/* Stats */}
       <AdminStats 
         statsData={statsData}
@@ -357,15 +359,16 @@ export default function AdminDashboard() {
 
       {/* Content Grid */}
       {focusedSection ? (
-        <div className="focused-content mt-8">
+        <div className="focused-content mt-4">
           {renderFocusedContent()}
         </div>
       ) : (
-        <div className="admin-dashboard-grid mt-6">
+        <div className="admin-dashboard-grid mt-3">
       {/* Links */}
       <DashboardColumn
         title="Links"
         total={links.length}
+        color="#2563eb"
         icon={<Link2 className="w-4 h-4 text-blue-600" />}
         onAdd={() => navigate('/admin/links/new')}
         page={linkPage}
@@ -381,7 +384,26 @@ export default function AdminDashboard() {
             icon={Link2}
             iconColor="#2563eb"
             actions={[
-              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/links/${link.id}`) },
+              { icon: Pencil, label: 'Editar', onClick: () => {
+                setFocusedSection('links');
+                setEditingLink(link);
+                setFormData({
+                  title: link.title,
+                  url: link.url,
+                  categoryId: link.categoryId?.toString() || '',
+                  imageUrl: link.imageUrl || '',
+                  imageFile: null,
+                  fileUrl: link.fileUrl || '',
+                  attachedFile: null,
+                  imageInputType: link.imageUrl ? 'link' : 'upload',
+                  fileInputType: link.fileUrl ? 'link' : 'upload',
+                  hasFile: !!(link.fileUrl),
+                  isPublic: link.isPublic || false,
+                  isFavorite: link.isFavorite || false,
+                  linkType: 'url',
+                  selectedFileId: ''
+                });
+              }},
               { icon: Trash2, label: 'Excluir', onClick: () => removeLink(link.id), variant: 'danger' }
             ]}
           />
@@ -392,6 +414,7 @@ export default function AdminDashboard() {
       <DashboardColumn
         title="Arquivos"
         total={files.length}
+        color="#16a34a"
         icon={<FileIcon className="w-4 h-4 text-green-600" />}
         onAdd={() => navigate('/admin/files/new')}
         page={filePage}
@@ -406,7 +429,18 @@ export default function AdminDashboard() {
             icon={FileIcon}
             iconColor="#16a34a"
             actions={[
-              { icon: Pencil, label: 'Editar', onClick: () => navigate(`/admin/files/${file.id}`) },
+              { icon: Pencil, label: 'Editar', onClick: () => {
+                setFocusedSection('files');
+                setEditingFile(file);
+                setFileFormData({
+                  title: file.title,
+                  description: file.description || '',
+                  categoryId: file.categoryId?.toString() || '',
+                  fileUrl: file.fileUrl,
+                  attachedFile: null,
+                  fileInputType: 'link'
+                });
+              }},
               { icon: Download, label: 'Download', onClick: () => window.open(file.fileUrl, '_blank') },
               { icon: Trash2, label: 'Excluir', onClick: () => removeFile(file.id), variant: 'danger' }
             ]}
@@ -418,6 +452,7 @@ export default function AdminDashboard() {
       <DashboardColumn
         title="Categorias"
         total={categories.length}
+        color="#9333ea"
         icon={<Folder className="w-4 h-4 text-purple-600" />}
         onAdd={() => navigate('/admin/categories/new')}
         page={catPage}
@@ -443,6 +478,7 @@ export default function AdminDashboard() {
       <DashboardColumn
         title="Cores"
         total={colors.length}
+        color="#e11d48"
         icon={<Palette className="w-4 h-4 text-pink-600" />}
         onAdd={() => navigate('/admin/colors/new')}
         page={colorPage}
@@ -467,6 +503,7 @@ export default function AdminDashboard() {
       <DashboardColumn
         title="Usuários"
         total={users.length}
+        color="#6366f1"
         icon={<Users className="w-4 h-4 text-indigo-600" />}
         onAdd={() => navigate('/admin/users/new')}
         page={userPage}
@@ -517,14 +554,10 @@ export default function AdminDashboard() {
         {/* Focused content based on section */}
         <div className="grid grid-cols-5 gap-3">
           <div className="col-span-2">
-            <div className="sticky top-0" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-              {renderSectionList(focusedSection)}
-            </div>
+            {renderSectionList(focusedSection)}
           </div>
           <div className="col-span-3">
-            <div style={{ minHeight: '300px' }}>
-              {renderSectionForm(focusedSection)}
-            </div>
+            {renderSectionForm(focusedSection)}
           </div>
         </div>
       </motion.div>
@@ -538,6 +571,9 @@ export default function AdminDashboard() {
       return (
         <AdminLinkList
           links={paginatedLinks}
+          currentPage={linkPage}
+          totalPages={linkPageCount}
+          onPageChange={setLinkPage}
           onEdit={(link) => {
             setEditingLink(link);
             setFormData({
@@ -551,8 +587,8 @@ export default function AdminDashboard() {
               imageInputType: link.imageUrl ? 'link' : 'upload',
               fileInputType: link.fileUrl ? 'link' : 'upload',
               hasFile: !!(link.fileUrl),
-              isPublic: link.isPublic || false,
-              isFavorite: link.isFavorite || false,
+              isPublic: !!link.isPublic,
+              isFavorite: !!link.isFavorite,
               linkType: 'url', // Por padrão, links existentes são URL
               selectedFileId: ''
             });
@@ -565,7 +601,7 @@ export default function AdminDashboard() {
     if (section === 'files') {
       return (
         <AdminFileList
-          files={paginatedFiles}
+          files={filteredFiles}
           onDownload={(file) => {
             try {
               if (file.fileUrl) {
@@ -615,8 +651,34 @@ export default function AdminDashboard() {
           onSubmit={async (e) => {
             e.preventDefault();
             try {
-              // Preparar dados para envio
-              let submitData = { ...formData };
+              // Preparar dados para envio - mapear camelCase para snake_case
+              let submitData: any = {
+                title: formData.title,
+                url: formData.url,
+                category_id: formData.categoryId ? parseInt(formData.categoryId) : null,
+                color: formData.color,
+                is_public: formData.isPublic,
+                is_favorite: formData.isFavorite
+              };
+              
+              // Tratar upload de imagem
+              if (formData.imageInputType === 'upload' && formData.imageFile) {
+                console.log('DEBUG: Uploading image file:', formData.imageFile.name);
+                const imageFormData = new FormData();
+                imageFormData.append('file', formData.imageFile);
+                const imageUploadRes = await api.post('/upload', imageFormData, {
+                  headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                submitData.image_url = imageUploadRes.data.url;
+                console.log('DEBUG: Image uploaded to:', submitData.image_url);
+              } else if (formData.imageInputType === 'link' && formData.imageUrl) {
+                submitData.image_url = formData.imageUrl;
+                console.log('DEBUG: Using image URL:', submitData.image_url);
+              }
+              
+              console.log('DEBUG Frontend: formData.imageFile =', formData.imageFile);
+              console.log('DEBUG Frontend: formData.imageInputType =', formData.imageInputType);
+              console.log('DEBUG Frontend: submitData being sent:', submitData);
               
               // Se tipo for arquivo, definir URL a partir do arquivo selecionado
               if (formData.linkType === 'file' && formData.selectedFileId) {
@@ -625,13 +687,15 @@ export default function AdminDashboard() {
                   submitData.url = selectedFile.fileUrl;
                   // Para links tipo arquivo, não enviamos anexos
                   submitData.hasFile = false;
-                  submitData.fileUrl = '';
-                  submitData.attachedFile = null;
+                  submitData.file_url = '';
                 }
+              } else if (formData.hasFile) {
+                // Se for URL com arquivo anexo
+                submitData.file_url = formData.fileUrl;
               }
               
               if (editingLink) {
-                await api.put(`/links/${editingLink.id}`, submitData);
+                await api.patch(`/links/${editingLink.id}`, submitData);
                 toast.success('Link atualizado!');
               } else {
                 await api.post('/links', submitData);
@@ -655,7 +719,9 @@ export default function AdminDashboard() {
                 linkType: 'url',
                 selectedFileId: ''
               });
+              console.log('DEBUG: Calling refresh after link creation/update');
               await refresh();
+              console.log('DEBUG: Refresh completed, new links count:', links.length);
             } catch (error) {
               toast.error('Erro ao salvar link');
             }
@@ -981,9 +1047,9 @@ export default function AdminDashboard() {
                       delay: index * 0.1
                     }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <motion.div 
-                        className="w-6 h-6 rounded flex items-center justify-center text-white"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0"
                         style={{ backgroundColor: stat.color }}
                         whileHover={{ 
                           rotate: [0, -10, 10, 0],
@@ -992,17 +1058,12 @@ export default function AdminDashboard() {
                       >
                         {(() => {
                           const IconComponent = Icons[stat.icon as keyof typeof Icons];
-                          return IconComponent ? <IconComponent className="w-3 h-3" /> : null;
+                          return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
                         })()}
                       </motion.div>
-                      <div>
-                        <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                          {stat.count}
-                        </p>
-                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                          {stat.title}
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {stat.title}
+                      </p>
                     </div>
                   </motion.div>
                 );
@@ -1015,6 +1076,7 @@ export default function AdminDashboard() {
             <DashboardColumn
               title="Links"
               total={links.length}
+              color="#2563eb"
               icon={<Link2 className="w-4 h-4 text-blue-600" />}
               onAdd={() => navigate('/admin/links/new')}
               page={linkPage}
@@ -1040,6 +1102,7 @@ export default function AdminDashboard() {
             <DashboardColumn
               title="Arquivos"
               total={files.length}
+              color="#16a34a"
               icon={<FileIcon className="w-4 h-4 text-green-600" />}
               onAdd={() => navigate('/admin/files/new')}
               page={filePage}
@@ -1065,6 +1128,7 @@ export default function AdminDashboard() {
             <DashboardColumn
               title="Categorias"
               total={categories.length}
+              color="#9333ea"
               icon={<Folder className="w-4 h-4 text-purple-600" />}
               onAdd={() => navigate('/admin/categories/new')}
               page={catPage}
@@ -1090,6 +1154,7 @@ export default function AdminDashboard() {
             <DashboardColumn
               title="Cores"
               total={colors.length}
+              color="#e11d48"
               icon={<Palette className="w-4 h-4 text-pink-600" />}
               onAdd={() => navigate('/admin/colors/new')}
               page={colorPage}
@@ -1114,6 +1179,7 @@ export default function AdminDashboard() {
             <DashboardColumn
               title="Usuários"
               total={users.length}
+              color="#6366f1"
               icon={<Users className="w-4 h-4 text-indigo-600" />}
               onAdd={() => navigate('/admin/users/new')}
               page={userPage}

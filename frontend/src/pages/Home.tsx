@@ -18,9 +18,11 @@ import {
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 import api from '../api'
 import Header from '../components/Header'
+import AppNavigation from '../components/layout/AppNavigation'
 import LinkCard, { LinkData } from '../components/LinkCard'
 
 /* ---------- helpers ---------- */
@@ -45,12 +47,37 @@ export default function Home() {
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<number | 'all'>('all')
 
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Redirecionar admin para dashboard apenas se ele acessar pela primeira vez
+  // Mas permitir que ele volte à página pública se navegar explicitamente
+  useEffect(() => {
+    if (isAuthenticated && user?.is_admin && location.pathname === '/' && !sessionStorage.getItem('allowPublicView')) {
+      navigate('/admin')
+    }
+  }, [location.pathname, isAuthenticated, user?.is_admin])
+
+  // Limpar flag quando mudar de usuário
+  useEffect(() => {
+    return () => {
+      sessionStorage.removeItem('allowPublicView')
+    }
+  }, [user?.id])
 
   /* ---------- carregar dados ---------- */
   useEffect(() => {
-    api.get('/links').then(({ data }) => {
+    // Se for admin, já foi redirecionado. Para usuários, carregar apenas links públicos e próprios
+    let endpoint = '/links'
+    if (isAuthenticated && !user?.is_admin && user?.id) {
+      endpoint = `/links?userId=${user.id}&includePublic=true`
+    } else if (!isAuthenticated) {
+      endpoint = '/links?publicOnly=true'
+    }
+
+    api.get(endpoint).then(({ data }) => {
       const cleaned = (data as LinkData[])
         .map(l =>
           l.imageUrl?.startsWith('/uploads/')
@@ -66,7 +93,7 @@ export default function Home() {
         [...data].sort((a, b) => a.name.localeCompare(b.name)),
       ),
     )
-  }, [])
+  }, [isAuthenticated, user])
 
   /* ---------- filtros ---------- */
   const filtered = links
@@ -107,109 +134,35 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         {isAuthenticated && (
           <motion.aside
-            className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
-            style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+            className="w-60 transform transition-all fixed z-20 hover:shadow-lg"
+            style={{
+              top: '76px',
+              height: 'calc(100vh - 76px)',
+              background: 'var(--sidebar-background)',
+              borderRight: `1px solid var(--sidebar-border)`,
+              boxShadow: `0 4px 12px var(--card-shadow)`,
+              transition: 'all 0.2s ease'
+            }}
             initial={false}
-            animate={{ x: open ? 0 : -256 }}
+            animate={{ 
+              x: open ? 0 : -240
+            }}
+            transition={{ 
+              type: "tween",
+              duration: 0.2,
+              ease: "easeOut"
+            }}
           >
-            <NavLink
-              to="/"
-              onClick={() => setOpen(false)}
-              className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
-            >
-              <HomeIcon size={18} /> Início
-            </NavLink>
-
-            <nav className="flex flex-col gap-2">
-              {user?.is_admin ? (
-                <>
-                  <NavLink
-                    end
-                    to="/admin"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
-                    }
-                  >
-                    <HomeIcon size={18} /> Dashboard
-                  </NavLink>
-                  <NavLink
-                    to="/admin/links"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
-                    }
-                  >
-                    <Link2 size={18} /> Links
-                  </NavLink>
-                  <NavLink
-                    to="/admin/files"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
-                    }
-                  >
-                    <FileIcon size={18} /> Arquivos
-                  </NavLink>
-                  <NavLink
-                    to="/admin/categories"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
-                    }
-                  >
-                    <Folder size={18} /> Categorias
-                  </NavLink>
-                  <NavLink
-                    to="/admin/colors"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
-                    }
-                  >
-                    <Palette size={18} /> Cores
-                  </NavLink>
-                  <NavLink
-                    to="/admin/users"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--sidebar-active-background)' } : undefined
-                    }
-                  >
-                    <Users size={18} /> Usuários
-                  </NavLink>
-                </>
-              ) : (
-                <NavLink
-                  to="/user/links"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
-                >
-                  <Link2 size={18} /> Links
-                </NavLink>
-              )}
-            </nav>
+            <div className="h-full overflow-y-auto custom-scrollbar p-4 space-y-0">
+              <AppNavigation user={user} onLinkClick={() => setOpen(false)} />
+            </div>
           </motion.aside>
         )}
 
         <main
-          className={`flex-1 transition-all ${open ? 'translate-x-64 md:translate-x-0 md:ml-64' : 'md:ml-0'}`}
+          className={`flex-1 transition-all duration-500 overflow-y-auto custom-scrollbar ${
+            isAuthenticated && open ? 'lg:ml-60' : ''
+          }`}
         >
           {/* ---------- LAYOUT PROFISSIONAL - ESTILO GOOGLE/MICROSOFT ---------- */}
           <motion.div
@@ -223,21 +176,6 @@ export default function Home() {
               paddingRight: 'clamp(1rem, 8vw, 8rem)' 
             }}>
               
-              {/* Header de estatísticas (opcional) */}
-              {filtered.length > 0 && (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
-                      {filtered.length} {filtered.length === 1 ? 'link encontrado' : 'links encontrados'}
-                      {categoryId !== 'all' && (
-                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                          {categories.find(c => c.id === categoryId)?.name}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* Grid de Links - Cards Menores e Centralizados */}
               {filtered.length ? (

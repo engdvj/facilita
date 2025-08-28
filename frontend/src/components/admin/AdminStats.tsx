@@ -25,7 +25,7 @@ export default function AdminStats({ statsData, focusedSection, onStatClick, loa
         return (
           <motion.div 
             key={stat.title}
-            className={`p-2 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-lg ${
+            className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-lg ${
               isActive ? 'ring-2 ring-offset-1' : ''
             }`}
             style={{
@@ -55,9 +55,9 @@ export default function AdminStats({ statsData, focusedSection, onStatClick, loa
               delay: index * 0.1
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <motion.div 
-                className="w-6 h-6 rounded flex items-center justify-center text-white"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0"
                 style={{ backgroundColor: stat.color }}
                 whileHover={{ 
                   rotate: [0, -10, 10, 0],
@@ -66,17 +66,12 @@ export default function AdminStats({ statsData, focusedSection, onStatClick, loa
               >
                 {(() => {
                   const IconComponent = Icons[stat.icon as keyof typeof Icons];
-                  return IconComponent ? <IconComponent className="w-3 h-3" /> : null;
+                  return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
                 })()}
               </motion.div>
-              <div>
-                <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {loading ? "..." : stat.count}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  {stat.title}
-                </p>
-              </div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {stat.title}
+              </p>
             </div>
           </motion.div>
         );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Home as HomeIcon, 
   Link2, 
@@ -116,6 +116,7 @@ function NavSection({ title, children }: NavSectionProps) {
 
 export default function AppNavigation({ user, onLinkClick }: AppNavigationProps) {
   const [activeSection, setActiveSection] = React.useState<string | null>('dashboard');
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     const handleUpdateSelection = (event: CustomEvent) => {
@@ -128,14 +129,14 @@ export default function AppNavigation({ user, onLinkClick }: AppNavigationProps)
     };
   }, []);
   return (
-    <nav className="space-y-0">
-      <div className="mt-6">
-      {user?.isAdmin ? (
+    <nav className="space-y-0 flex flex-col h-full">
+      <div className="mt-2">
+      {user?.is_admin ? (
         <NavSection title="Admin">
           <NavItem 
             to="/" 
-            icon={<Globe size={16} />} 
-            onClick={onLinkClick}
+            icon={<Globe size={16} />}
+            onClick={() => sessionStorage.setItem('allowPublicView', 'true')}
             end
           >
             Início
@@ -143,84 +144,83 @@ export default function AppNavigation({ user, onLinkClick }: AppNavigationProps)
           <NavItem 
             to="/admin" 
             icon={<HomeIcon size={16} />} 
-            customAction={true}
-            sectionKey="dashboard"
-            activeSection={activeSection}
             onClick={() => {
-              if (onLinkClick) onLinkClick();
-              // Set dashboard as active and clear focused section
+              // Voltar para a visão geral (não focada)
               window.dispatchEvent(new CustomEvent('focusSection', { detail: null }));
+              window.dispatchEvent(new CustomEvent('updateSidebarSelection', { detail: 'dashboard' }));
             }}
             end
           >
             Dashboard
           </NavItem>
-          <NavItem 
-            to="/admin" 
-            icon={<Link2 size={16} />} 
-            customAction={true}
-            sectionKey="links"
-            activeSection={activeSection}
-            onClick={() => {
-              if (onLinkClick) onLinkClick();
-              // Trigger links section focus on dashboard
-              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'links' }));
-            }}
-          >
-            Links
-          </NavItem>
-          <NavItem 
-            to="/admin" 
-            icon={<FileIcon size={16} />} 
-            customAction={true}
-            sectionKey="files"
-            activeSection={activeSection}
-            onClick={() => {
-              if (onLinkClick) onLinkClick();
-              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'files' }));
-            }}
-          >
-            Arquivos
-          </NavItem>
-          <NavItem 
-            to="/admin" 
-            icon={<Folder size={16} />} 
-            customAction={true}
-            sectionKey="categories"
-            activeSection={activeSection}
-            onClick={() => {
-              if (onLinkClick) onLinkClick();
-              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'categories' }));
-            }}
-          >
-            Categorias
-          </NavItem>
-          <NavItem 
-            to="/admin" 
-            icon={<Palette size={16} />} 
-            customAction={true}
-            sectionKey="colors"
-            activeSection={activeSection}
-            onClick={() => {
-              if (onLinkClick) onLinkClick();
-              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'colors' }));
-            }}
-          >
-            Cores
-          </NavItem>
-          <NavItem 
-            to="/admin" 
-            icon={<Users size={16} />} 
-            customAction={true}
-            sectionKey="users"
-            activeSection={activeSection}
-            onClick={() => {
-              if (onLinkClick) onLinkClick();
-              window.dispatchEvent(new CustomEvent('focusSection', { detail: 'users' }));
-            }}
-          >
-            Usuários
-          </NavItem>
+          <div className="ml-4">
+            <NavItem 
+              to="/admin" 
+              icon={<Link2 size={16} />} 
+              customAction={true}
+              sectionKey="links"
+              activeSection={activeSection}
+              onClick={() => {
+                if (onLinkClick) onLinkClick();
+                // Trigger links section focus on dashboard
+                window.dispatchEvent(new CustomEvent('focusSection', { detail: 'links' }));
+              }}
+            >
+              Links
+            </NavItem>
+            <NavItem 
+              to="/admin" 
+              icon={<FileIcon size={16} />} 
+              customAction={true}
+              sectionKey="files"
+              activeSection={activeSection}
+              onClick={() => {
+                if (onLinkClick) onLinkClick();
+                window.dispatchEvent(new CustomEvent('focusSection', { detail: 'files' }));
+              }}
+            >
+              Arquivos
+            </NavItem>
+            <NavItem 
+              to="/admin" 
+              icon={<Folder size={16} />} 
+              customAction={true}
+              sectionKey="categories"
+              activeSection={activeSection}
+              onClick={() => {
+                if (onLinkClick) onLinkClick();
+                window.dispatchEvent(new CustomEvent('focusSection', { detail: 'categories' }));
+              }}
+            >
+              Categorias
+            </NavItem>
+            <NavItem 
+              to="/admin" 
+              icon={<Palette size={16} />} 
+              customAction={true}
+              sectionKey="colors"
+              activeSection={activeSection}
+              onClick={() => {
+                if (onLinkClick) onLinkClick();
+                window.dispatchEvent(new CustomEvent('focusSection', { detail: 'colors' }));
+              }}
+            >
+              Cores
+            </NavItem>
+            <NavItem 
+              to="/admin" 
+              icon={<Users size={16} />} 
+              customAction={true}
+              sectionKey="users"
+              activeSection={activeSection}
+              onClick={() => {
+                if (onLinkClick) onLinkClick();
+                window.dispatchEvent(new CustomEvent('focusSection', { detail: 'users' }));
+              }}
+            >
+              Usuários
+            </NavItem>
+          </div>
         </NavSection>
       ) : (
         <>
@@ -253,6 +253,7 @@ export default function AppNavigation({ user, onLinkClick }: AppNavigationProps)
         </>
       )}
       </div>
+      <div className="flex-1"></div>
     </nav>
   );
 }

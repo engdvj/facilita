@@ -43,14 +43,14 @@ export default function AdminLinkForm({
   onFilePreview 
 }: AdminLinkFormProps) {
   return (
-    <div className="p-2 rounded-lg border" style={{ 
+    <div className="rounded-lg border" style={{ 
       background: 'var(--card-background)', 
       borderColor: 'var(--card-border)',
-      height: 'fit-content',
-      maxHeight: '90vh',
-      overflow: 'auto'
+      height: '410px',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      <div className="flex justify-between items-center mb-1">
+      <div className="p-2 border-b flex justify-between items-center" style={{ borderColor: 'var(--card-border)' }}>
         <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
           {editingLink ? 'Editar Link' : 'Criar Novo Link'}
         </h3>
@@ -65,10 +65,11 @@ export default function AdminLinkForm({
         )}
       </div>
       
-      <form className="space-y-1" onSubmit={onSubmit}>
+      <div className="flex-1 overflow-y-auto p-2">
+        <form id="link-form" className="space-y-0" onSubmit={onSubmit}>
         {/* Título */}
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <label className="block text-xs font-medium mb-0.5" style={{ color: 'var(--text-primary)' }}>
             Título
           </label>
           <input
@@ -88,7 +89,7 @@ export default function AdminLinkForm({
 
         {/* Tipo de Link */}
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <label className="block text-xs font-medium mb-0.5" style={{ color: 'var(--text-primary)' }}>
             Tipo de Link
           </label>
           <div className="flex gap-2 text-xs">
@@ -118,7 +119,7 @@ export default function AdminLinkForm({
         {/* URL - só aparece se tipo for URL */}
         {formData.linkType === 'url' && (
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <label className="block text-xs font-medium mb-0.5" style={{ color: 'var(--text-primary)' }}>
             URL
           </label>
           <input
@@ -140,7 +141,7 @@ export default function AdminLinkForm({
         {/* Seleção de Arquivo - só aparece se tipo for Arquivo */}
         {formData.linkType === 'file' && (
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <label className="block text-xs font-medium mb-0.5" style={{ color: 'var(--text-primary)' }}>
             Selecionar Arquivo
           </label>
           <select
@@ -171,7 +172,7 @@ export default function AdminLinkForm({
 
         {/* Categoria */}
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <label className="block text-xs font-medium mb-0.5" style={{ color: 'var(--text-primary)' }}>
             Categoria
           </label>
           <select
@@ -193,7 +194,7 @@ export default function AdminLinkForm({
 
         {/* Imagem */}
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <label className="block text-xs font-medium mb-0.5" style={{ color: 'var(--text-primary)' }}>
             Imagem <span style={{ color: 'var(--text-danger, red)' }}>*</span>
           </label>
           <div className="space-y-0.5">
@@ -226,7 +227,10 @@ export default function AdminLinkForm({
                   <input
                     type="url"
                     value={formData.imageUrl}
-                    onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                    onChange={(e) => {
+                      console.log('DEBUG AdminLinkForm: imageUrl changing to:', e.target.value);
+                      setFormData({...formData, imageUrl: e.target.value});
+                    }}
                     className="w-full px-2 py-0.5 rounded text-xs border"
                     style={{ 
                       background: 'var(--input-background)', 
@@ -262,10 +266,22 @@ export default function AdminLinkForm({
               >
                 {(formData.imageUrl || formData.imageFile) ? (
                   formData.imageUrl ? (
-                    <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover rounded" onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = '<span style="color: var(--text-danger, red); font-size: 10px;">❌</span>';
-                    }} />
+                    <img 
+                      src={formData.imageUrl} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover rounded" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const errorSpan = document.createElement('span');
+                        errorSpan.innerHTML = '❌';
+                        errorSpan.style.color = 'var(--text-danger, red)';
+                        errorSpan.style.fontSize = '10px';
+                        errorSpan.title = 'Erro ao carregar imagem';
+                        if (e.currentTarget.parentElement) {
+                          e.currentTarget.parentElement.appendChild(errorSpan);
+                        }
+                      }} 
+                    />
                   ) : (
                     <span className="text-xs">🖼️</span>
                   )
@@ -276,32 +292,6 @@ export default function AdminLinkForm({
             </div>
           </div>
         </div>
-
-        {/* Toggle para arquivo opcional - só aparece se tipo for URL */}
-        {formData.linkType === 'url' && (
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={formData.hasFile}
-              onChange={(e) => {
-                const hasFile = e.target.checked;
-                setFormData({
-                  ...formData, 
-                  hasFile,
-                  fileUrl: hasFile ? formData.fileUrl : '',
-                  attachedFile: hasFile ? formData.attachedFile : null,
-                  fileInputType: hasFile ? formData.fileInputType : 'link'
-                });
-              }}
-              className="scale-75"
-            />
-            <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
-              📎 Incluir arquivo anexo
-            </span>
-          </label>
-        </div>
-        )}
 
         {/* Campos do arquivo - só aparecem se toggle ativo e tipo for URL */}
         {formData.linkType === 'url' && formData.hasFile && (
@@ -382,7 +372,7 @@ export default function AdminLinkForm({
         )}
 
         {/* Checkboxes */}
-        <div className="flex gap-3 pt-1">
+        <div className="flex gap-3">
           <label className="flex items-center gap-1">
             <input 
               type="checkbox" 
@@ -403,9 +393,14 @@ export default function AdminLinkForm({
           </label>
         </div>
 
-        {/* Submit Button */}
+        </form>
+      </div>
+      
+      {/* Submit Button fixo no final */}
+      <div className="p-2 border-t" style={{ borderColor: 'var(--card-border)' }}>
         <button
           type="submit"
+          form="link-form"
           className="w-full py-1.5 px-3 rounded text-sm font-medium transition-colors"
           style={{
             background: '#2563eb',
@@ -414,7 +409,7 @@ export default function AdminLinkForm({
         >
           {editingLink ? 'Salvar Alterações' : 'Criar Link'}
         </button>
-      </form>
+      </div>
     </div>
   );
 }

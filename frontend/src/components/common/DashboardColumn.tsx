@@ -9,6 +9,7 @@ interface DashboardColumnProps {
   subtitle?: string;
   icon?: ReactNode;
   total?: number;
+  color?: string;
   query?: string;
   onQueryChange?: (query: string) => void;
   onAdd?: () => void;
@@ -23,11 +24,29 @@ interface DashboardColumnProps {
   emptyMessage?: string;
 }
 
+const getGradientByColor = (color: string) => {
+  switch(color) {
+    case "#2563eb": // Links - Azul
+      return "linear-gradient(135deg, #3b82f6 0%, #1e40af 50%, #1e3a8a 100%)";
+    case "#16a34a": // Arquivos - Verde  
+      return "linear-gradient(135deg, #22c55e 0%, #15803d 50%, #166534 100%)";
+    case "#9333ea": // Categorias - Roxo
+      return "linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #6d28d9 100%)";
+    case "#e11d48": // Cores - Rosa
+      return "linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #be185d 100%)";
+    case "#6366f1": // Usuários - Índigo
+      return "linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%)";
+    default:
+      return `linear-gradient(135deg, ${color} 0%, ${color}dd 50%, ${color}bb 100%)`;
+  }
+};
+
 export default function DashboardColumn({
   title,
   subtitle,
   icon,
   total,
+  color = "#6b7280",
   query = "",
   onQueryChange,
   onAdd,
@@ -48,14 +67,33 @@ export default function DashboardColumn({
   return (
     <DashboardCard className={`flex flex-col h-[380px] ${className}`} hover={false}>
       {/* Header */}
-      <div className="p-2 border-b flex items-center justify-between" style={{ borderColor: 'var(--card-border)' }}>
-        <div className="flex items-center gap-2">
-          {icon}
-          <h3 className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-            {title} ({total || 0})
-          </h3>
-        </div>
-      </div>
+      <motion.div 
+        className="relative p-4 flex items-center justify-center overflow-hidden"
+        style={{ 
+          background: getGradientByColor(color),
+          boxShadow: `0 2px 10px ${color}30`
+        }}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Número central */}
+        <motion.div 
+          className="relative z-10 flex items-center justify-center text-white font-bold text-lg"
+          style={{ 
+            textShadow: `0 1px 4px rgba(0,0,0,0.4)`
+          }}
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          whileHover={{ 
+            scale: 1.05
+          }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {loading ? "?" : total || 0}
+        </motion.div>
+      </motion.div>
 
       {/* Content */}
       <div className="flex-1 p-2 space-y-1">

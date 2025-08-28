@@ -47,7 +47,7 @@ export function SidebarSection({ icon, title, subtitle, children }: SidebarSecti
 
 export default function Sidebar({ children, className = "" }: SidebarProps) {
   return (
-    <div className={`sidebar-content px-4 pb-4 space-y-0 ${className}`} style={{ paddingTop: '30px' }}>
+    <div className={`sidebar-content px-4 pb-4 space-y-0 flex flex-col h-full ${className}`} style={{ paddingTop: '8px' }}>
       {children}
     </div>
   );

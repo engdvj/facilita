@@ -92,9 +92,7 @@ export default function App() {
                     <Route path=":id" element={<LazyAdminLinks />} />
                   </Route>
                   
-                  <Route path="files" element={<AdminFiles />}>
-                    <Route path=":id" element={<AdminFiles />} />
-                  </Route>
+                  <Route path="files" element={<AdminFiles />} />
                   
                   <Route path="categories" element={<AdminCategories />}>
                     <Route path=":id" element={<AdminCategories />} />

@@ -101,14 +101,14 @@ export default function UserLinkCreate() {
         title: formData.title,
         url: formData.url,
         file_url: formData.file_url,
-        categoryId: formData.category_id,
+        category_id: formData.category_id,
         color: formData.color,
-        imageUrl: formData.image_url,
-        userId: user?.id
+        image_url: formData.image_url,
+        user_id: user?.id
       };
 
       if (isEditing) {
-        await api.put(`/links/${id}`, payload);
+        await api.patch(`/links/${id}`, payload);
         toast.success('Link atualizado com sucesso!');
       } else {
         await api.post('/links', payload);

@@ -25,12 +25,12 @@ export default function DashboardLayout({
   contentClassName = "",
   maxWidth = "1920px"
 }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const hasSidebar = !!sidebar;
 
   return (
     <div 
-      className="min-h-screen transition-colors duration-300"
+      className="h-screen max-h-screen overflow-hidden transition-colors duration-300"
       style={{ background: 'var(--background-main)' }}
     >
       <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} sidebarOpen={sidebarOpen} />
@@ -39,8 +39,10 @@ export default function DashboardLayout({
         {/* Sidebar */}
         {hasSidebar && (
           <motion.aside
-            className="w-60 transform transition-all fixed top-0 bottom-0 left-0 z-20 lg:relative lg:z-auto hover:shadow-lg"
+            className="w-60 transform transition-all fixed left-0 z-20 hover:shadow-lg"
             style={{
+              top: '76px',
+              height: 'calc(100vh - 76px)',
               background: 'var(--sidebar-background)',
               borderRight: `1px solid var(--sidebar-border)`,
               boxShadow: `0 4px 12px var(--card-shadow)`,
@@ -54,7 +56,12 @@ export default function DashboardLayout({
             }}
             initial={false}
             animate={{ 
-              x: sidebarOpen ? 0 : (typeof window !== 'undefined' && window.innerWidth >= 1024 ? 0 : -240) 
+              x: sidebarOpen ? 0 : -240
+            }}
+            transition={{ 
+              type: "tween",
+              duration: 0.2,
+              ease: "easeOut"
             }}
           >
             <div className="h-full overflow-y-auto custom-scrollbar">
@@ -65,19 +72,22 @@ export default function DashboardLayout({
 
         {/* Main Content */}
         <main 
-          className={`flex-1 transition-all duration-300 overflow-hidden custom-scrollbar ${
-            hasSidebar ? 'lg:ml-0' : ''
+          className={`flex-1 transition-all duration-500 overflow-y-auto custom-scrollbar ${
+            hasSidebar && sidebarOpen ? 'lg:ml-60' : ''
           }`}
         >
-          <div className={`mx-auto p-4 lg:p-6 ${contentClassName}`} style={{ maxWidth }}>
+          <div 
+            className={`mx-auto p-2 lg:p-3 ${contentClassName}`} 
+            style={{ maxWidth }}
+          >
             {/* Header Section */}
             <motion.div 
-              className="mb-6"
+              className="mb-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-1">
                 <div className="min-w-0 flex-1">
                   <h1 
                     className="text-xl lg:text-2xl font-bold mb-1"

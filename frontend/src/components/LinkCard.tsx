@@ -16,27 +16,48 @@ export interface LinkData {
 }
 
 export default function LinkCard({ link }: { link: LinkData }) {
+  const categoryColor = link.categoryColor || '#6366f1';
+  
   return (
     <motion.a
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"
       className="group block w-full max-w-[180px] mx-auto"
-      whileHover={{ y: -4, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      whileHover={{ 
+        y: -8, 
+        rotate: Math.random() > 0.5 ? 1 : -1,
+        scale: 1.05 
+      }}
+      whileTap={{ scale: 0.95, rotate: 0 }}
+      transition={{ 
+        type: "spring",
+        stiffness: 300,
+        damping: 20
+      }}
     >
       <div 
-        className="relative overflow-hidden rounded-2xl h-[200px] flex flex-col transition-all duration-300 shadow-lg hover:shadow-2xl"
+        className="relative rounded-2xl h-[210px] flex flex-col overflow-hidden transition-all duration-500 group-hover:shadow-2xl"
         style={{
-          background: 'var(--card-background)',
+          background: `linear-gradient(135deg, var(--card-background) 0%, ${categoryColor}05 100%)`,
           border: `2px solid var(--card-border)`,
+          boxShadow: `0 4px 16px ${categoryColor}10`
         }}
       >
-        {/* Large Image/Icon Section */}
-        <div className="flex-shrink-0 p-4 pb-2">
+        {/* Expanding color circle */}
+        <div 
+          className="absolute top-1/2 left-1/2 w-4 h-4 rounded-full -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ease-out group-hover:scale-[25] opacity-0 group-hover:opacity-20"
+          style={{ backgroundColor: categoryColor }}
+        />
+        
+        {/* Image/Icon Section */}
+        <div className="relative p-6 pb-4 flex justify-center">
           {link.imageUrl ? (
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md mx-auto">
+            <motion.div 
+              className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg"
+              whileHover={{ x: Math.random() > 0.5 ? 3 : -3 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
               <img
                 src={
                   link.imageUrl.startsWith("/api/")
@@ -48,76 +69,72 @@ export default function LinkCard({ link }: { link: LinkData }) {
                 alt=""
                 className="w-full h-full object-cover"
               />
-            </div>
+            </motion.div>
           ) : (
-            <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-md"
-              style={{ background: 'var(--card-image-background)' }}
+            <motion.div 
+              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl"
+              style={{ 
+                background: `linear-gradient(135deg, ${categoryColor} 0%, ${categoryColor}CC 100%)` 
+              }}
+              whileHover={{ 
+                x: Math.random() > 0.5 ? 3 : -3,
+                scale: 1.05
+              }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
             >
-              <div 
-                className="w-8 h-8 rounded-xl"
-                style={{ backgroundColor: 'var(--card-accent)' }}
-              ></div>
-            </div>
+              <motion.div 
+                className="w-8 h-8 rounded-xl bg-white"
+                style={{ opacity: 0.95 }}
+              />
+            </motion.div>
           )}
         </div>
 
         {/* Content Section */}
-        <div className="flex-1 flex flex-col justify-between px-4 pb-4">
-          <div className="text-center">
+        <div className="flex-1 flex flex-col justify-between px-6 pb-6">
+          {/* Title */}
+          <motion.div 
+            className="text-center mb-4"
+            whileHover={{ scale: 1.02 }}
+          >
             <h3 
-              className="font-semibold text-sm leading-tight line-clamp-2 mb-2"
+              className="font-semibold text-base leading-tight line-clamp-2"
               style={{ color: 'var(--text-primary)' }}
             >
               {link.title}
             </h3>
-            
-            {link.category && (
-              <p 
-                className="text-xs truncate px-2 py-1 rounded-full inline-block"
-                style={{ 
-                  color: 'var(--text-accent)',
-                  backgroundColor: 'var(--card-hover)'
-                }}
-              >
-                {link.category}
-              </p>
-            )}
-          </div>
+          </motion.div>
 
-          {/* Action Indicator with Category Color */}
-          <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: `1px solid var(--border-secondary)` }}>
-            <div 
-              className="flex items-center text-xs"
-              style={{ color: 'var(--text-tertiary)' }}
+          {/* Category Badge */}
+          {link.category && (
+            <motion.div 
+              className="flex justify-center"
+              whileHover={{ scale: 1.05 }}
             >
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              Abrir
-            </div>
-            
-            {link.categoryColor && (
-              <div className="flex items-center gap-1">
+              <div 
+                className="px-4 py-2 rounded-full text-xs font-bold text-white shadow-md relative overflow-hidden"
+                style={{ backgroundColor: categoryColor }}
+              >
+                {/* Animated shine effect */}
                 <div 
-                  className="w-3 h-3 rounded-full shadow-sm"
-                  style={{ backgroundColor: link.categoryColor }}
+                  className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 group-hover:animate-pulse"
+                  style={{ 
+                    transform: 'translateX(-100%)',
+                    transition: 'transform 0.6s ease-in-out'
+                  }}
                 />
-                <div 
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: link.categoryColor, opacity: 0.6 }}
-                />
+                <span className="relative z-10">{link.category}</span>
               </div>
-            )}
-          </div>
+            </motion.div>
+          )}
         </div>
-        
-        {/* Accent border on hover */}
+
+        {/* Hover glow effect */}
         <div 
-          className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+          className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
           style={{ 
-            background: `linear-gradient(135deg, var(--card-accent)22, transparent 50%, var(--card-accent)22)`,
-            border: `1px solid var(--card-accent)`
+            background: `radial-gradient(circle at center, ${categoryColor}15 0%, transparent 70%)`,
+            border: `2px solid ${categoryColor}30`
           }}
         />
       </div>

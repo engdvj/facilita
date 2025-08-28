@@ -1,27 +1,33 @@
 import React from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LinkData } from '../LinkCard';
 
 interface AdminLinkListProps {
   links: LinkData[];
   onEdit: (link: LinkData) => void;
   onDelete: (id: number) => void;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
-export default function AdminLinkList({ links, onEdit, onDelete }: AdminLinkListProps) {
+export default function AdminLinkList({ links, onEdit, onDelete, currentPage, totalPages, onPageChange }: AdminLinkListProps) {
   return (
-    <div className="p-3 rounded-lg border overflow-y-auto" style={{ 
+    <div className="rounded-lg border" style={{ 
       background: 'var(--card-background)', 
       borderColor: 'var(--card-border)',
-      height: '100%'
+      height: '410px',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      <div className="sticky top-0 pb-2" style={{ background: 'var(--card-background)' }}>
+      <div className="p-2 border-b" style={{ borderColor: 'var(--card-border)' }}>
         <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Links ({links.length})
+          Meus Links
         </h3>
       </div>
-      {links.map((link) => (
-        <div key={link.id} className="p-2 border rounded mb-2" style={{ borderColor: 'var(--card-border)', background: 'var(--card-background)' }}>
+      <div className="p-2 space-y-2 flex-1 overflow-y-auto">
+        {links.map((link) => (
+        <div key={link.id} className="p-1.5 border rounded mb-1.5" style={{ borderColor: 'var(--card-border)', background: 'var(--card-background)' }}>
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <h4 className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>
@@ -52,7 +58,33 @@ export default function AdminLinkList({ links, onEdit, onDelete }: AdminLinkList
             </div>
           </div>
         </div>
-      ))}
+        ))}
+      </div>
+      
+      {/* Paginação fixa no final */}
+      <div className="flex justify-center items-center gap-3 px-2 py-2 border-t" style={{ borderColor: 'var(--card-border)' }}>
+        <button
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 transition-transform"
+          style={{ background: 'var(--button-secondary)', color: 'var(--text-primary)' }}
+          title="Página anterior"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 transition-transform"
+          style={{ background: 'var(--button-secondary)', color: 'var(--text-primary)' }}
+          title="Próxima página"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
     </div>
   );
 }

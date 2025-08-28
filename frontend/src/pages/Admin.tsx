@@ -16,30 +16,34 @@ import api from "../api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Sidebar, { SidebarSection } from "../components/layout/Sidebar";
 import AppNavigation from "../components/layout/AppNavigation";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Admin() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const { user, isAuthenticated, loading } = useAuth();
+
+  // Debug temporário
+  console.log('Admin.tsx - user from useAuth:', user);
+  console.log('Admin.tsx - user?.is_admin:', user?.is_admin);
+  console.log('Admin.tsx - isAuthenticated:', isAuthenticated);
 
   useEffect(() => {
-    const loggedIn =
-      sessionStorage.getItem("loggedIn") === "true" ||
-      localStorage.getItem("loggedIn") === "true";
-    if (!loggedIn) {
-      navigate("/admin/login");
-    } else {
-      api
-        .get("/auth/me")
-        .then(({ data }) => {
-          if (!data.isAdmin) {
-            navigate("/user/links");
-          } else {
-            setUser(data);
-          }
-        })
-        .catch(() => navigate("/admin/login"));
+    if (!loading) {
+      if (!isAuthenticated) {
+        navigate("/admin/login");
+      } else if (!user?.is_admin) {
+        navigate("/unauthorized");
+      }
     }
-  }, [navigate]);
+  }, [loading, isAuthenticated, user, navigate]);
+
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (!user || !user.is_admin) {
+    return null;
+  }
 
   const sidebarContent = (
     <Sidebar>

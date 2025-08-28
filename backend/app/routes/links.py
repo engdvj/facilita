@@ -1,4 +1,4 @@
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, current_app
 from ..extensions import db
 from ..models import User, Link, Category
 from ..middleware.decorators import login_required, get_current_user
@@ -43,13 +43,20 @@ def list_links():
             )
             include_user = False
     
-    return jsonify([l.to_dict(include_user=include_user) for l in links])
+    result = [l.to_dict(include_user=include_user) for l in links]
+    # Debug: log sample link data
+    if result:
+        print(f"DEBUG: Sample link data returned: {result[0]}")
+    return jsonify(result)
 
 
 @bp.post("/")
 @login_required
 def create_link():
     data = request.get_json() or {}
+    
+    # Debug: log incoming data for creation
+    current_app.logger.info(f"DEBUG: Creating link with data: {data}")
     
     # Validate required fields
     title = data.get("title")
@@ -74,7 +81,7 @@ def create_link():
         owner_id = data.get("user_id")
     
     # Clean and prepare data
-    allowed_fields = ["category_id", "color", "image_url"]
+    allowed_fields = ["category_id", "color", "image_url", "is_public", "is_favorite"]
     if current_user.is_admin:
         allowed_fields.extend(["file_url", "user_id"])
     
@@ -91,14 +98,21 @@ def create_link():
     # Handle nullable fields
     link_data = handle_nullable_fields(link_data, ["category_id"])
     
+    # Debug: log final data before creating
+    print(f"DEBUG: Final link_data before creation: {link_data}")
+    
     link = Link(**link_data)
     db.session.add(link)
     db.session.commit()
+    
+    # Debug: log created link
+    print(f"DEBUG: Created link - ID: {link.id}, image_url: {link.image_url}")
     
     return link.to_dict(include_user=True), 201
 
 
 @bp.patch("/<int:link_id>")
+@bp.put("/<int:link_id>")
 @login_required
 def update_link(link_id):
     link = Link.query.get_or_404(link_id)
@@ -110,19 +124,27 @@ def update_link(link_id):
     
     data = request.get_json() or {}
     
+    # Debug: log incoming data
+    print(f"DEBUG: Updating link {link_id} with data: {data}")
+    
     # Only admins can modify file_url
     if not current_user.is_admin and "file_url" in data:
         return {"message": "Forbidden"}, 403
     
     # Define allowed fields based on user role
-    allowed_fields = ["title", "url", "category_id", "color", "image_url"]
+    allowed_fields = ["title", "url", "category_id", "color", "image_url", "is_public", "is_favorite"]
     if current_user.is_admin:
         allowed_fields.extend(["file_url", "user_id"])
     
     # Update link fields
     for field in allowed_fields:
         if field in data:
+            old_value = getattr(link, field, None)
             setattr(link, field, data[field])
+            print(f"DEBUG: Updated {field}: {old_value} -> {data[field]}")
+    
+    # Debug: check final state
+    print(f"DEBUG: Link image_url after update: {link.image_url}")
     
     # Handle nullable fields
     if link.category_id is None:
