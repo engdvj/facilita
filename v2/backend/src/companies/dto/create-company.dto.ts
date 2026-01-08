@@ -1,0 +1,20 @@
+import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { EntityStatus } from '@prisma/client';
+
+export class CreateCompanyDto {
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  cnpj?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @IsOptional()
+  @IsEnum(EntityStatus)
+  status?: EntityStatus;
+}

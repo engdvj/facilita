@@ -1,0 +1,9 @@
+import { UserRole } from '@prisma/client';
+export interface AuthPayload {
+    sub: string;
+    role: UserRole;
+    email: string;
+    companyId?: string | null;
+    unitId?: string | null;
+    sectorId?: string | null;
+}

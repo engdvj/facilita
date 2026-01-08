@@ -1,0 +1,121 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, UserStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
+
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  status: true,
+  companyId: true,
+  unitId: true,
+  sectorId: true,
+  avatarUrl: true,
+  theme: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+@Injectable()
+export class UsersService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findByEmail(email: string) {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  findByUsername(username: string) {
+    return this.prisma.user.findUnique({ where: { email: username } });
+  }
+
+  findById(id: string) {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  findActiveById(id: string) {
+    return this.prisma.user.findFirst({
+      where: { id, status: UserStatus.ACTIVE },
+    });
+  }
+
+  findAll() {
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: userSelect,
+    });
+  }
+
+  async findOne(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: userSelect,
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  async create(data: CreateUserDto) {
+    const passwordHash = await bcrypt.hash(data.password, 12);
+
+    const theme = data.theme
+      ? (data.theme as Prisma.InputJsonValue)
+      : undefined;
+
+    return this.prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.username,
+        passwordHash,
+        role: data.role,
+        status: data.status,
+        companyId: data.companyId,
+        unitId: data.unitId,
+        sectorId: data.sectorId,
+        avatarUrl: data.avatarUrl,
+        theme,
+      },
+      select: userSelect,
+    });
+  }
+
+  async update(id: string, data: UpdateUserDto) {
+    await this.findOne(id);
+
+    const updateData: Record<string, unknown> = {
+      name: data.name,
+      email: data.username,
+      role: data.role,
+      status: data.status,
+      companyId: data.companyId,
+      unitId: data.unitId,
+      sectorId: data.sectorId,
+      avatarUrl: data.avatarUrl,
+      theme: data.theme
+        ? (data.theme as Prisma.InputJsonValue)
+        : undefined,
+    };
+
+    if (data.password) {
+      updateData.passwordHash = await bcrypt.hash(data.password, 12);
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: userSelect,
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prisma.user.delete({ where: { id } });
+  }
+}
