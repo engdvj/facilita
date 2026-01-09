@@ -34,13 +34,23 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         });
     }
     async findAll(companyId, filters) {
+        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
         const where = {
-            companyId,
             status: client_1.EntityStatus.ACTIVE,
             deletedAt: null,
+            ...(companyId ? { companyId } : {}),
             ...(filters?.sectorId && { sectorId: filters.sectorId }),
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
-            ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+            ...(!shouldFilterPublic &&
+                filters?.audience && { audience: filters.audience }),
+            ...(filters?.isPublic !== undefined &&
+                !shouldFilterPublic && { isPublic: filters.isPublic }),
+            ...(shouldFilterPublic && {
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            }),
         };
         console.log('SchedulesService.findAll - where clause:', JSON.stringify(where, null, 2));
         const schedules = await this.prisma.uploadedSchedule.findMany({
@@ -93,11 +103,36 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         }
         return schedule;
     }
-    async update(id, updateScheduleDto) {
-        await this.findOne(id);
+    async update(id, updateScheduleDto, actor) {
+        const existingSchedule = await this.findOne(id);
+        this.assertCanMutate(existingSchedule, actor);
+        const existingAudience = this.resolveAudienceFromExisting(existingSchedule);
+        const shouldUpdateAudience = updateScheduleDto.audience !== undefined ||
+            updateScheduleDto.isPublic !== undefined;
+        const resolvedAudience = shouldUpdateAudience
+            ? this.resolveAudienceForUpdate(existingAudience, updateScheduleDto)
+            : existingAudience;
+        if (shouldUpdateAudience && actor?.role) {
+            this.assertAudienceAllowed(actor.role, resolvedAudience);
+        }
+        const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateScheduleDto;
+        const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
+            ? _sectorId ?? existingSchedule.sectorId ?? undefined
+            : undefined;
+        if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
+            throw new common_1.ForbiddenException('Setor obrigatorio para documentos de setor.');
+        }
+        const updateData = {
+            ...rest,
+            sectorId,
+        };
+        if (shouldUpdateAudience) {
+            updateData.audience = resolvedAudience;
+            updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
+        }
         return this.prisma.uploadedSchedule.update({
             where: { id },
-            data: updateScheduleDto,
+            data: updateData,
             include: {
                 category: true,
                 sector: true,
@@ -111,8 +146,9 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             },
         });
     }
-    async remove(id) {
-        await this.findOne(id);
+    async remove(id, actor) {
+        const existingSchedule = await this.findOne(id);
+        this.assertCanMutate(existingSchedule, actor);
         return this.prisma.uploadedSchedule.update({
             where: { id },
             data: {
@@ -135,6 +171,48 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 status: client_1.EntityStatus.ACTIVE,
             },
         });
+    }
+    assertCanMutate(schedule, actor) {
+        if (!actor)
+            return;
+        if (actor.role === client_1.UserRole.SUPERADMIN) {
+            return;
+        }
+        if (actor.role === client_1.UserRole.ADMIN) {
+            if (actor.companyId && actor.companyId !== schedule.companyId) {
+                throw new common_1.ForbiddenException('Empresa nao autorizada.');
+            }
+            return;
+        }
+        throw new common_1.ForbiddenException('Permissao insuficiente.');
+    }
+    resolveAudienceFromExisting(schedule) {
+        if (schedule.isPublic)
+            return client_1.ContentAudience.PUBLIC;
+        if (schedule.audience)
+            return schedule.audience;
+        if (schedule.sectorId)
+            return client_1.ContentAudience.SECTOR;
+        return client_1.ContentAudience.COMPANY;
+    }
+    resolveAudienceForUpdate(existing, updateScheduleDto) {
+        if (updateScheduleDto.audience)
+            return updateScheduleDto.audience;
+        if (updateScheduleDto.isPublic !== undefined) {
+            return updateScheduleDto.isPublic ? client_1.ContentAudience.PUBLIC : existing;
+        }
+        return existing;
+    }
+    assertAudienceAllowed(role, audience) {
+        if (role === client_1.UserRole.SUPERADMIN)
+            return;
+        if (role === client_1.UserRole.ADMIN) {
+            if (audience !== client_1.ContentAudience.COMPANY &&
+                audience !== client_1.ContentAudience.SECTOR) {
+                throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+            }
+            return;
+        }
     }
 };
 exports.UploadedSchedulesService = UploadedSchedulesService;

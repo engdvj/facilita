@@ -35,13 +35,23 @@ let LinksService = class LinksService {
         return link;
     }
     async findAll(companyId, filters) {
+        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
         const where = {
             status: client_1.EntityStatus.ACTIVE,
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
             ...(filters?.sectorId && { sectorId: filters.sectorId }),
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
-            ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+            ...(!shouldFilterPublic &&
+                filters?.audience && { audience: filters.audience }),
+            ...(filters?.isPublic !== undefined &&
+                !shouldFilterPublic && { isPublic: filters.isPublic }),
+            ...(shouldFilterPublic && {
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            }),
         };
         console.log('LinksService.findAll - where clause:', JSON.stringify(where, null, 2));
         const links = await this.prisma.link.findMany({
@@ -108,25 +118,49 @@ let LinksService = class LinksService {
         }
         return link;
     }
-    async update(id, updateLinkDto, userId) {
+    async update(id, updateLinkDto, actor) {
         const existingLink = await this.findOne(id);
+        this.assertCanMutate(existingLink, actor);
+        const existingAudience = this.resolveAudienceFromExisting(existingLink);
+        const shouldUpdateAudience = updateLinkDto.audience !== undefined || updateLinkDto.isPublic !== undefined;
+        const resolvedAudience = shouldUpdateAudience
+            ? this.resolveAudienceForUpdate(existingAudience, updateLinkDto)
+            : existingAudience;
+        if (shouldUpdateAudience && actor?.role) {
+            this.assertAudienceAllowed(actor.role, resolvedAudience);
+        }
         const hasChanges = updateLinkDto.title !== existingLink.title ||
             updateLinkDto.url !== existingLink.url ||
             updateLinkDto.description !== existingLink.description;
-        if (hasChanges && userId) {
+        if (hasChanges && actor?.id) {
             await this.prisma.linkVersion.create({
                 data: {
                     linkId: id,
                     title: existingLink.title,
                     url: existingLink.url,
                     description: existingLink.description,
-                    changedBy: userId,
+                    changedBy: actor.id,
                 },
             });
         }
+        const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateLinkDto;
+        const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
+            ? _sectorId ?? existingLink.sectorId ?? undefined
+            : undefined;
+        if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
+            throw new common_1.ForbiddenException('Setor obrigatorio para links de setor.');
+        }
+        const updateData = {
+            ...rest,
+            sectorId,
+        };
+        if (shouldUpdateAudience) {
+            updateData.audience = resolvedAudience;
+            updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
+        }
         return this.prisma.link.update({
             where: { id },
-            data: updateLinkDto,
+            data: updateData,
             include: {
                 category: true,
                 sector: true,
@@ -145,8 +179,9 @@ let LinksService = class LinksService {
             },
         });
     }
-    async remove(id) {
-        await this.findOne(id);
+    async remove(id, actor) {
+        const existingLink = await this.findOne(id);
+        this.assertCanMutate(existingLink, actor);
         return this.prisma.link.update({
             where: { id },
             data: {
@@ -154,6 +189,60 @@ let LinksService = class LinksService {
                 status: client_1.EntityStatus.INACTIVE,
             },
         });
+    }
+    assertCanMutate(link, actor) {
+        if (!actor)
+            return;
+        if (actor.role === client_1.UserRole.SUPERADMIN) {
+            return;
+        }
+        if (actor.role === client_1.UserRole.ADMIN) {
+            if (actor.companyId && actor.companyId !== link.companyId) {
+                throw new common_1.ForbiddenException('Empresa nao autorizada.');
+            }
+            return;
+        }
+        if (actor.role === client_1.UserRole.COLLABORATOR) {
+            if (!link.userId || link.userId !== actor.id) {
+                throw new common_1.ForbiddenException('Link nao autorizado.');
+            }
+            return;
+        }
+        throw new common_1.ForbiddenException('Permissao insuficiente.');
+    }
+    resolveAudienceFromExisting(link) {
+        if (link.isPublic)
+            return client_1.ContentAudience.PUBLIC;
+        if (link.audience)
+            return link.audience;
+        if (link.sectorId)
+            return client_1.ContentAudience.SECTOR;
+        return client_1.ContentAudience.COMPANY;
+    }
+    resolveAudienceForUpdate(existing, updateLinkDto) {
+        if (updateLinkDto.audience)
+            return updateLinkDto.audience;
+        if (updateLinkDto.isPublic !== undefined) {
+            return updateLinkDto.isPublic ? client_1.ContentAudience.PUBLIC : existing;
+        }
+        return existing;
+    }
+    assertAudienceAllowed(role, audience) {
+        if (role === client_1.UserRole.SUPERADMIN)
+            return;
+        if (role === client_1.UserRole.ADMIN) {
+            if (audience !== client_1.ContentAudience.COMPANY &&
+                audience !== client_1.ContentAudience.SECTOR) {
+                throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+            }
+            return;
+        }
+        if (role === client_1.UserRole.COLLABORATOR) {
+            if (audience !== client_1.ContentAudience.PRIVATE) {
+                throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+            }
+            return;
+        }
     }
     async restore(id) {
         const link = await this.prisma.link.findUnique({

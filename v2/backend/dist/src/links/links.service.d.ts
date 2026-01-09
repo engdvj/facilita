@@ -1,18 +1,24 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLinkDto } from './dto/create-link.dto';
 import { UpdateLinkDto } from './dto/update-link.dto';
+import { ContentAudience, UserRole } from '@prisma/client';
+type LinkActor = {
+    id: string;
+    role: UserRole;
+    companyId?: string | null;
+};
 export declare class LinksService {
     private prisma;
     constructor(prisma: PrismaService);
     create(createLinkDto: CreateLinkDto): Promise<{
         sector: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
             unitId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             description: string | null;
         } | null;
         user: {
@@ -22,11 +28,11 @@ export declare class LinksService {
         } | null;
         category: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             color: string | null;
             icon: string | null;
             adminOnly: boolean;
@@ -34,17 +40,20 @@ export declare class LinksService {
     } & {
         url: string;
         id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
         userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
@@ -53,15 +62,16 @@ export declare class LinksService {
         sectorId?: string;
         categoryId?: string;
         isPublic?: boolean;
+        audience?: ContentAudience;
     }): Promise<({
         sector: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
             unitId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             description: string | null;
         } | null;
         user: {
@@ -71,11 +81,11 @@ export declare class LinksService {
         } | null;
         category: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             color: string | null;
             icon: string | null;
             adminOnly: boolean;
@@ -83,8 +93,8 @@ export declare class LinksService {
         tags: ({
             tag: {
                 id: string;
-                createdAt: Date;
                 name: string;
+                createdAt: Date;
                 color: string | null;
             };
         } & {
@@ -94,17 +104,20 @@ export declare class LinksService {
     } & {
         url: string;
         id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
         userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
@@ -112,12 +125,12 @@ export declare class LinksService {
     findOne(id: string): Promise<{
         sector: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
             unitId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             description: string | null;
         } | null;
         user: {
@@ -127,11 +140,11 @@ export declare class LinksService {
         } | null;
         category: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             color: string | null;
             icon: string | null;
             adminOnly: boolean;
@@ -139,8 +152,8 @@ export declare class LinksService {
         tags: ({
             tag: {
                 id: string;
-                createdAt: Date;
                 name: string;
+                createdAt: Date;
                 color: string | null;
             };
         } & {
@@ -166,30 +179,33 @@ export declare class LinksService {
     } & {
         url: string;
         id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
         userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
     }>;
-    update(id: string, updateLinkDto: UpdateLinkDto, userId?: string): Promise<{
+    update(id: string, updateLinkDto: UpdateLinkDto, actor?: LinkActor): Promise<{
         sector: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
             unitId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             description: string | null;
         } | null;
         user: {
@@ -199,11 +215,11 @@ export declare class LinksService {
         } | null;
         category: {
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             companyId: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
             color: string | null;
             icon: string | null;
             adminOnly: boolean;
@@ -211,8 +227,8 @@ export declare class LinksService {
         tags: ({
             tag: {
                 id: string;
-                createdAt: Date;
                 name: string;
+                createdAt: Date;
                 color: string | null;
             };
         } & {
@@ -222,55 +238,69 @@ export declare class LinksService {
     } & {
         url: string;
         id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
         userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
     }>;
-    remove(id: string): Promise<{
+    remove(id: string, actor?: LinkActor): Promise<{
         url: string;
         id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
         userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
     }>;
+    private assertCanMutate;
+    private resolveAudienceFromExisting;
+    private resolveAudienceForUpdate;
+    private assertAudienceAllowed;
     restore(id: string): Promise<{
         url: string;
         id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
         userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
     }>;
 }
+export {};

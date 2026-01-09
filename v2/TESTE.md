@@ -1,4 +1,4 @@
-# 🚀 Guia de Teste - FACILITA V2.0
+# 🚀 Guia de Teste - FACILITA
 
 ## 📋 Checklist Pré-Teste
 

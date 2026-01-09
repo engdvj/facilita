@@ -2,33 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const sections = [
-  {
-    label: 'Navegacao',
-    items: [
-      { href: '/', label: 'Inicio' },
-      { href: '/dashboard', label: 'Dashboard' },
-    ],
-  },
-  {
-    label: 'Portal',
-    items: [
-      { href: '/admin/categories', label: 'Categorias' },
-      { href: '/admin/links', label: 'Links' },
-      { href: '/admin/schedules', label: 'Agendas/Documentos' },
-    ],
-  },
-  {
-    label: 'Administracao',
-    items: [
-      { href: '/admin/companies', label: 'Empresas' },
-      { href: '/admin/units', label: 'Unidades' },
-      { href: '/admin/sectors', label: 'Setores' },
-      { href: '/admin/users', label: 'Usuarios' },
-    ],
-  },
-];
+import { useMemo } from 'react';
+import { useAuthStore } from '@/stores/auth-store';
 
 function isActive(pathname: string, href: string) {
   if (href === '/') {
@@ -39,6 +14,62 @@ function isActive(pathname: string, href: string) {
 
 export default function AppNav() {
   const pathname = usePathname();
+  const user = useAuthStore((state) => state.user);
+  const sections = useMemo(() => {
+    if (!user) return [];
+
+    if (user.role === 'COLLABORATOR') {
+      return [
+        {
+          label: 'Navegacao',
+          items: [
+            { href: '/', label: 'Inicio' },
+            { href: '/admin/links', label: 'Meus links' },
+          ],
+        },
+      ];
+    }
+
+    if (user.role === 'ADMIN') {
+      return [
+        {
+          label: 'Portal',
+          items: [
+            { href: '/', label: 'Inicio' },
+            { href: '/admin/categories', label: 'Categorias' },
+            { href: '/admin/links', label: 'Links' },
+            { href: '/admin/schedules', label: 'Agendas/Documentos' },
+          ],
+        },
+      ];
+    }
+
+    return [
+      {
+        label: 'Navegacao',
+        items: [{ href: '/', label: 'Inicio' }],
+      },
+      {
+        label: 'Portal',
+        items: [
+          { href: '/admin/categories', label: 'Categorias' },
+          { href: '/admin/links', label: 'Links' },
+          { href: '/admin/schedules', label: 'Agendas/Documentos' },
+        ],
+      },
+      {
+        label: 'Administracao',
+        items: [
+          { href: '/admin/companies', label: 'Empresas' },
+          { href: '/admin/units', label: 'Unidades' },
+          { href: '/admin/sectors', label: 'Setores' },
+          { href: '/admin/users', label: 'Usuarios' },
+          { href: '/admin/permissions', label: 'Permissoes' },
+          { href: '/admin/backup', label: 'Backup e restauracao' },
+        ],
+      },
+    ];
+  }, [user]);
 
   return (
     <div className="space-y-4">

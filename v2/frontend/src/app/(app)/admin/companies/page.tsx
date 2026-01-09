@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
@@ -24,6 +24,8 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterCnpj, setFilterCnpj] = useState('ALL');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
@@ -79,12 +81,30 @@ export default function CompaniesPage() {
   }, [accessToken, hasHydrated]);
 
   const filteredCompanies = useMemo(() => {
-    if (!search.trim()) return companies;
-    const term = search.toLowerCase();
-    return companies.filter((company) =>
-      `${company.name} ${company.cnpj ?? ''}`.toLowerCase().includes(term),
-    );
-  }, [companies, search]);
+    const term = search.trim().toLowerCase();
+    return companies.filter((company) => {
+      if (
+        term &&
+        !`${company.name} ${company.cnpj ?? ''}`.toLowerCase().includes(term)
+      ) {
+        return false;
+      }
+      const normalizedStatus = (company.status || 'INACTIVE').toUpperCase();
+      if (filterStatus !== 'ALL' && normalizedStatus !== filterStatus) {
+        return false;
+      }
+      if (filterCnpj === 'WITH' && !company.cnpj) {
+        return false;
+      }
+      if (filterCnpj === 'WITHOUT' && company.cnpj) {
+        return false;
+      }
+      return true;
+    });
+  }, [companies, filterCnpj, filterStatus, search]);
+
+  const activeFilters =
+    Number(filterStatus !== 'ALL') + Number(filterCnpj !== 'ALL');
 
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / pageSize));
   const paginatedCompanies = filteredCompanies.slice(
@@ -165,6 +185,12 @@ export default function CompaniesPage() {
     }
   };
 
+  const clearFilters = () => {
+    setFilterStatus('ALL');
+    setFilterCnpj('ALL');
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -174,7 +200,7 @@ export default function CompaniesPage() {
             Controle de grupos e empresas cadastradas no sistema.
           </p>
         </div>
-        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] xl:w-auto xl:max-w-[420px] xl:shrink-0">
+        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] xl:w-auto xl:max-w-[520px] xl:shrink-0">
           <input
             value={search}
             onChange={(event) => {
@@ -184,6 +210,52 @@ export default function CompaniesPage() {
             placeholder="Buscar empresa"
             className="w-full min-w-0 rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
           />
+          <FilterDropdown activeCount={activeFilters}>
+            <div className="grid gap-3 text-xs text-foreground">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Status
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterStatus}
+                  onChange={(event) => {
+                    setFilterStatus(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="ACTIVE">Ativas</option>
+                  <option value="INACTIVE">Inativas</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  CNPJ
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterCnpj}
+                  onChange={(event) => {
+                    setFilterCnpj(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="WITH">Com CNPJ</option>
+                  <option value="WITHOUT">Sem CNPJ</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                className="rounded-md border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/60"
+                onClick={clearFilters}
+                disabled={activeFilters === 0}
+              >
+                Limpar filtros
+              </button>
+            </div>
+          </FilterDropdown>
           <button
             type="button"
             className="w-full rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] sm:w-auto"
@@ -209,7 +281,7 @@ export default function CompaniesPage() {
             {loading ? 'Carregando...' : `${filteredCompanies.length} registros`}
           </p>
         </div>
-        <div className="grid auto-rows-fr gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {paginatedCompanies.map((company) => (
             <article
               key={company.id}
@@ -222,60 +294,22 @@ export default function CompaniesPage() {
                   openEdit(company);
                 }
               }}
-              className="group flex h-full cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-[0_10px_24px_rgba(16,44,50,0.08)] transition hover:-translate-y-0.5 hover:border-foreground/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Empresa
-                  </p>
-                  <p className="truncate text-base font-semibold text-foreground">
-                    {company.name}
-                  </p>
-                </div>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Empresa
+                </p>
                 <StatusBadge status={company.status} />
               </div>
-              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    CNPJ
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {company.cnpj || '--'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Criado
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {formatDate(company.createdAt || undefined)}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-3">
-                <button
-                  type="button"
-                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEdit(company);
-                  }}
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-destructive/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-destructive transition hover:border-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setFormError(null);
-                    setDeleteTarget(company);
-                  }}
-                >
-                  Remover
-                </button>
-              </div>
+              <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
+                {company.name}
+              </h3>
+              {company.cnpj && (
+                <span className="text-[10px] text-muted-foreground">
+                  {company.cnpj}
+                </span>
+              )}
             </article>
           ))}
           {!loading && paginatedCompanies.length === 0 && (
@@ -294,6 +328,20 @@ export default function CompaniesPage() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
+            {editing && (
+              <button
+                type="button"
+                className="mr-auto rounded-lg border border-destructive/40 px-4 py-2 text-xs uppercase tracking-[0.18em] text-destructive"
+                onClick={() => {
+                  setFormError(null);
+                  setModalOpen(false);
+                  setDeleteTarget(editing);
+                }}
+                disabled={formLoading}
+              >
+                Remover
+              </button>
+            )}
             <button
               type="button"
               className="rounded-lg border border-border/70 px-4 py-2 text-xs uppercase tracking-[0.18em] text-foreground"

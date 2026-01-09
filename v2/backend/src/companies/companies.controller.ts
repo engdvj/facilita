@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,8 +25,11 @@ export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Get()
-  findAll() {
-    return this.companiesService.findAll();
+  findAll(@Request() req: any) {
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    return this.companiesService.findAll({
+      excludeInternal: !isSuperAdmin,
+    });
   }
 
   @Get(':id')

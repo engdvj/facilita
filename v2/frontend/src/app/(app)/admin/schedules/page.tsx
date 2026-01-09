@@ -2,15 +2,24 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
-import { formatBytes, formatDate } from '@/lib/format';
+import { formatBytes } from '@/lib/format';
+import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
-import { Category, Sector, UploadedSchedule } from '@/types';
+import { Category, Company, ContentAudience, Sector, UploadedSchedule } from '@/types';
 
 const pageSize = 8;
+const audienceFilterOptions: ContentAudience[] = [
+  'PUBLIC',
+  'COMPANY',
+  'SECTOR',
+  'ADMIN',
+  'SUPERADMIN',
+  'PRIVATE',
+];
 
 const emptyFormData = {
   title: '',
@@ -19,37 +28,143 @@ const emptyFormData = {
   fileUrl: '',
   fileName: '',
   fileSize: 0,
-  isPublic: true,
+  imageUrl: '',
+  imagePosition: '50% 50%',
+  imageScale: 1,
+  audience: 'COMPANY' as ContentAudience,
 };
 
 export default function SchedulesPage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [schedules, setSchedules] = useState<UploadedSchedule[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterCategoryId, setFilterCategoryId] = useState('');
+  const [filterSectorId, setFilterSectorId] = useState('');
+  const [filterAudience, setFilterAudience] = useState('ALL');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UploadedSchedule | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UploadedSchedule | null>(null);
   const [formData, setFormData] = useState({ ...emptyFormData });
+  const [companyId, setCompanyId] = useState('');
+  const [formCompanyId, setFormCompanyId] = useState('');
+  const isAdmin = user?.role === 'ADMIN';
+  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const resolvedCompanyId =
+    isSuperAdmin ? companyId || undefined : user?.companyId;
+  const formResolvedCompanyId = isSuperAdmin ? formCompanyId : user?.companyId;
+
+  const getAudience = (schedule: UploadedSchedule): ContentAudience => {
+    if (schedule.isPublic) return 'PUBLIC';
+    if (schedule.audience) return schedule.audience;
+    if (schedule.sectorId) return 'SECTOR';
+    return 'COMPANY';
+  };
+
+  const getAudienceLabel = (audience: ContentAudience) => {
+    if (audience === 'PUBLIC') return 'Publico';
+    if (audience === 'COMPANY') return 'Empresa';
+    if (audience === 'SECTOR') return 'Setor';
+    if (audience === 'PRIVATE') return 'Privado';
+    if (audience === 'ADMIN') return 'Admins';
+    return 'Superadmins';
+  };
+
+  const canViewSchedule = (schedule: UploadedSchedule) => {
+    const audience = getAudience(schedule);
+    if (audience === 'PUBLIC') return true;
+    if (!user) return false;
+    if (isSuperAdmin) return true;
+    if (audience === 'SUPERADMIN') return false;
+    if (audience === 'ADMIN') return isAdmin;
+    if (audience === 'SECTOR') return true;
+    if (audience === 'COMPANY') return isAdmin;
+    return false;
+  };
+
+  const scopedSectors = useMemo(() => {
+    if (!resolvedCompanyId) return sectors;
+    return sectors.filter((sector) => sector.companyId === resolvedCompanyId);
+  }, [resolvedCompanyId, sectors]);
+
+  const formCategories = useMemo(() => {
+    if (isSuperAdmin && !formCompanyId) {
+      return [];
+    }
+    if (!formResolvedCompanyId) {
+      return categories;
+    }
+    return categories.filter(
+      (category) => category.companyId === formResolvedCompanyId,
+    );
+  }, [categories, formCompanyId, formResolvedCompanyId, isSuperAdmin]);
+
+  const formSectors = useMemo(() => {
+    if (isSuperAdmin && !formCompanyId) {
+      return [];
+    }
+    if (!formResolvedCompanyId) {
+      return scopedSectors;
+    }
+    return scopedSectors.filter(
+      (sector) => sector.companyId === formResolvedCompanyId,
+    );
+  }, [formCompanyId, formResolvedCompanyId, isSuperAdmin, scopedSectors]);
+
+  const audienceOptions = useMemo(() => {
+    if (isAdmin) {
+      return [
+        { value: 'COMPANY', label: 'Empresa' },
+        { value: 'SECTOR', label: 'Setor' },
+      ];
+    }
+    return [
+      { value: 'PUBLIC', label: 'Publico' },
+      { value: 'COMPANY', label: 'Empresa' },
+      { value: 'SECTOR', label: 'Setor' },
+      { value: 'ADMIN', label: 'Somente admins' },
+      { value: 'SUPERADMIN', label: 'Somente superadmins' },
+      { value: 'PRIVATE', label: 'Privado (apenas voce)' },
+    ];
+  }, [isAdmin]);
 
   const loadData = async () => {
-    if (!user?.companyId) return;
+    if (!resolvedCompanyId && !isSuperAdmin) return;
     const [schedulesRes, catsRes, sectorsRes] = await Promise.all([
-      api.get(`/schedules?companyId=${user.companyId}`),
-      api.get(`/categories?companyId=${user.companyId}`),
-      api.get(`/sectors?companyId=${user.companyId}`),
+      resolvedCompanyId
+        ? api.get(`/schedules?companyId=${resolvedCompanyId}`)
+        : api.get('/schedules'),
+      resolvedCompanyId
+        ? api.get(`/categories?companyId=${resolvedCompanyId}`)
+        : isSuperAdmin
+          ? api.get('/categories')
+          : Promise.resolve({ data: [] }),
+      resolvedCompanyId
+        ? api.get(`/sectors?companyId=${resolvedCompanyId}`)
+        : isSuperAdmin
+          ? api.get('/sectors')
+          : Promise.resolve({ data: [] }),
     ]);
     setSchedules(schedulesRes.data);
     setCategories(catsRes.data);
     setSectors(sectorsRes.data);
+  };
+
+  const loadCompanies = async () => {
+    if (!isSuperAdmin) return;
+    const response = await api.get('/companies');
+    setCompanies(response.data);
   };
 
   useEffect(() => {
@@ -58,7 +173,7 @@ export default function SchedulesPage() {
     const load = async () => {
       if (!hasHydrated) return;
 
-      if (!user?.companyId) {
+      if (!user?.companyId && !isSuperAdmin) {
         setError(
           'Usuario sem empresa associada. Entre em contato com o administrador.',
         );
@@ -67,6 +182,9 @@ export default function SchedulesPage() {
       }
 
       try {
+        if (isSuperAdmin) {
+          await loadCompanies();
+        }
         await loadData();
         if (!active) return;
         setError(null);
@@ -90,19 +208,58 @@ export default function SchedulesPage() {
     return () => {
       active = false;
     };
-  }, [hasHydrated, user?.companyId]);
+  }, [companyId, hasHydrated, isSuperAdmin, user?.companyId]);
+
+  const visibleSchedules = useMemo(() => {
+    return schedules.filter((schedule) => canViewSchedule(schedule));
+  }, [canViewSchedule, schedules]);
 
   const filteredSchedules = useMemo(() => {
-    if (!search.trim()) return schedules;
-    const term = search.toLowerCase();
-    return schedules.filter((schedule) =>
-      `${schedule.title} ${schedule.fileName} ${schedule.category?.name ?? ''} ${
-        schedule.sector?.name ?? ''
-      }`
-        .toLowerCase()
-        .includes(term),
-    );
-  }, [schedules, search]);
+    const term = search.trim().toLowerCase();
+    return visibleSchedules.filter((schedule) => {
+      if (
+        term &&
+        !`${schedule.title} ${schedule.fileName} ${schedule.category?.name ?? ''} ${
+          schedule.sector?.name ?? ''
+        }`
+          .toLowerCase()
+          .includes(term)
+      ) {
+        return false;
+      }
+      const normalizedStatus = (schedule.status || 'INACTIVE').toUpperCase();
+      if (filterStatus !== 'ALL' && normalizedStatus !== filterStatus) {
+        return false;
+      }
+      if (filterCategoryId && schedule.categoryId !== filterCategoryId) {
+        return false;
+      }
+      if (filterSectorId && schedule.sectorId !== filterSectorId) {
+        return false;
+      }
+      if (
+        filterAudience !== 'ALL' &&
+        getAudience(schedule) !== filterAudience
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    filterAudience,
+    filterCategoryId,
+    filterSectorId,
+    filterStatus,
+    getAudience,
+    search,
+    visibleSchedules,
+  ]);
+
+  const activeFilters =
+    Number(filterStatus !== 'ALL') +
+    Number(Boolean(filterCategoryId)) +
+    Number(Boolean(filterSectorId)) +
+    Number(filterAudience !== 'ALL');
 
   const totalPages = Math.max(1, Math.ceil(filteredSchedules.length / pageSize));
   const paginatedSchedules = filteredSchedules.slice(
@@ -118,7 +275,12 @@ export default function SchedulesPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setFormData({ ...emptyFormData });
+    setFormData({
+      ...emptyFormData,
+      audience: 'COMPANY',
+      sectorId: '',
+    });
+    setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
     setModalOpen(true);
   };
@@ -132,8 +294,12 @@ export default function SchedulesPage() {
       fileUrl: schedule.fileUrl,
       fileName: schedule.fileName,
       fileSize: schedule.fileSize,
-      isPublic: schedule.isPublic,
+      imageUrl: schedule.imageUrl || '',
+      imagePosition: schedule.imagePosition || '50% 50%',
+      imageScale: schedule.imageScale || 1,
+      audience: getAudience(schedule),
     });
+    setFormCompanyId(schedule.companyId || '');
     setFormError(null);
     setModalOpen(true);
   };
@@ -146,9 +312,10 @@ export default function SchedulesPage() {
     uploadData.append('file', file);
 
     try {
-      setUploading(true);
+      setFileUploading(true);
       const response = await api.post('/uploads/document', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        skipNotify: true,
       });
       setFormData((prev) => ({
         ...prev,
@@ -159,13 +326,39 @@ export default function SchedulesPage() {
     } catch (uploadError) {
       setFormError('Erro ao fazer upload do arquivo.');
     } finally {
-      setUploading(false);
+      setFileUploading(false);
+    }
+  };
+
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+
+    try {
+      setImageUploading(true);
+      const response = await api.post('/uploads/image', uploadData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        skipNotify: true,
+      });
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: response.data.url,
+      }));
+    } catch (uploadError) {
+      setFormError('Erro ao fazer upload da imagem.');
+    } finally {
+      setImageUploading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!user?.companyId) {
-      setFormError('Usuario sem empresa associada.');
+    if (!formResolvedCompanyId) {
+      setFormError('Selecione uma empresa.');
       return;
     }
 
@@ -177,11 +370,44 @@ export default function SchedulesPage() {
     setFormLoading(true);
     setFormError(null);
     try {
+      const allowedAudiences = new Set(
+        audienceOptions.map((option) => option.value as ContentAudience),
+      );
+      const shouldSendAudience = allowedAudiences.has(formData.audience);
+      const normalizedAudience = shouldSendAudience
+        ? isAdmin
+          ? formData.audience === 'SECTOR'
+            ? 'SECTOR'
+            : 'COMPANY'
+          : formData.audience
+        : undefined;
+
+      if (normalizedAudience === 'SECTOR' && !formData.sectorId) {
+        setFormError('Selecione um setor para documentos de setor.');
+        setFormLoading(false);
+        return;
+      }
+
       const dataToSend = {
-        ...formData,
-        companyId: user.companyId,
+        companyId: formResolvedCompanyId,
         categoryId: formData.categoryId || undefined,
-        sectorId: formData.sectorId || undefined,
+        sectorId:
+          normalizedAudience === 'SECTOR'
+            ? formData.sectorId || undefined
+            : undefined,
+        fileUrl: formData.fileUrl,
+        fileName: formData.fileName,
+        fileSize: formData.fileSize,
+        imageUrl: formData.imageUrl || undefined,
+        imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
+        imageScale: formData.imageUrl ? formData.imageScale : undefined,
+        title: formData.title,
+        ...(shouldSendAudience && normalizedAudience
+          ? {
+              audience: normalizedAudience,
+              isPublic: normalizedAudience === 'PUBLIC',
+            }
+          : {}),
       };
 
       if (editing) {
@@ -222,8 +448,24 @@ export default function SchedulesPage() {
     }
   };
 
+  const clearFilters = () => {
+    setFilterStatus('ALL');
+    setFilterCategoryId('');
+    setFilterSectorId('');
+    setFilterAudience('ALL');
+    setPage(1);
+  };
+
   const getFileExtension = (filename: string) => {
     return filename.split('.').pop()?.toUpperCase() || 'FILE';
+  };
+
+  const updateAudience = (value: ContentAudience) => {
+    setFormData((prev) => ({
+      ...prev,
+      audience: value,
+      sectorId: value === 'SECTOR' ? prev.sectorId : '',
+    }));
   };
 
   return (
@@ -237,7 +479,7 @@ export default function SchedulesPage() {
             Gerencie os arquivos publicados no portal.
           </p>
         </div>
-        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] xl:w-auto xl:max-w-[420px] xl:shrink-0">
+        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:w-auto xl:max-w-[720px] xl:shrink-0">
           <input
             value={search}
             onChange={(event) => {
@@ -247,6 +489,112 @@ export default function SchedulesPage() {
             placeholder="Buscar documento"
             className="w-full min-w-0 rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
           />
+          {isSuperAdmin && (
+            <select
+              value={companyId}
+              onChange={(event) => {
+                setCompanyId(event.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+            >
+              <option value="">Todas as empresas</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <FilterDropdown activeCount={activeFilters}>
+            <div className="grid gap-3 text-xs text-foreground">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Status
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterStatus}
+                  onChange={(event) => {
+                    setFilterStatus(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="ACTIVE">Ativos</option>
+                  <option value="INACTIVE">Inativos</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Categoria
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterCategoryId}
+                  onChange={(event) => {
+                    setFilterCategoryId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todas</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Setor
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterSectorId}
+                  onChange={(event) => {
+                    setFilterSectorId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todos</option>
+                  {sectors.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Visibilidade
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterAudience}
+                  onChange={(event) => {
+                    setFilterAudience(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">Todas</option>
+                  {audienceFilterOptions.map((audience) => (
+                    <option key={audience} value={audience}>
+                      {getAudienceLabel(audience)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className="rounded-md border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/60"
+                onClick={clearFilters}
+                disabled={activeFilters === 0}
+              >
+                Limpar filtros
+              </button>
+            </div>
+          </FilterDropdown>
           <button
             type="button"
             className="w-full rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] sm:w-auto"
@@ -272,7 +620,7 @@ export default function SchedulesPage() {
             {loading ? 'Carregando...' : `${filteredSchedules.length} registros`}
           </p>
         </div>
-        <div className="grid auto-rows-fr gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {paginatedSchedules.map((schedule) => (
             <article
               key={schedule.id}
@@ -285,100 +633,35 @@ export default function SchedulesPage() {
                   openEdit(schedule);
                 }
               }}
-              className="group flex h-full cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-[0_10px_24px_rgba(16,44,50,0.08)] transition hover:-translate-y-0.5 hover:border-foreground/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Documento
-                  </p>
-                  <p className="truncate text-base font-semibold text-foreground">
-                    {schedule.title}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {schedule.fileName}
-                  </p>
+              {schedule.imageUrl && (
+                <div className="overflow-hidden rounded-t-xl">
+                  <div className="relative h-20 w-full overflow-hidden bg-secondary/60">
+                    <img
+                      src={`${serverURL}${schedule.imageUrl}`}
+                      alt={schedule.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      style={{
+                        objectPosition: schedule.imagePosition || '50% 50%',
+                        transform: `scale(${schedule.imageScale || 1})`,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="rounded-md border border-border/70 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {getFileExtension(schedule.fileName)}
-                  </span>
+              )}
+              <div className="flex flex-col gap-2 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground line-clamp-2">
+                    {schedule.title}
+                  </h3>
                   <StatusBadge status={schedule.status} />
                 </div>
-              </div>
-              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Categoria
+                {schedule.category?.name && (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {schedule.category.name}
                   </span>
-                  <span className="text-right text-foreground/80">
-                    {schedule.category?.name || '--'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Setor
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {schedule.sector?.name || 'Todos'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Tamanho
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {formatBytes(schedule.fileSize)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Visibilidade
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {schedule.isPublic ? 'Publico' : 'Privado'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Criado
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {formatDate(schedule.createdAt || undefined)}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-3">
-                <a
-                  href={`${serverURL}${schedule.fileUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  Baixar
-                </a>
-                <button
-                  type="button"
-                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEdit(schedule);
-                  }}
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-destructive/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-destructive transition hover:border-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setFormError(null);
-                    setDeleteTarget(schedule);
-                  }}
-                >
-                  Remover
-                </button>
+                )}
               </div>
             </article>
           ))}
@@ -398,6 +681,20 @@ export default function SchedulesPage() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
+            {editing && (
+              <button
+                type="button"
+                className="mr-auto rounded-lg border border-destructive/40 px-4 py-2 text-xs uppercase tracking-[0.18em] text-destructive"
+                onClick={() => {
+                  setFormError(null);
+                  setModalOpen(false);
+                  setDeleteTarget(editing);
+                }}
+                disabled={formLoading}
+              >
+                Remover
+              </button>
+            )}
             <button
               type="button"
               className="rounded-lg border border-border/70 px-4 py-2 text-xs uppercase tracking-[0.18em] text-foreground"
@@ -410,7 +707,12 @@ export default function SchedulesPage() {
               type="button"
               className="rounded-lg bg-primary px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary-foreground"
               onClick={handleSave}
-              disabled={formLoading || uploading || !formData.title.trim()}
+              disabled={
+                formLoading ||
+                fileUploading ||
+                imageUploading ||
+                !formData.title.trim()
+              }
             >
               {formLoading ? 'Salvando' : 'Salvar'}
             </button>
@@ -418,6 +720,30 @@ export default function SchedulesPage() {
         }
       >
         <div className="space-y-4">
+          {isSuperAdmin && (
+            <AdminField label="Empresa" htmlFor="schedule-company">
+              <select
+                id="schedule-company"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={formCompanyId}
+                onChange={(event) => {
+                  setFormCompanyId(event.target.value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    categoryId: '',
+                    sectorId: '',
+                  }));
+                }}
+              >
+                <option value="">Selecione uma empresa</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </AdminField>
+          )}
           <AdminField label="Titulo" htmlFor="schedule-title">
             <input
               id="schedule-title"
@@ -438,10 +764,10 @@ export default function SchedulesPage() {
               type="file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
               onChange={handleFileUpload}
-              disabled={uploading}
+              disabled={fileUploading}
               className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
             />
-            {uploading && (
+            {fileUploading && (
               <p className="mt-2 text-xs text-muted-foreground">
                 Fazendo upload...
               </p>
@@ -453,6 +779,127 @@ export default function SchedulesPage() {
                 </span>
                 <span>{formData.fileName}</span>
                 <span>({formatBytes(formData.fileSize)})</span>
+              </div>
+            )}
+          </AdminField>
+          <AdminField label="Imagem" htmlFor="schedule-image" hint="Opcional">
+            <input
+              id="schedule-image"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={imageUploading}
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+            />
+            {imageUploading && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Fazendo upload...
+              </p>
+            )}
+            {formData.imageUrl && (
+              <div className="mt-3 space-y-3">
+                <div className="overflow-hidden rounded-lg border border-border/70">
+                  <div className="relative h-32 w-full overflow-hidden bg-secondary/60">
+                    <img
+                      src={`${serverURL}${formData.imageUrl}`}
+                      alt="Preview"
+                      className="h-full w-full object-cover"
+                      style={{
+                        objectPosition: formData.imagePosition,
+                        transform: `scale(${formData.imageScale})`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-border/70 bg-card/50 p-3">
+                  <p className="text-xs font-medium text-foreground">
+                    Ajustar enquadramento
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Posicao Horizontal</span>
+                      <span className="text-foreground">
+                        {formData.imagePosition.split(' ')[0]}
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={parseInt(formData.imagePosition.split(' ')[0])}
+                      onChange={(event) => {
+                        const y = formData.imagePosition.split(' ')[1];
+                        setFormData((prev) => ({
+                          ...prev,
+                          imagePosition: `${event.target.value}% ${y}`,
+                        }));
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Posicao Vertical</span>
+                      <span className="text-foreground">
+                        {formData.imagePosition.split(' ')[1]}
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={parseInt(formData.imagePosition.split(' ')[1])}
+                      onChange={(event) => {
+                        const x = formData.imagePosition.split(' ')[0];
+                        setFormData((prev) => ({
+                          ...prev,
+                          imagePosition: `${x} ${event.target.value}%`,
+                        }));
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Zoom</span>
+                      <span className="text-foreground">
+                        {formData.imageScale.toFixed(1)}x
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.1"
+                      value={formData.imageScale}
+                      onChange={(event) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          imageScale: parseFloat(event.target.value),
+                        }));
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        imagePosition: '50% 50%',
+                        imageScale: 1,
+                      }));
+                    }}
+                    className="mt-2 w-full rounded-md border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:border-foreground/60"
+                  >
+                    Resetar enquadramento
+                  </button>
+                </div>
               </div>
             )}
           </AdminField>
@@ -468,11 +915,12 @@ export default function SchedulesPage() {
                     categoryId: event.target.value,
                   }))
                 }
+                disabled={isSuperAdmin && !formCompanyId}
               >
                 <option value="">Sem categoria</option>
-                {categories.map((category) => (
+                {formCategories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.icon} {category.name}
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -488,9 +936,13 @@ export default function SchedulesPage() {
                     sectorId: event.target.value,
                   }))
                 }
+                disabled={
+                  formData.audience !== 'SECTOR' ||
+                  (isSuperAdmin && !formCompanyId)
+                }
               >
                 <option value="">Todos os setores</option>
-                {sectors.map((sector) => (
+                {formSectors.map((sector) => (
                   <option key={sector.id} value={sector.id}>
                     {sector.name}
                   </option>
@@ -498,20 +950,29 @@ export default function SchedulesPage() {
               </select>
             </AdminField>
           </div>
-          <label className="flex items-center gap-2 text-sm text-foreground">
-            <input
-              type="checkbox"
-              checked={formData.isPublic}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  isPublic: event.target.checked,
-                }))
-              }
-              className="rounded border-border/70"
-            />
-            <span>Publico (visivel sem login)</span>
-          </label>
+          <AdminField label="Visibilidade" htmlFor="schedule-audience">
+            {!isSuperAdmin &&
+            !audienceOptions.some((option) => option.value === formData.audience) ? (
+              <div className="rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground">
+                {getAudienceLabel(formData.audience)} (somente superadmin)
+              </div>
+            ) : (
+              <select
+                id="schedule-audience"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={formData.audience}
+                onChange={(event) =>
+                  updateAudience(event.target.value as ContentAudience)
+                }
+              >
+                {audienceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </AdminField>
         </div>
         {formError && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">

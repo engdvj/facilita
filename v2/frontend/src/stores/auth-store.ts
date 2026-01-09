@@ -6,8 +6,6 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 export type UserRole =
   | 'SUPERADMIN'
   | 'ADMIN'
-  | 'COORDINATOR'
-  | 'MANAGER'
   | 'COLLABORATOR';
 
 export type AuthUser = {

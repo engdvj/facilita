@@ -1,15 +1,25 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import AppNav from '@/components/app-nav';
 import MaxWidth from '@/components/max-width';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function AppHeader() {
   const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setMenuOpen(false);
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -29,35 +39,62 @@ export default function AppHeader() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-lg font-semibold text-foreground"
+              className="text-lg sm:text-2xl font-display font-bold tracking-wide uppercase text-foreground whitespace-nowrap"
             >
-              Facilita V2
+              Facilita
             </Link>
-            <span className="text-xs text-muted-foreground">Painel</span>
-          </div>
-          {user ? (
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="hidden max-w-[160px] truncate sm:inline text-foreground">
-                {user.name}
-              </span>
-              <button
-                type="button"
-                onClick={handleLogout}
+                      </div>
+          {hasHydrated ? (
+            user ? (
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  aria-expanded={menuOpen}
+                  aria-controls="app-mobile-nav"
+                  className="flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground lg:hidden"
+                >
+                  <span className="flex flex-col gap-1">
+                    <span className="block h-0.5 w-4 rounded-full bg-foreground" />
+                    <span className="block h-0.5 w-4 rounded-full bg-foreground" />
+                    <span className="block h-0.5 w-4 rounded-full bg-foreground" />
+                  </span>
+                  Menu
+                </button>
+                <span className="hidden max-w-[160px] truncate sm:inline text-foreground">
+                  {user.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
                 className="rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
               >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
-            >
-              Login
-            </Link>
-          )}
+                Login
+              </Link>
+            )
+          ) : null}
         </div>
       </MaxWidth>
+      {hasHydrated && user && menuOpen ? (
+        <div
+          id="app-mobile-nav"
+          className="border-t border-border/60 bg-card/95 lg:hidden"
+        >
+          <MaxWidth>
+            <div className="py-4">
+              <AppNav />
+            </div>
+          </MaxWidth>
+        </div>
+      ) : null}
     </header>
   );
 }

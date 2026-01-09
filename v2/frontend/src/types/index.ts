@@ -1,9 +1,16 @@
-export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'COORDINATOR' | 'MANAGER' | 'COLLABORATOR';
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'COLLABORATOR';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type EntityStatus = 'ACTIVE' | 'INACTIVE';
 export type NotificationType = 'EMAIL' | 'IN_APP';
 export type NotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'READ';
 export type EntityType = 'LINK' | 'SCHEDULE' | 'USER' | 'SECTOR' | 'COMPANY';
+export type ContentAudience =
+  | 'PUBLIC'
+  | 'COMPANY'
+  | 'SECTOR'
+  | 'PRIVATE'
+  | 'ADMIN'
+  | 'SUPERADMIN';
 
 export interface Company {
   id: string;
@@ -92,7 +99,10 @@ export interface Link {
   description?: string;
   color?: string;
   imageUrl?: string;
+  imagePosition?: string;
+  imageScale?: number;
   isPublic: boolean;
+  audience?: ContentAudience;
   order: number;
   status: EntityStatus;
   createdAt: string;
@@ -120,7 +130,11 @@ export interface UploadedSchedule {
   fileUrl: string;
   fileName: string;
   fileSize: number;
+  imageUrl?: string;
+  imagePosition?: string;
+  imageScale?: number;
   isPublic: boolean;
+  audience?: ContentAudience;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;

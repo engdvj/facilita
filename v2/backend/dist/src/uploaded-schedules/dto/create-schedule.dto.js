@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateScheduleDto = void 0;
 const class_validator_1 = require("class-validator");
+const client_1 = require("@prisma/client");
 class CreateScheduleDto {
 }
 exports.CreateScheduleDto = CreateScheduleDto;
@@ -49,6 +50,26 @@ __decorate([
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
 ], CreateScheduleDto.prototype, "fileSize", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateScheduleDto.prototype, "imageUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateScheduleDto.prototype, "imagePosition", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateScheduleDto.prototype, "imageScale", void 0);
+__decorate([
+    (0, class_validator_1.IsEnum)(client_1.ContentAudience),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateScheduleDto.prototype, "audience", void 0);
 __decorate([
     (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),

@@ -19,6 +19,11 @@ let PermissionsService = class PermissionsService {
     getRolePermission(role) {
         return this.prisma.rolePermission.findUnique({ where: { role } });
     }
+    findAll() {
+        return this.prisma.rolePermission.findMany({
+            orderBy: { role: 'asc' },
+        });
+    }
     async hasPermissions(role, permissions) {
         const rolePermission = await this.getRolePermission(role);
         if (!rolePermission) {
@@ -26,6 +31,16 @@ let PermissionsService = class PermissionsService {
         }
         const flags = rolePermission;
         return permissions.every((permission) => flags[permission] === true);
+    }
+    async updateRolePermissions(role, data) {
+        return this.prisma.rolePermission.upsert({
+            where: { role },
+            update: data,
+            create: {
+                role,
+                ...data,
+            },
+        });
     }
 };
 exports.PermissionsService = PermissionsService;

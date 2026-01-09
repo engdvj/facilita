@@ -49,7 +49,7 @@
 
 :root {
   --radius: 0.5rem;
-  --font-sans: var(--font-sora);
+  --font-sans: var(--font-onest);
   --font-display: var(--font-fraunces);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;

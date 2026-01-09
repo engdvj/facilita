@@ -25,8 +25,11 @@ let CompaniesController = class CompaniesController {
     constructor(companiesService) {
         this.companiesService = companiesService;
     }
-    findAll() {
-        return this.companiesService.findAll();
+    findAll(req) {
+        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
+        return this.companiesService.findAll({
+            excludeInternal: !isSuperAdmin,
+        });
     }
     findOne(id) {
         return this.companiesService.findById(id);
@@ -44,8 +47,9 @@ let CompaniesController = class CompaniesController {
 exports.CompaniesController = CompaniesController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], CompaniesController.prototype, "findAll", null);
 __decorate([

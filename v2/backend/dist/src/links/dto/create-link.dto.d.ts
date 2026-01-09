@@ -1,3 +1,4 @@
+import { ContentAudience } from '@prisma/client';
 export declare class CreateLinkDto {
     companyId: string;
     userId?: string;
@@ -8,6 +9,9 @@ export declare class CreateLinkDto {
     description?: string;
     color?: string;
     imageUrl?: string;
+    imagePosition?: string;
+    imageScale?: number;
+    audience?: ContentAudience;
     isPublic?: boolean;
     order?: number;
 }

@@ -14,11 +14,11 @@ export class CategoriesService {
     });
   }
 
-  async findAll(companyId: string) {
+  async findAll(companyId?: string) {
     return this.prisma.category.findMany({
       where: {
-        companyId,
         status: EntityStatus.ACTIVE,
+        ...(companyId ? { companyId } : {}),
       },
       include: {
         _count: {

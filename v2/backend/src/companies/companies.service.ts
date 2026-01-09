@@ -7,8 +7,17 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 export class CompaniesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(options?: { excludeInternal?: boolean }) {
     return this.prisma.company.findMany({
+      ...(options?.excludeInternal
+        ? {
+            where: {
+              NOT: {
+                name: 'ADM',
+              },
+            },
+          }
+        : {}),
       orderBy: { createdAt: 'desc' },
     });
   }

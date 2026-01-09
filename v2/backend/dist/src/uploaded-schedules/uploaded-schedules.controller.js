@@ -21,35 +21,108 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/guards/roles.decorator");
 const client_1 = require("@prisma/client");
+const defaultAudienceByRole = {
+    [client_1.UserRole.SUPERADMIN]: client_1.ContentAudience.COMPANY,
+    [client_1.UserRole.ADMIN]: client_1.ContentAudience.COMPANY,
+    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.PRIVATE,
+};
+const audienceOptionsByRole = {
+    [client_1.UserRole.SUPERADMIN]: [
+        client_1.ContentAudience.PUBLIC,
+        client_1.ContentAudience.COMPANY,
+        client_1.ContentAudience.SECTOR,
+        client_1.ContentAudience.PRIVATE,
+        client_1.ContentAudience.ADMIN,
+        client_1.ContentAudience.SUPERADMIN,
+    ],
+    [client_1.UserRole.ADMIN]: [client_1.ContentAudience.COMPANY, client_1.ContentAudience.SECTOR],
+    [client_1.UserRole.COLLABORATOR]: [client_1.ContentAudience.PRIVATE],
+};
+const resolveAudience = (role, payload) => {
+    if (payload.audience)
+        return payload.audience;
+    if (payload.isPublic !== undefined) {
+        return payload.isPublic
+            ? client_1.ContentAudience.PUBLIC
+            : defaultAudienceByRole[role];
+    }
+    return defaultAudienceByRole[role];
+};
+const isAllowedAudience = (role, audience) => {
+    return audienceOptionsByRole[role]?.includes(audience);
+};
+const parseAudienceParam = (value) => {
+    if (!value)
+        return undefined;
+    const candidate = value.toUpperCase();
+    return Object.values(client_1.ContentAudience).includes(candidate) ? candidate : undefined;
+};
 let UploadedSchedulesController = class UploadedSchedulesController {
     constructor(schedulesService) {
         this.schedulesService = schedulesService;
     }
     create(createScheduleDto, req) {
+        const user = req.user;
+        const isSuperAdmin = user?.role === client_1.UserRole.SUPERADMIN;
+        const companyId = isSuperAdmin ? createScheduleDto.companyId : user?.companyId;
+        const audience = resolveAudience(user?.role, createScheduleDto);
+        if (!companyId) {
+            throw new common_1.ForbiddenException('Empresa obrigatoria.');
+        }
+        if (!isSuperAdmin && createScheduleDto.companyId && createScheduleDto.companyId !== companyId) {
+            throw new common_1.ForbiddenException('Empresa nao autorizada.');
+        }
+        if (!isAllowedAudience(user?.role, audience)) {
+            throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+        }
+        if (audience === client_1.ContentAudience.SECTOR && !createScheduleDto.sectorId) {
+            throw new common_1.ForbiddenException('Setor obrigatorio para documentos de setor.');
+        }
         return this.schedulesService.create({
             ...createScheduleDto,
+            companyId,
+            sectorId: audience === client_1.ContentAudience.SECTOR
+                ? createScheduleDto.sectorId || undefined
+                : undefined,
             userId: req.user.id,
+            audience,
+            isPublic: audience === client_1.ContentAudience.PUBLIC,
         });
     }
-    async findAll(companyId, sectorId, categoryId, isPublic) {
+    async findAll(req, companyId, sectorId, categoryId, isPublic, audience) {
+        const parsedAudience = parseAudienceParam(audience);
+        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
+        const resolvedCompanyId = companyId?.trim() || (!isSuperAdmin ? req.user?.companyId : undefined);
+        if (!resolvedCompanyId && !isSuperAdmin) {
+            throw new common_1.ForbiddenException('Empresa obrigatoria.');
+        }
         const filters = {
             sectorId,
             categoryId,
+            audience: parsedAudience,
             isPublic: isPublic ? isPublic === 'true' : undefined,
         };
-        console.log('SchedulesController.findAll - companyId:', companyId, 'filters:', filters);
-        const result = await this.schedulesService.findAll(companyId, filters);
+        console.log('SchedulesController.findAll - companyId:', resolvedCompanyId, 'filters:', filters);
+        const result = await this.schedulesService.findAll(resolvedCompanyId, filters);
         console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
         return result;
     }
     findOne(id) {
         return this.schedulesService.findOne(id);
     }
-    update(id, updateScheduleDto) {
-        return this.schedulesService.update(id, updateScheduleDto);
+    update(id, updateScheduleDto, req) {
+        return this.schedulesService.update(id, updateScheduleDto, {
+            id: req.user.id,
+            role: req.user.role,
+            companyId: req.user.companyId,
+        });
     }
-    remove(id) {
-        return this.schedulesService.remove(id);
+    remove(id, req) {
+        return this.schedulesService.remove(id, {
+            id: req.user.id,
+            role: req.user.role,
+            companyId: req.user.companyId,
+        });
     }
     restore(id) {
         return this.schedulesService.restore(id);
@@ -59,7 +132,7 @@ exports.UploadedSchedulesController = UploadedSchedulesController;
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COORDINATOR, client_1.UserRole.MANAGER),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -68,12 +141,16 @@ __decorate([
 ], UploadedSchedulesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('companyId')),
-    __param(1, (0, common_1.Query)('sectorId')),
-    __param(2, (0, common_1.Query)('categoryId')),
-    __param(3, (0, common_1.Query)('isPublic')),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COLLABORATOR),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('companyId')),
+    __param(2, (0, common_1.Query)('sectorId')),
+    __param(3, (0, common_1.Query)('categoryId')),
+    __param(4, (0, common_1.Query)('isPublic')),
+    __param(5, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAll", null);
 __decorate([
@@ -86,20 +163,22 @@ __decorate([
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COORDINATOR, client_1.UserRole.MANAGER),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_schedule_dto_1.UpdateScheduleDto]),
+    __metadata("design:paramtypes", [String, update_schedule_dto_1.UpdateScheduleDto, Object]),
     __metadata("design:returntype", void 0)
 ], UploadedSchedulesController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COORDINATOR, client_1.UserRole.MANAGER),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], UploadedSchedulesController.prototype, "remove", null);
 __decorate([

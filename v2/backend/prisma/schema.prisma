@@ -9,8 +9,6 @@ generator client {
 enum UserRole {
   SUPERADMIN
   ADMIN
-  COORDINATOR
-  MANAGER
   COLLABORATOR
 }
 
@@ -22,6 +20,15 @@ enum UserStatus {
 enum EntityStatus {
   ACTIVE
   INACTIVE
+}
+
+enum ContentAudience {
+  PUBLIC
+  COMPANY
+  SECTOR
+  PRIVATE
+  ADMIN
+  SUPERADMIN
 }
 
 model Company {
@@ -160,22 +167,25 @@ model Category {
 }
 
 model Link {
-  id          String       @id @default(uuid()) @db.Uuid
-  companyId   String       @db.Uuid
-  userId      String?      @db.Uuid
-  sectorId    String?      @db.Uuid
-  categoryId  String?      @db.Uuid
-  title       String
-  url         String
-  description String?
-  color       String?
-  imageUrl    String?
-  isPublic    Boolean      @default(true)
-  order       Int          @default(0)
-  status      EntityStatus @default(ACTIVE)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
+  id            String       @id @default(uuid()) @db.Uuid
+  companyId     String       @db.Uuid
+  userId        String?      @db.Uuid
+  sectorId      String?      @db.Uuid
+  categoryId    String?      @db.Uuid
+  title         String
+  url           String
+  description   String?
+  color         String?
+  imageUrl      String?
+  imagePosition String?
+  imageScale    Float?
+  audience      ContentAudience @default(COMPANY)
+  isPublic      Boolean      @default(true)
+  order         Int          @default(0)
+  status        EntityStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
 
   company   Company   @relation(fields: [companyId], references: [id])
   user      User?     @relation("LinkCreator", fields: [userId], references: [id])
@@ -201,6 +211,11 @@ model UploadedSchedule {
   fileUrl    String
   fileName   String
   fileSize   Int
+  color      String?
+  imageUrl   String?
+  imagePosition String?
+  imageScale Float?
+  audience   ContentAudience @default(COMPANY)
   isPublic   Boolean      @default(true)
   status     EntityStatus @default(ACTIVE)
   createdAt  DateTime     @default(now())

@@ -1,3 +1,4 @@
+import { ContentAudience } from '@prisma/client';
 export declare class CreateScheduleDto {
     companyId: string;
     userId?: string;
@@ -7,5 +8,9 @@ export declare class CreateScheduleDto {
     fileUrl: string;
     fileName: string;
     fileSize: number;
+    imageUrl?: string;
+    imagePosition?: string;
+    imageScale?: number;
+    audience?: ContentAudience;
     isPublic?: boolean;
 }

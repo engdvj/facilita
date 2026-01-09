@@ -1,10 +1,13 @@
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateRolePermissionDto } from './dto/update-role-permission.dto';
 export declare class PermissionsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     getRolePermission(role: UserRole): import(".prisma/client").Prisma.Prisma__RolePermissionClient<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         role: import(".prisma/client").$Enums.UserRole;
         canViewDashboard: boolean;
         canAccessAdmin: boolean;
@@ -23,8 +26,52 @@ export declare class PermissionsService {
         canViewAuditLogs: boolean;
         canManageSystemConfig: boolean;
         restrictToOwnSector: boolean;
+    } | null, null, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+    findAll(): import(".prisma/client").Prisma.PrismaPromise<{
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-    } | null, null, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+        role: import(".prisma/client").$Enums.UserRole;
+        canViewDashboard: boolean;
+        canAccessAdmin: boolean;
+        canViewUsers: boolean;
+        canCreateUsers: boolean;
+        canEditUsers: boolean;
+        canDeleteUsers: boolean;
+        canViewSectors: boolean;
+        canManageSectors: boolean;
+        canViewLinks: boolean;
+        canManageLinks: boolean;
+        canManageCategories: boolean;
+        canManageSchedules: boolean;
+        canBackupSystem: boolean;
+        canResetSystem: boolean;
+        canViewAuditLogs: boolean;
+        canManageSystemConfig: boolean;
+        restrictToOwnSector: boolean;
+    }[]>;
     hasPermissions(role: UserRole, permissions: string[]): Promise<boolean>;
+    updateRolePermissions(role: UserRole, data: UpdateRolePermissionDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        role: import(".prisma/client").$Enums.UserRole;
+        canViewDashboard: boolean;
+        canAccessAdmin: boolean;
+        canViewUsers: boolean;
+        canCreateUsers: boolean;
+        canEditUsers: boolean;
+        canDeleteUsers: boolean;
+        canViewSectors: boolean;
+        canManageSectors: boolean;
+        canViewLinks: boolean;
+        canManageLinks: boolean;
+        canManageCategories: boolean;
+        canManageSchedules: boolean;
+        canBackupSystem: boolean;
+        canResetSystem: boolean;
+        canViewAuditLogs: boolean;
+        canManageSystemConfig: boolean;
+        restrictToOwnSector: boolean;
+    }>;
 }

@@ -2,15 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
-import { Category, Link, Sector } from '@/types';
+import { Category, Company, ContentAudience, Link, Sector } from '@/types';
 
 const pageSize = 8;
+const audienceFilterOptions: ContentAudience[] = [
+  'PUBLIC',
+  'COMPANY',
+  'SECTOR',
+  'ADMIN',
+  'SUPERADMIN',
+  'PRIVATE',
+];
 
 const emptyFormData = {
   title: '',
@@ -20,7 +28,9 @@ const emptyFormData = {
   sectorId: '',
   color: '',
   imageUrl: '',
-  isPublic: true,
+  imagePosition: '50% 50%',
+  imageScale: 1,
+  audience: 'COMPANY' as ContentAudience,
   order: 0,
 };
 
@@ -28,11 +38,16 @@ export default function LinksPage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [links, setLinks] = useState<Link[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterCategoryId, setFilterCategoryId] = useState('');
+  const [filterSectorId, setFilterSectorId] = useState('');
+  const [filterAudience, setFilterAudience] = useState('ALL');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Link | null>(null);
@@ -41,17 +56,141 @@ export default function LinksPage() {
   const [uploading, setUploading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Link | null>(null);
   const [formData, setFormData] = useState({ ...emptyFormData });
+  const [companyId, setCompanyId] = useState('');
+  const [formCompanyId, setFormCompanyId] = useState('');
+  const isAdmin = user?.role === 'ADMIN';
+  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isCollaborator = user?.role === 'COLLABORATOR';
+  const resolvedCompanyId =
+    isSuperAdmin ? companyId || undefined : user?.companyId;
+  const formResolvedCompanyId = isSuperAdmin ? formCompanyId : user?.companyId;
+  const visibleSectors = useMemo(() => {
+    let scopedSectors = sectors;
+    if (resolvedCompanyId) {
+      scopedSectors = scopedSectors.filter(
+        (sector) => sector.companyId === resolvedCompanyId,
+      );
+    }
+    if (!user || isAdmin || isSuperAdmin) {
+      return scopedSectors;
+    }
+    return scopedSectors.filter((sector) => sector.id === user.sectorId);
+  }, [isAdmin, isSuperAdmin, resolvedCompanyId, sectors, user]);
+
+  const formCategories = useMemo(() => {
+    if (isSuperAdmin && !formCompanyId) {
+      return [];
+    }
+    if (!formResolvedCompanyId) {
+      return categories;
+    }
+    return categories.filter(
+      (category) => category.companyId === formResolvedCompanyId,
+    );
+  }, [categories, formCompanyId, formResolvedCompanyId, isSuperAdmin]);
+
+  const formSectors = useMemo(() => {
+    if (isCollaborator) {
+      return visibleSectors;
+    }
+    if (isSuperAdmin && !formCompanyId) {
+      return [];
+    }
+    if (!formResolvedCompanyId) {
+      return visibleSectors;
+    }
+    return visibleSectors.filter(
+      (sector) => sector.companyId === formResolvedCompanyId,
+    );
+  }, [
+    formCompanyId,
+    formResolvedCompanyId,
+    isCollaborator,
+    isSuperAdmin,
+    visibleSectors,
+  ]);
+
+  const getAudience = (link: Link): ContentAudience => {
+    if (link.isPublic) return 'PUBLIC';
+    if (link.audience) return link.audience;
+    if (link.sectorId) return 'SECTOR';
+    return 'COMPANY';
+  };
+
+  const getAudienceLabel = (audience: ContentAudience) => {
+    if (audience === 'PUBLIC') return 'Publico';
+    if (audience === 'COMPANY') return 'Empresa';
+    if (audience === 'SECTOR') return 'Setor';
+    if (audience === 'PRIVATE') return 'Privado';
+    if (audience === 'ADMIN') return 'Admins';
+    return 'Superadmins';
+  };
+
+  const canViewLink = (link: Link) => {
+    const audience = getAudience(link);
+    if (audience === 'PUBLIC') return true;
+    if (!user) return false;
+    if (isSuperAdmin) return true;
+    if (audience === 'SUPERADMIN') return false;
+    if (audience === 'ADMIN') return isAdmin;
+    if (audience === 'PRIVATE') return link.userId === user.id;
+    if (audience === 'SECTOR') {
+      return isAdmin ? true : link.sectorId === user.sectorId;
+    }
+    if (audience === 'COMPANY') {
+      return isAdmin;
+    }
+    return false;
+  };
+
+  const audienceOptions = useMemo(() => {
+    if (isCollaborator) {
+      return [{ value: 'PRIVATE', label: 'Privado (apenas voce)' }];
+    }
+    if (isAdmin) {
+      return [
+        { value: 'COMPANY', label: 'Empresa' },
+        { value: 'SECTOR', label: 'Setor' },
+      ];
+    }
+    return [
+      { value: 'PUBLIC', label: 'Publico' },
+      { value: 'COMPANY', label: 'Empresa' },
+      { value: 'SECTOR', label: 'Setor' },
+      { value: 'ADMIN', label: 'Somente admins' },
+      { value: 'SUPERADMIN', label: 'Somente superadmins' },
+      { value: 'PRIVATE', label: 'Privado (apenas voce)' },
+    ];
+  }, [isAdmin, isCollaborator]);
 
   const loadData = async () => {
-    if (!user?.companyId) return;
+    if (!resolvedCompanyId && !isSuperAdmin) return;
+    const linksPath = isAdmin || isSuperAdmin ? '/links/admin/list' : '/links';
+    const linksQuery = resolvedCompanyId ? `?companyId=${resolvedCompanyId}` : '';
     const [linksRes, catsRes, sectorsRes] = await Promise.all([
-      api.get(`/links?companyId=${user.companyId}`),
-      api.get(`/categories?companyId=${user.companyId}`),
-      api.get(`/sectors?companyId=${user.companyId}`),
+      api.get(`${linksPath}${linksQuery}`),
+      resolvedCompanyId
+        ? api.get(`/categories?companyId=${resolvedCompanyId}`)
+        : isSuperAdmin
+          ? api.get('/categories')
+          : Promise.resolve({ data: [] }),
+      !isCollaborator
+        ? resolvedCompanyId
+          ? api.get(`/sectors?companyId=${resolvedCompanyId}`)
+          : isSuperAdmin
+            ? api.get('/sectors')
+            : Promise.resolve({ data: [] })
+        : Promise.resolve({ data: [] }),
     ]);
     setLinks(linksRes.data);
     setCategories(catsRes.data);
     setSectors(sectorsRes.data);
+  };
+
+  const loadCompanies = async () => {
+    if (!isSuperAdmin) return;
+    const response = await api.get('/companies');
+    setCompanies(response.data);
   };
 
   useEffect(() => {
@@ -60,7 +199,7 @@ export default function LinksPage() {
     const load = async () => {
       if (!hasHydrated) return;
 
-      if (!user?.companyId) {
+      if (!user?.companyId && !isSuperAdmin) {
         setError(
           'Usuario sem empresa associada. Entre em contato com o administrador.',
         );
@@ -69,6 +208,9 @@ export default function LinksPage() {
       }
 
       try {
+        if (isSuperAdmin) {
+          await loadCompanies();
+        }
         await loadData();
         if (!active) return;
         setError(null);
@@ -92,17 +234,60 @@ export default function LinksPage() {
     return () => {
       active = false;
     };
-  }, [hasHydrated, user?.companyId]);
+  }, [companyId, hasHydrated, isSuperAdmin, user?.companyId]);
+
+  const visibleLinks = useMemo(() => {
+    const scoped = links.filter((link) => canViewLink(link));
+    if (isCollaborator && user) {
+      return scoped.filter((link) => link.userId === user.id);
+    }
+    return scoped;
+  }, [canViewLink, isCollaborator, links, user]);
 
   const filteredLinks = useMemo(() => {
-    if (!search.trim()) return links;
-    const term = search.toLowerCase();
-    return links.filter((link) =>
-      `${link.title} ${link.url} ${link.category?.name ?? ''} ${link.sector?.name ?? ''}`
-        .toLowerCase()
-        .includes(term),
-    );
-  }, [links, search]);
+    const term = search.trim().toLowerCase();
+    return visibleLinks.filter((link) => {
+      if (
+        term &&
+        !`${link.title} ${link.url} ${link.category?.name ?? ''} ${link.sector?.name ?? ''}`
+          .toLowerCase()
+          .includes(term)
+      ) {
+        return false;
+      }
+      const normalizedStatus = (link.status || 'INACTIVE').toUpperCase();
+      if (filterStatus !== 'ALL' && normalizedStatus !== filterStatus) {
+        return false;
+      }
+      if (filterCategoryId && link.categoryId !== filterCategoryId) {
+        return false;
+      }
+      if (filterSectorId && link.sectorId !== filterSectorId) {
+        return false;
+      }
+      if (
+        filterAudience !== 'ALL' &&
+        getAudience(link) !== filterAudience
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    filterAudience,
+    filterCategoryId,
+    filterSectorId,
+    filterStatus,
+    getAudience,
+    search,
+    visibleLinks,
+  ]);
+
+  const activeFilters =
+    Number(filterStatus !== 'ALL') +
+    Number(Boolean(filterCategoryId)) +
+    Number(Boolean(filterSectorId)) +
+    Number(filterAudience !== 'ALL');
 
   const totalPages = Math.max(1, Math.ceil(filteredLinks.length / pageSize));
   const paginatedLinks = filteredLinks.slice(
@@ -118,7 +303,14 @@ export default function LinksPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setFormData({ ...emptyFormData });
+    setFormData({
+      ...emptyFormData,
+      audience: isCollaborator ? 'PRIVATE' : 'COMPANY',
+      sectorId: '',
+    });
+    setFormCompanyId(
+      isSuperAdmin ? companyId : user?.companyId || '',
+    );
     setFormError(null);
     setModalOpen(true);
   };
@@ -133,9 +325,12 @@ export default function LinksPage() {
       sectorId: link.sectorId || '',
       color: link.color || '',
       imageUrl: link.imageUrl || '',
-      isPublic: link.isPublic,
+      imagePosition: link.imagePosition || '50% 50%',
+      imageScale: link.imageScale || 1,
+      audience: getAudience(link),
       order: link.order,
     });
+    setFormCompanyId(link.companyId || '');
     setFormError(null);
     setModalOpen(true);
   };
@@ -151,6 +346,7 @@ export default function LinksPage() {
       setUploading(true);
       const response = await api.post('/uploads/image', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        skipNotify: true,
       });
       setFormData((prev) => ({ ...prev, imageUrl: response.data.url }));
     } catch (uploadError) {
@@ -161,21 +357,55 @@ export default function LinksPage() {
   };
 
   const handleSave = async () => {
-    if (!user?.companyId) {
-      setFormError('Usuario sem empresa associada.');
+    if (!formResolvedCompanyId) {
+      setFormError('Selecione uma empresa.');
       return;
     }
 
     setFormLoading(true);
     setFormError(null);
     try {
+      const allowedAudiences = new Set(
+        audienceOptions.map((option) => option.value as ContentAudience),
+      );
+      const shouldSendAudience = allowedAudiences.has(formData.audience);
+      const normalizedAudience = shouldSendAudience
+        ? isCollaborator
+          ? 'PRIVATE'
+          : isAdmin
+            ? formData.audience === 'SECTOR'
+              ? 'SECTOR'
+              : 'COMPANY'
+            : formData.audience
+        : undefined;
+
+      if (normalizedAudience === 'SECTOR' && !formData.sectorId) {
+        setFormError('Selecione um setor para links de setor.');
+        setFormLoading(false);
+        return;
+      }
+
       const dataToSend = {
-        ...formData,
-        companyId: user.companyId,
+        companyId: formResolvedCompanyId,
         categoryId: formData.categoryId || undefined,
-        sectorId: formData.sectorId || undefined,
+        sectorId:
+          normalizedAudience === 'SECTOR'
+            ? formData.sectorId || undefined
+            : undefined,
         color: formData.color || undefined,
         imageUrl: formData.imageUrl || undefined,
+        imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
+        imageScale: formData.imageUrl ? formData.imageScale : undefined,
+        ...(shouldSendAudience && normalizedAudience
+          ? {
+              audience: normalizedAudience,
+              isPublic: normalizedAudience === 'PUBLIC',
+            }
+          : {}),
+        title: formData.title,
+        url: formData.url,
+        description: formData.description,
+        order: formData.order,
       };
 
       if (editing) {
@@ -214,11 +444,27 @@ export default function LinksPage() {
     }
   };
 
+  const clearFilters = () => {
+    setFilterStatus('ALL');
+    setFilterCategoryId('');
+    setFilterSectorId('');
+    setFilterAudience('ALL');
+    setPage(1);
+  };
+
   const updateOrder = (value: string) => {
     const parsed = Number.parseInt(value, 10);
     setFormData((prev) => ({
       ...prev,
       order: Number.isNaN(parsed) ? 0 : parsed,
+    }));
+  };
+
+  const updateAudience = (value: ContentAudience) => {
+    setFormData((prev) => ({
+      ...prev,
+      audience: value,
+      sectorId: value === 'SECTOR' ? prev.sectorId : '',
     }));
   };
 
@@ -231,7 +477,7 @@ export default function LinksPage() {
             Gerencie os links que aparecem no portal.
           </p>
         </div>
-        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] xl:w-auto xl:max-w-[420px] xl:shrink-0">
+        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:w-auto xl:max-w-[720px] xl:shrink-0">
           <input
             value={search}
             onChange={(event) => {
@@ -241,6 +487,112 @@ export default function LinksPage() {
             placeholder="Buscar link"
             className="w-full min-w-0 rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
           />
+          {isSuperAdmin && (
+            <select
+              value={companyId}
+              onChange={(event) => {
+                setCompanyId(event.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+            >
+              <option value="">Todas as empresas</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <FilterDropdown activeCount={activeFilters}>
+            <div className="grid gap-3 text-xs text-foreground">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Status
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterStatus}
+                  onChange={(event) => {
+                    setFilterStatus(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="ACTIVE">Ativos</option>
+                  <option value="INACTIVE">Inativos</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Categoria
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterCategoryId}
+                  onChange={(event) => {
+                    setFilterCategoryId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todas</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Setor
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterSectorId}
+                  onChange={(event) => {
+                    setFilterSectorId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todos</option>
+                  {visibleSectors.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Visibilidade
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterAudience}
+                  onChange={(event) => {
+                    setFilterAudience(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">Todas</option>
+                  {audienceFilterOptions.map((audience) => (
+                    <option key={audience} value={audience}>
+                      {getAudienceLabel(audience)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className="rounded-md border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/60"
+                onClick={clearFilters}
+                disabled={activeFilters === 0}
+              >
+                Limpar filtros
+              </button>
+            </div>
+          </FilterDropdown>
           <button
             type="button"
             className="w-full rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] sm:w-auto"
@@ -266,122 +618,63 @@ export default function LinksPage() {
             {loading ? 'Carregando...' : `${filteredLinks.length} registros`}
           </p>
         </div>
-        <div className="grid auto-rows-fr gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
-          {paginatedLinks.map((link) => (
-            <article
+        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {paginatedLinks.map((link) => {
+            const canEdit =
+              user?.role === 'ADMIN' ||
+              user?.role === 'SUPERADMIN' ||
+              link.userId === user?.id;
+            return (
+              <article
               key={link.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openEdit(link)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  openEdit(link);
-                }
-              }}
-              className="group flex h-full cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-[0_10px_24px_rgba(16,44,50,0.08)] transition hover:-translate-y-0.5 hover:border-foreground/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              role={canEdit ? 'button' : undefined}
+              tabIndex={canEdit ? 0 : undefined}
+              onClick={canEdit ? () => openEdit(link) : undefined}
+              onKeyDown={
+                canEdit
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openEdit(link);
+                      }
+                    }
+                  : undefined
+              }
+              className={`group flex flex-col rounded-xl border border-border/70 bg-card/90 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
+                canEdit ? 'cursor-pointer' : 'cursor-default'
+              }`}
             >
               {link.imageUrl && (
-                <div className="mb-3 overflow-hidden rounded-lg border border-border/70">
-                  <img
-                    src={`${serverURL}${link.imageUrl}`}
-                    alt={link.title}
-                    className="h-32 w-full object-cover"
-                  />
+                <div className="overflow-hidden rounded-t-xl">
+                  <div className="relative h-20 w-full overflow-hidden bg-secondary/60">
+                    <img
+                      src={`${serverURL}${link.imageUrl}`}
+                      alt={link.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      style={{
+                        objectPosition: link.imagePosition || '50% 50%',
+                        transform: `scale(${link.imageScale || 1})`,
+                      }}
+                    />
+                  </div>
                 </div>
               )}
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Link
-                  </p>
-                  <p className="truncate text-base font-semibold text-foreground">
+              <div className="flex flex-col gap-2 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground line-clamp-2">
                     {link.title}
-                  </p>
+                  </h3>
+                  <StatusBadge status={link.status} />
                 </div>
-                <StatusBadge status={link.status} />
-              </div>
-              {link.description && (
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                  {link.description}
-                </p>
-              )}
-              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    URL
+                {link.category?.name && (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {link.category.name}
                   </span>
-                  <span className="min-w-0 truncate text-right text-foreground/80">
-                    {link.url}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Categoria
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {link.category?.name || '--'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Setor
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {link.sector?.name || 'Todos'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Visibilidade
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {link.isPublic ? 'Publico' : 'Privado'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em]">
-                    Criado
-                  </span>
-                  <span className="text-right text-foreground/80">
-                    {formatDate(link.createdAt || undefined)}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-3">
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  Abrir
-                </a>
-                <button
-                  type="button"
-                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEdit(link);
-                  }}
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-destructive/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-destructive transition hover:border-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setFormError(null);
-                    setDeleteTarget(link);
-                  }}
-                >
-                  Remover
-                </button>
+                )}
               </div>
             </article>
-          ))}
+            );
+          })}
           {!loading && paginatedLinks.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhum link encontrado.
@@ -398,6 +691,20 @@ export default function LinksPage() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
+            {editing && (
+              <button
+                type="button"
+                className="mr-auto rounded-lg border border-destructive/40 px-4 py-2 text-xs uppercase tracking-[0.18em] text-destructive"
+                onClick={() => {
+                  setFormError(null);
+                  setModalOpen(false);
+                  setDeleteTarget(editing);
+                }}
+                disabled={formLoading}
+              >
+                Remover
+              </button>
+            )}
             <button
               type="button"
               className="rounded-lg border border-border/70 px-4 py-2 text-xs uppercase tracking-[0.18em] text-foreground"
@@ -423,6 +730,31 @@ export default function LinksPage() {
         }
       >
         <div className="space-y-4">
+          {isSuperAdmin && (
+            <AdminField label="Empresa" htmlFor="link-company">
+              <select
+                id="link-company"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={formCompanyId}
+                onChange={(event) => {
+                  const nextCompanyId = event.target.value;
+                  setFormCompanyId(nextCompanyId);
+                  setFormData((prev) => ({
+                    ...prev,
+                    categoryId: '',
+                    sectorId: '',
+                  }));
+                }}
+              >
+                <option value="">Selecione uma empresa</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </AdminField>
+          )}
           <div className="grid gap-4 md:grid-cols-2">
             <AdminField label="Titulo" htmlFor="link-title">
               <input
@@ -473,11 +805,12 @@ export default function LinksPage() {
                     categoryId: event.target.value,
                   }))
                 }
+                disabled={isSuperAdmin && !formCompanyId}
               >
                 <option value="">Sem categoria</option>
-                {categories.map((category) => (
+                {formCategories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.icon} {category.name}
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -493,9 +826,13 @@ export default function LinksPage() {
                     sectorId: event.target.value,
                   }))
                 }
+                disabled={
+                  formData.audience !== 'SECTOR' ||
+                  (isSuperAdmin && !formCompanyId)
+                }
               >
                 <option value="">Todos os setores</option>
-                {sectors.map((sector) => (
+                {formSectors.map((sector) => (
                   <option key={sector.id} value={sector.id}>
                     {sector.name}
                   </option>
@@ -529,39 +866,140 @@ export default function LinksPage() {
               </p>
             )}
             {formData.imageUrl && (
-              <div className="mt-3 overflow-hidden rounded-lg border border-border/70">
-                <img
-                  src={`${serverURL}${formData.imageUrl}`}
-                  alt="Preview"
-                  className="h-32 w-full object-cover"
-                />
+              <div className="mt-3 space-y-3">
+                <div className="overflow-hidden rounded-lg border border-border/70">
+                  <div className="relative h-32 w-full overflow-hidden bg-secondary/60">
+                    <img
+                      src={`${serverURL}${formData.imageUrl}`}
+                      alt="Preview"
+                      className="h-full w-full object-cover"
+                      style={{
+                        objectPosition: formData.imagePosition,
+                        transform: `scale(${formData.imageScale})`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-border/70 bg-card/50 p-3">
+                  <p className="text-xs font-medium text-foreground">
+                    Ajustar enquadramento
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Posição Horizontal</span>
+                      <span className="text-foreground">{formData.imagePosition.split(' ')[0]}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={parseInt(formData.imagePosition.split(' ')[0])}
+                      onChange={(e) => {
+                        const y = formData.imagePosition.split(' ')[1];
+                        setFormData((prev) => ({
+                          ...prev,
+                          imagePosition: `${e.target.value}% ${y}`,
+                        }));
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Posição Vertical</span>
+                      <span className="text-foreground">{formData.imagePosition.split(' ')[1]}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={parseInt(formData.imagePosition.split(' ')[1])}
+                      onChange={(e) => {
+                        const x = formData.imagePosition.split(' ')[0];
+                        setFormData((prev) => ({
+                          ...prev,
+                          imagePosition: `${x} ${e.target.value}%`,
+                        }));
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Zoom</span>
+                      <span className="text-foreground">{formData.imageScale.toFixed(1)}x</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.1"
+                      value={formData.imageScale}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          imageScale: parseFloat(e.target.value),
+                        }));
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        imagePosition: '50% 50%',
+                        imageScale: 1,
+                      }));
+                    }}
+                    className="mt-2 w-full rounded-md border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:border-foreground/60"
+                  >
+                    Resetar enquadramento
+                  </button>
+                </div>
               </div>
             )}
           </AdminField>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-foreground">
-            <label className="flex items-center gap-2">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_120px]">
+            <AdminField label="Visibilidade" htmlFor="link-audience">
+              {!isSuperAdmin &&
+              !audienceOptions.some((option) => option.value === formData.audience) ? (
+                <div className="rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground">
+                  {getAudienceLabel(formData.audience)} (somente superadmin)
+                </div>
+              ) : (
+                <select
+                  id="link-audience"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formData.audience}
+                  onChange={(event) =>
+                    updateAudience(event.target.value as ContentAudience)
+                  }
+                  disabled={isCollaborator}
+                >
+                  {audienceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </AdminField>
+            <AdminField label="Ordem" htmlFor="link-order">
               <input
-                type="checkbox"
-                checked={formData.isPublic}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    isPublic: event.target.checked,
-                  }))
-                }
-                className="rounded border-border/70"
-              />
-              <span>Publico (visivel sem login)</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <span>Ordem</span>
-              <input
+                id="link-order"
                 type="number"
-                className="w-20 rounded-lg border border-border/70 bg-white/80 px-2 py-1 text-sm text-foreground"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-2 py-2 text-sm text-foreground"
                 value={formData.order}
                 onChange={(event) => updateOrder(event.target.value)}
               />
-            </div>
+            </AdminField>
           </div>
         </div>
         {formError && (

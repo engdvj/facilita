@@ -16,8 +16,17 @@ let CompaniesService = class CompaniesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll() {
+    findAll(options) {
         return this.prisma.company.findMany({
+            ...(options?.excludeInternal
+                ? {
+                    where: {
+                        NOT: {
+                            name: 'ADM',
+                        },
+                    },
+                }
+                : {}),
             orderBy: { createdAt: 'desc' },
         });
     }

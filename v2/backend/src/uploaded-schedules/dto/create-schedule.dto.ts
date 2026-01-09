@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsBoolean, IsUUID, IsInt } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsUUID,
+  IsInt,
+  IsEnum,
+  IsNumber,
+} from 'class-validator';
+import { ContentAudience } from '@prisma/client';
 
 export class CreateScheduleDto {
   @IsUUID()
@@ -27,6 +36,26 @@ export class CreateScheduleDto {
 
   @IsInt()
   fileSize!: number;
+
+  @IsString()
+  @IsOptional()
+  color?: string;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  imagePosition?: string;
+
+  @IsNumber()
+  @IsOptional()
+  imageScale?: number;
+
+  @IsEnum(ContentAudience)
+  @IsOptional()
+  audience?: ContentAudience;
 
   @IsBoolean()
   @IsOptional()

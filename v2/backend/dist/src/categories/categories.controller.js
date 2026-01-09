@@ -28,7 +28,11 @@ let CategoriesController = class CategoriesController {
     create(createCategoryDto) {
         return this.categoriesService.create(createCategoryDto);
     }
-    findAll(companyId) {
+    findAll(companyId, req) {
+        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
+        if (!companyId && !isSuperAdmin) {
+            throw new common_1.ForbiddenException('Empresa obrigatoria.');
+        }
         return this.categoriesService.findAll(companyId);
     }
     findOne(id) {
@@ -53,8 +57,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('companyId')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], CategoriesController.prototype, "findAll", null);
 __decorate([

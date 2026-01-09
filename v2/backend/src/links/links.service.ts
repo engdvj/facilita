@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLinkDto } from './dto/create-link.dto';
 import { UpdateLinkDto } from './dto/update-link.dto';
-import { EntityStatus } from '@prisma/client';
+import { ContentAudience, EntityStatus, UserRole } from '@prisma/client';
+
+type LinkActor = {
+  id: string;
+  role: UserRole;
+  companyId?: string | null;
+};
 
 @Injectable()
 export class LinksService {
@@ -29,15 +35,30 @@ export class LinksService {
 
   async findAll(
     companyId?: string,
-    filters?: { sectorId?: string; categoryId?: string; isPublic?: boolean },
+    filters?: {
+      sectorId?: string;
+      categoryId?: string;
+      isPublic?: boolean;
+      audience?: ContentAudience;
+    },
   ) {
+    const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
     const where = {
       status: EntityStatus.ACTIVE,
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
       ...(filters?.sectorId && { sectorId: filters.sectorId }),
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
-      ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+      ...(!shouldFilterPublic &&
+        filters?.audience && { audience: filters.audience }),
+      ...(filters?.isPublic !== undefined &&
+        !shouldFilterPublic && { isPublic: filters.isPublic }),
+      ...(shouldFilterPublic && {
+        OR: [
+          { audience: ContentAudience.PUBLIC },
+          { isPublic: true },
+        ],
+      }),
     };
 
     console.log('LinksService.findAll - where clause:', JSON.stringify(where, null, 2));
@@ -111,8 +132,20 @@ export class LinksService {
     return link;
   }
 
-  async update(id: string, updateLinkDto: UpdateLinkDto, userId?: string) {
+  async update(id: string, updateLinkDto: UpdateLinkDto, actor?: LinkActor) {
     const existingLink = await this.findOne(id);
+    this.assertCanMutate(existingLink, actor);
+
+    const existingAudience = this.resolveAudienceFromExisting(existingLink);
+    const shouldUpdateAudience =
+      updateLinkDto.audience !== undefined || updateLinkDto.isPublic !== undefined;
+    const resolvedAudience = shouldUpdateAudience
+      ? this.resolveAudienceForUpdate(existingAudience, updateLinkDto)
+      : existingAudience;
+
+    if (shouldUpdateAudience && actor?.role) {
+      this.assertAudienceAllowed(actor.role, resolvedAudience);
+    }
 
     // Create version history if title, url or description changed
     const hasChanges =
@@ -120,21 +153,48 @@ export class LinksService {
       updateLinkDto.url !== existingLink.url ||
       updateLinkDto.description !== existingLink.description;
 
-    if (hasChanges && userId) {
+    if (hasChanges && actor?.id) {
       await this.prisma.linkVersion.create({
         data: {
           linkId: id,
           title: existingLink.title,
           url: existingLink.url,
           description: existingLink.description,
-          changedBy: userId,
+          changedBy: actor.id,
         },
       });
     }
 
+    const {
+      companyId,
+      userId,
+      sectorId: _sectorId,
+      audience,
+      isPublic,
+      ...rest
+    } = updateLinkDto;
+    const sectorId =
+      resolvedAudience === ContentAudience.SECTOR
+        ? _sectorId ?? existingLink.sectorId ?? undefined
+        : undefined;
+
+    if (resolvedAudience === ContentAudience.SECTOR && !sectorId) {
+      throw new ForbiddenException('Setor obrigatorio para links de setor.');
+    }
+
+    const updateData: UpdateLinkDto = {
+      ...rest,
+      sectorId,
+    };
+
+    if (shouldUpdateAudience) {
+      updateData.audience = resolvedAudience;
+      updateData.isPublic = resolvedAudience === ContentAudience.PUBLIC;
+    }
+
     return this.prisma.link.update({
       where: { id },
-      data: updateLinkDto,
+      data: updateData,
       include: {
         category: true,
         sector: true,
@@ -154,8 +214,9 @@ export class LinksService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, actor?: LinkActor) {
+    const existingLink = await this.findOne(id);
+    this.assertCanMutate(existingLink, actor);
 
     return this.prisma.link.update({
       where: { id },
@@ -164,6 +225,71 @@ export class LinksService {
         status: EntityStatus.INACTIVE,
       },
     });
+  }
+
+  private assertCanMutate(link: { userId?: string | null; companyId: string }, actor?: LinkActor) {
+    if (!actor) return;
+
+    if (actor.role === UserRole.SUPERADMIN) {
+      return;
+    }
+
+    if (actor.role === UserRole.ADMIN) {
+      if (actor.companyId && actor.companyId !== link.companyId) {
+        throw new ForbiddenException('Empresa nao autorizada.');
+      }
+      return;
+    }
+
+    if (actor.role === UserRole.COLLABORATOR) {
+      if (!link.userId || link.userId !== actor.id) {
+        throw new ForbiddenException('Link nao autorizado.');
+      }
+      return;
+    }
+
+    throw new ForbiddenException('Permissao insuficiente.');
+  }
+
+  private resolveAudienceFromExisting(link: {
+    audience?: ContentAudience | null;
+    isPublic: boolean;
+    sectorId?: string | null;
+  }) {
+    if (link.isPublic) return ContentAudience.PUBLIC;
+    if (link.audience) return link.audience;
+    if (link.sectorId) return ContentAudience.SECTOR;
+    return ContentAudience.COMPANY;
+  }
+
+  private resolveAudienceForUpdate(
+    existing: ContentAudience,
+    updateLinkDto: UpdateLinkDto,
+  ) {
+    if (updateLinkDto.audience) return updateLinkDto.audience;
+    if (updateLinkDto.isPublic !== undefined) {
+      return updateLinkDto.isPublic ? ContentAudience.PUBLIC : existing;
+    }
+    return existing;
+  }
+
+  private assertAudienceAllowed(role: UserRole, audience: ContentAudience) {
+    if (role === UserRole.SUPERADMIN) return;
+    if (role === UserRole.ADMIN) {
+      if (
+        audience !== ContentAudience.COMPANY &&
+        audience !== ContentAudience.SECTOR
+      ) {
+        throw new ForbiddenException('Visibilidade nao autorizada.');
+      }
+      return;
+    }
+    if (role === UserRole.COLLABORATOR) {
+      if (audience !== ContentAudience.PRIVATE) {
+        throw new ForbiddenException('Visibilidade nao autorizada.');
+      }
+      return;
+    }
   }
 
   async restore(id: string) {

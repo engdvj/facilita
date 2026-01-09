@@ -1,22 +1,25 @@
 import type { Metadata } from 'next';
-import { Fraunces, Sora } from 'next/font/google';
+import { Fraunces, Onest } from 'next/font/google';
+import NotificationStack from '@/components/notification-stack';
 import './globals.css';
 
-const sora = Sora({
-  variable: '--font-sora',
+const onest = Onest({
+  variable: '--font-onest',
   subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
 });
 
 const fraunces = Fraunces({
   variable: '--font-fraunces',
   subsets: ['latin'],
+  weight: ['600', '700'],
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Facilita V2',
-  description: 'Portal administrativo do Facilita V2.',
+  title: 'Facilita',
+  description: 'Portal administrativo do Facilita.',
 };
 
 export default function RootLayout({
@@ -26,8 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${sora.variable} ${fraunces.variable} antialiased`}>
+      <body className={`${onest.variable} ${fraunces.variable} antialiased`}>
         {children}
+        <NotificationStack />
       </body>
     </html>
   );

@@ -12,6 +12,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { LinksModule } from './links/links.module';
 import { UploadedSchedulesModule } from './uploaded-schedules/uploaded-schedules.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { BackupsModule } from './backups/backups.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UploadsModule } from './uploads/uploads.module';
     LinksModule,
     UploadedSchedulesModule,
     UploadsModule,
+    BackupsModule,
   ],
 })
 export class AppModule {}

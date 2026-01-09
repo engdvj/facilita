@@ -4,39 +4,24 @@ const client_1 = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const prisma_adapter_1 = require("../src/prisma/prisma-adapter");
 const prisma = new client_1.PrismaClient({ adapter: (0, prisma_adapter_1.createPrismaAdapter)() });
+const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
+async function seedAdmCompany() {
+    await prisma.company.upsert({
+        where: { id: ADM_COMPANY_ID },
+        update: { name: 'ADM', status: 'ACTIVE' },
+        create: {
+            id: ADM_COMPANY_ID,
+            name: 'ADM',
+            status: 'ACTIVE',
+        },
+    });
+}
 async function seedRolePermissions() {
     const roles = [
         {
             role: client_1.UserRole.COLLABORATOR,
             canViewLinks: true,
-            restrictToOwnSector: true,
-        },
-        {
-            role: client_1.UserRole.MANAGER,
-            canViewDashboard: true,
-            canAccessAdmin: true,
-            canViewUsers: true,
-            canCreateUsers: true,
-            canEditUsers: true,
-            canViewSectors: true,
-            canViewLinks: true,
             canManageLinks: true,
-            canManageSchedules: true,
-            canViewAuditLogs: true,
-            restrictToOwnSector: true,
-        },
-        {
-            role: client_1.UserRole.COORDINATOR,
-            canViewDashboard: true,
-            canAccessAdmin: true,
-            canViewUsers: true,
-            canCreateUsers: true,
-            canEditUsers: true,
-            canViewSectors: true,
-            canViewLinks: true,
-            canManageLinks: true,
-            canManageSchedules: true,
-            canViewAuditLogs: true,
             restrictToOwnSector: true,
         },
         {
@@ -89,25 +74,31 @@ async function seedRolePermissions() {
     }
 }
 async function seedSuperAdmin() {
-    const email = process.env.SUPERADMIN_EMAIL?.trim() || 'superadmin@facilita.local';
-    const password = process.env.SUPERADMIN_PASSWORD || 'ChangeMe123!';
-    const name = process.env.SUPERADMIN_NAME?.trim() || 'Super Admin';
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-        return;
-    }
+    const email = 'superadmin';
+    const password = 'superadmin';
+    const name = 'Superadmin';
     const passwordHash = await bcrypt.hash(password, 12);
-    await prisma.user.create({
-        data: {
+    await prisma.user.upsert({
+        where: { email },
+        update: {
+            name,
+            passwordHash,
+            role: client_1.UserRole.SUPERADMIN,
+            status: client_1.UserStatus.ACTIVE,
+            companyId: ADM_COMPANY_ID,
+        },
+        create: {
             name,
             email,
             passwordHash,
             role: client_1.UserRole.SUPERADMIN,
             status: client_1.UserStatus.ACTIVE,
+            companyId: ADM_COMPANY_ID,
         },
     });
 }
 async function main() {
+    await seedAdmCompany();
     await seedRolePermissions();
     await seedSuperAdmin();
 }

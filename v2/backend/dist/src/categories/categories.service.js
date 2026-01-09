@@ -25,8 +25,8 @@ let CategoriesService = class CategoriesService {
     async findAll(companyId) {
         return this.prisma.category.findMany({
             where: {
-                companyId,
                 status: client_1.EntityStatus.ACTIVE,
+                ...(companyId ? { companyId } : {}),
             },
             include: {
                 _count: {

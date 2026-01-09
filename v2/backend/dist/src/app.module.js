@@ -21,6 +21,7 @@ const categories_module_1 = require("./categories/categories.module");
 const links_module_1 = require("./links/links.module");
 const uploaded_schedules_module_1 = require("./uploaded-schedules/uploaded-schedules.module");
 const uploads_module_1 = require("./uploads/uploads.module");
+const backups_module_1 = require("./backups/backups.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -43,6 +44,7 @@ exports.AppModule = AppModule = __decorate([
             links_module_1.LinksModule,
             uploaded_schedules_module_1.UploadedSchedulesModule,
             uploads_module_1.UploadsModule,
+            backups_module_1.BackupsModule,
         ],
     })
 ], AppModule);

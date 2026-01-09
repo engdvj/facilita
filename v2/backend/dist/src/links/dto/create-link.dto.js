@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateLinkDto = void 0;
 const class_validator_1 = require("class-validator");
+const client_1 = require("@prisma/client");
 class CreateLinkDto {
 }
 exports.CreateLinkDto = CreateLinkDto;
@@ -56,6 +57,21 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "imageUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateLinkDto.prototype, "imagePosition", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateLinkDto.prototype, "imageScale", void 0);
+__decorate([
+    (0, class_validator_1.IsEnum)(client_1.ContentAudience),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateLinkDto.prototype, "audience", void 0);
 __decorate([
     (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),

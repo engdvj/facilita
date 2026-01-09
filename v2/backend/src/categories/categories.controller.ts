@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -29,7 +31,11 @@ export class CategoriesController {
   }
 
   @Get()
-  findAll(@Query('companyId') companyId: string) {
+  findAll(@Query('companyId') companyId: string | undefined, @Request() req: any) {
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    if (!companyId && !isSuperAdmin) {
+      throw new ForbiddenException('Empresa obrigatoria.');
+    }
     return this.categoriesService.findAll(companyId);
   }
 

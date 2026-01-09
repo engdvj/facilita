@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsBoolean, IsUUID, IsInt, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsUUID, IsInt, IsUrl, IsEnum, IsNumber } from 'class-validator';
+import { ContentAudience } from '@prisma/client';
 
 export class CreateLinkDto {
   @IsUUID()
@@ -33,6 +34,18 @@ export class CreateLinkDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  imagePosition?: string;
+
+  @IsNumber()
+  @IsOptional()
+  imageScale?: number;
+
+  @IsEnum(ContentAudience)
+  @IsOptional()
+  audience?: ContentAudience;
 
   @IsBoolean()
   @IsOptional()

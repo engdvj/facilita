@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       const response = await api.post('/auth/login', { username, password });
       setAuth(response.data.user, response.data.accessToken);
-      router.push('/dashboard');
+      router.push('/');
     } catch (err) {
       let message = 'Invalid credentials.';
 
@@ -46,6 +46,12 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-8">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 rounded-full border border-border/70 px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+      >
+        Voltar para a pagina inicial
+      </Link>
       <div className="space-y-3">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Facilita admin
@@ -102,14 +108,6 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <Link href="/forgot-password" className="hover:text-foreground">
-          Esqueci a senha
-        </Link>
-        <Link href="/register" className="hover:text-foreground">
-          Criar usuario
-        </Link>
-      </div>
     </div>
   );
 }

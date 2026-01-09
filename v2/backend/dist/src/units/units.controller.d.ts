@@ -7,86 +7,86 @@ export declare class UnitsController {
     findAll(): import(".prisma/client").Prisma.PrismaPromise<({
         company: {
             id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            cnpj: string | null;
-            logoUrl: string | null;
         };
     } & {
         id: string;
+        cnpj: string | null;
+        name: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         companyId: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        cnpj: string | null;
     })[]>;
     findOne(id: string): Promise<{
         company: {
             id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            cnpj: string | null;
-            logoUrl: string | null;
         };
     } & {
         id: string;
+        cnpj: string | null;
+        name: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         companyId: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        cnpj: string | null;
     }>;
     create(data: CreateUnitDto): import(".prisma/client").Prisma.Prisma__UnitClient<{
         company: {
             id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            cnpj: string | null;
-            logoUrl: string | null;
         };
     } & {
         id: string;
+        cnpj: string | null;
+        name: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         companyId: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        cnpj: string | null;
     }, never, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
     update(id: string, data: UpdateUnitDto): Promise<{
         company: {
             id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            cnpj: string | null;
-            logoUrl: string | null;
         };
     } & {
         id: string;
+        cnpj: string | null;
+        name: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         companyId: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        cnpj: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
+        cnpj: string | null;
+        name: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         companyId: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        cnpj: string | null;
     }>;
 }
