@@ -111,7 +111,7 @@ export default function AdminCategories() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="app-panel text-white/90 rounded-3xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar" : "Nova"} Categoria</h2>
           <form
             onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
@@ -185,7 +185,7 @@ export default function AdminCategories() {
                   setEditingId(null);
                   navigate("/admin/categories");
                 }}
-                className="px-4 py-2 rounded border"
+                className="px-4 py-2 rounded border border-white/20 text-white/80 hover:bg-white/10 transition"
               >
                 Cancelar
               </button>
@@ -194,16 +194,16 @@ export default function AdminCategories() {
           </form>
         </section>
 
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Categorias ({categories.length})</h2>
-          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-3 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedCats.map((c) => {
               const Icon = (Icons as any)[c.icon || "Folder"];
               return (
                 <motion.li
                   key={c.id}
                   layout
-                  className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                  className="panel-item flex items-center gap-2 p-3 rounded-2xl text-white/90 transition-transform duration-300 hover:-translate-y-0.5"
                 >
                   <span className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
                   {Icon && <Icon size={16} className="opacity-70" />}
@@ -223,17 +223,17 @@ export default function AdminCategories() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="self-center">
+              <span className="self-center text-sm text-white/70">
                 {page} / {pageCount}
               </span>
               <button
                 disabled={page === pageCount}
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronRight size={16} />
               </button>

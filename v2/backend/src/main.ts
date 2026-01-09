@@ -38,13 +38,17 @@ async function bootstrap() {
   const corsOrigin = config.get<string>('CORS_ORIGIN');
   const allowAllOrigins =
     !corsOrigin || corsOrigin === '*' || corsOrigin === '0.0.0.0';
-  const allowedOrigins = allowAllOrigins
-    ? true
-    : corsOrigin.split(',').map((origin) => origin.trim());
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: allowAllOrigins
+      ? (origin, callback) => {
+          // Allow all origins when configured
+          callback(null, true);
+        }
+      : corsOrigin.split(',').map((origin) => origin.trim()),
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   });
 
   const port = config.get<number>('PORT') ?? 3001;

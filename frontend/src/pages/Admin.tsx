@@ -37,21 +37,25 @@ export default function Admin() {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+      style={{ color: 'var(--text-color)' }}
     >
 
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
-          className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
-          style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+          className="nav-rail admin-nav w-64 p-5 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20 rounded-r-3xl"
+          style={{ color: 'var(--link-bar-text)' }}
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
+          <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3">
+            <p className="nav-label">Painel</p>
+            <p className="font-heading text-lg text-white">Admin</p>
+          </div>
           <NavLink
             to="/"
             onClick={() => setOpen(false)}
-            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+            className="nav-pill w-full justify-start text-sm font-medium mb-4"
           >
             <HomeIcon size={18} /> Início
           </NavLink>
@@ -59,69 +63,37 @@ export default function Admin() {
             <NavLink
               end
               to="/admin"
-              className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded ${
-                  isActive ? "" : ""}
-                `
-              }
-              style={({ isActive }) =>
-                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-              }
+              className="nav-pill w-full justify-start text-sm font-medium"
             >
               <HomeIcon size={18} /> Dashboard
             </NavLink>
             <NavLink
               to="/admin/links"
-              className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-              }
-              style={({ isActive }) =>
-                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-              }
+              className="nav-pill w-full justify-start text-sm font-medium"
             >
               <Link2 size={18} /> Links
             </NavLink>
             <NavLink
               to="/admin/files"
-              className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-              }
-              style={({ isActive }) =>
-                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-              }
+              className="nav-pill w-full justify-start text-sm font-medium"
             >
               <FileIcon size={18} /> Arquivos
             </NavLink>
             <NavLink
               to="/admin/categories"
-              className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-              }
-              style={({ isActive }) =>
-                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-              }
+              className="nav-pill w-full justify-start text-sm font-medium"
             >
               <Folder size={18} /> Categorias
             </NavLink>
             <NavLink
               to="/admin/colors"
-              className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-              }
-              style={({ isActive }) =>
-                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-              }
+              className="nav-pill w-full justify-start text-sm font-medium"
             >
               <Palette size={18} /> Cores
             </NavLink>
             <NavLink
               to="/admin/users"
-              className={({ isActive }) =>
-                `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-              }
-              style={({ isActive }) =>
-                isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-              }
+              className="nav-pill w-full justify-start text-sm font-medium"
             >
               <Users size={18} /> Usuários
             </NavLink>

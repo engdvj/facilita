@@ -39,42 +39,45 @@ export default function ChangePassword() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1e1e2e] via-[#1a143d] to-[#0c0c1c]">
-      <div className="absolute inset-0 bg-black/40" />
+    <div
+      className="relative min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: 'var(--background-main)', backgroundImage: 'var(--page-gradient)' }}
+    >
+      <div className="absolute inset-0 bg-black/35" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-sm rounded-2xl backdrop-blur-md bg-white/5 border border-purple-500/30 shadow-xl p-6"
+        className="app-panel text-white/90 relative z-10 w-full max-w-sm rounded-3xl backdrop-blur-md p-6"
       >
         <div className="text-center mb-6">
           <h1 className="font-heading text-2xl text-white">Alterar Senha</h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
             <input
               type="password"
-              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
               placeholder="Senha atual"
               value={oldPass}
               onChange={(e) => setOldPass(e.target.value)}
             />
           </div>
           <div className="relative">
-            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
             <input
               type="password"
-              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
               placeholder="Nova senha"
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
             />
           </div>
           <div className="relative">
-            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
             <input
               type="password"
-              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-10 pr-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
               placeholder="Confirmar senha"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
@@ -82,7 +85,7 @@ export default function ChangePassword() {
           </div>
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md hover:scale-105 transition"
+            className="btn-primary w-full flex items-center justify-center gap-2 py-2 rounded-xl"
           >
             <ArrowRightToLine size={18} />
             Salvar

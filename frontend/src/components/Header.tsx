@@ -22,15 +22,15 @@ interface HeaderProps {
 }
 
 const defaultTheme = {
-  '--background-main': '#f3f4f6',
-  '--text-color': '#111827',
-  '--link-bar-background': '#4f46e5',
-  '--link-bar-text': '#ffffff',
-  '--button-primary': '#6366f1',
-  '--hover-effect': '#4338ca',
-  '--card-background': '#1c2233',
-  '--accent-color': '#7c3aed',
-  '--input-background': '#1e293b',
+  '--background-main': '#f6efe6',
+  '--text-color': '#1c2533',
+  '--link-bar-background': '#0f3d3e',
+  '--link-bar-text': '#f8fafc',
+  '--button-primary': '#f97316',
+  '--hover-effect': '#155e63',
+  '--card-background': '#0f172a',
+  '--accent-color': '#fbbf24',
+  '--input-background': '#0b1220',
 }
 
 export default function Header({ onMenuClick, sidebarOpen, sticky = false }: HeaderProps) {
@@ -148,23 +148,24 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
   /* ---------------------------------------------------------------- */
   return (
     <motion.header
-      className={`shadow-md ${
-        sticky ? 'sticky top-0 z-30 opacity-60 hover:opacity-100 transition-opacity' : ''
+      className={`border-b border-white/10 shadow-[0_18px_40px_rgba(15,23,42,0.35)] ${
+        sticky ? 'sticky top-0 z-30 opacity-70 hover:opacity-100 transition-opacity' : ''
       }`}
       style={{
-        backgroundColor: 'var(--link-bar-background)',
+        backgroundImage:
+          'linear-gradient(120deg, var(--link-bar-background), var(--hover-effect))',
         color: 'var(--link-bar-text)',
       }}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="w-full p-4 flex justify-between items-center">
+      <div className="w-full px-4 py-4 flex justify-between items-center">
         {/* Lado esquerdo */}
         <div className="flex items-center gap-2">
           {onMenuClick && (
             <button
               onClick={onMenuClick}
-              className="hover:bg-[var(--hover-effect)] p-1 rounded"
+              className="rounded-full border border-white/20 bg-white/10 p-2 transition hover:bg-white/20"
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -172,18 +173,18 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
 
           <Link
             to="/"
-            className="text-lg sm:text-2xl font-heading font-bold whitespace-nowrap"
+            className="text-lg sm:text-2xl font-heading font-bold tracking-wide whitespace-nowrap"
           >
             FACILITA CHVC
           </Link>
         </div>
 
         {/* Navegação */}
-        <nav className="space-x-4 flex items-center">
+        <nav className="space-x-3 flex items-center">
           {!loggedIn ? (
             <Link
               to="/admin/login"
-              className="hover:underline flex items-center gap-1"
+              className="nav-pill text-sm font-semibold"
             >
               <LogIn size={18} />
               Login
@@ -191,19 +192,21 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
           ) : (
             <>
               {user && (
-                <span className="text-sm opacity-80">Olá, {user.username}</span>
+                <span className="hidden sm:inline text-xs uppercase tracking-[0.2em] opacity-70">
+                  {user.username}
+                </span>
               )}
 
               <button
                 onClick={logout}
-                className="hover:underline flex items-center gap-1"
+                className="nav-pill text-sm font-semibold"
               >
                 <LogOut size={18} /> Sair
               </button>
 
               <button
                 onClick={openModal}
-                className="ml-2 hover:bg-[var(--hover-effect)] p-1 rounded"
+                className="rounded-full border border-white/20 bg-white/10 p-2 transition hover:bg-white/20"
               >
                 <Palette size={18} />
               </button>
@@ -342,7 +345,7 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
               </button>
               <button
                 onClick={saveTheme}
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-xl shadow hover:scale-105 transition"
+                className="btn-primary px-4 py-2 rounded-xl"
               >
                 Salvar
               </button>

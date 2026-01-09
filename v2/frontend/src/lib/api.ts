@@ -8,6 +8,10 @@ const defaultHost =
 const baseURL =
   process.env.NEXT_PUBLIC_API_URL || `http://${defaultHost}:3001/api`;
 
+// Base URL do servidor (sem /api) para acesso a arquivos estáticos
+export const serverURL =
+  process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || `http://${defaultHost}:3001`;
+
 const api = axios.create({
   baseURL,
   withCredentials: true,

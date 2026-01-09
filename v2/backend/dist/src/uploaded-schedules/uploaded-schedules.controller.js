@@ -31,12 +31,16 @@ let UploadedSchedulesController = class UploadedSchedulesController {
             userId: req.user.id,
         });
     }
-    findAll(companyId, sectorId, categoryId, isPublic) {
-        return this.schedulesService.findAll(companyId, {
+    async findAll(companyId, sectorId, categoryId, isPublic) {
+        const filters = {
             sectorId,
             categoryId,
-            isPublic: isPublic === 'true',
-        });
+            isPublic: isPublic ? isPublic === 'true' : undefined,
+        };
+        console.log('SchedulesController.findAll - companyId:', companyId, 'filters:', filters);
+        const result = await this.schedulesService.findAll(companyId, filters);
+        console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
+        return result;
     }
     findOne(id) {
         return this.schedulesService.findOne(id);
@@ -70,7 +74,7 @@ __decorate([
     __param(3, (0, common_1.Query)('isPublic')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, String, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),

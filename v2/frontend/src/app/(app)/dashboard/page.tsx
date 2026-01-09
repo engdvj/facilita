@@ -86,8 +86,8 @@ export default function DashboardPage() {
   }, [accessToken, hasHydrated]);
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
+    <div className="space-y-6">
+      <div className="space-y-2 max-w-2xl">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Dashboard
         </p>
@@ -105,7 +105,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: 'Empresas', value: stats.companies },
           { label: 'Unidades', value: stats.units },
@@ -114,7 +114,7 @@ export default function DashboardPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="surface p-6 animate-in fade-in slide-in-from-bottom-2"
+            className="surface p-5 animate-in fade-in slide-in-from-bottom-2"
           >
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               {card.label}

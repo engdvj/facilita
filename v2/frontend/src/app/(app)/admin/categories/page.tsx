@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
-import { Category } from '@/types';
-import MaxWidth from '@/components/max-width';
+import { formatDate } from '@/lib/format';
+import AdminField from '@/components/admin/field';
+import AdminModal from '@/components/admin/modal';
+import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
+import { Category } from '@/types';
+
+const pageSize = 8;
 
 export default function CategoriesPage() {
   const user = useAuthStore((state) => state.user);
@@ -13,293 +18,417 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    color: '#3b82f6',
-    icon: '',
-    adminOnly: false,
-  });
-
-  useEffect(() => {
-    loadCategories();
-  }, [user, hasHydrated]);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Category | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#3b82f6');
+  const [icon, setIcon] = useState('');
+  const [adminOnly, setAdminOnly] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
   const loadCategories = async () => {
-    if (!hasHydrated) return;
+    if (!user?.companyId) return;
+    const response = await api.get(`/categories?companyId=${user.companyId}`);
+    setCategories(response.data);
+  };
 
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      if (!hasHydrated) return;
+
+      if (!user?.companyId) {
+        setError(
+          'Usuario sem empresa associada. Entre em contato com o administrador.',
+        );
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await loadCategories();
+        if (!active) return;
+        setError(null);
+      } catch (err: any) {
+        if (active) {
+          const statusCode = err?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            setError('Sessao expirada. Faca login novamente.');
+          } else {
+            setError('Nao foi possivel carregar as categorias.');
+          }
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [hasHydrated, user?.companyId]);
+
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return categories;
+    const term = search.toLowerCase();
+    return categories.filter((category) =>
+      `${category.name} ${category.icon ?? ''}`.toLowerCase().includes(term),
+    );
+  }, [categories, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCategories.length / pageSize));
+  const paginatedCategories = filteredCategories.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setName('');
+    setColor('#3b82f6');
+    setIcon('');
+    setAdminOnly(false);
+    setFormError(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (category: Category) => {
+    setEditing(category);
+    setName(category.name);
+    setColor(category.color || '#3b82f6');
+    setIcon(category.icon || '');
+    setAdminOnly(Boolean(category.adminOnly));
+    setFormError(null);
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
     if (!user?.companyId) {
-      setError('Usuário sem empresa associada. Entre em contato com o administrador.');
-      setLoading(false);
+      setFormError('Usuario sem empresa associada.');
       return;
     }
 
+    setFormLoading(true);
+    setFormError(null);
     try {
-      setError(null);
-      const response = await api.get(`/categories?companyId=${user.companyId}`);
-      setCategories(response.data);
+      const payload = {
+        name,
+        color: color || undefined,
+        icon: icon || undefined,
+        adminOnly,
+        companyId: user.companyId,
+      };
+
+      if (editing) {
+        await api.patch(`/categories/${editing.id}`, payload);
+      } else {
+        await api.post('/categories', payload);
+      }
+      await loadCategories();
+      setModalOpen(false);
     } catch (err: any) {
-      console.error('Error loading categories:', err);
-      const statusCode = err?.response?.status;
-      if (statusCode === 401 || statusCode === 403) {
-        setError('Sessão expirada. Faça login novamente.');
-      } else {
-        setError('Não foi possível carregar as categorias.');
-      }
+      const message =
+        err?.response?.data?.message || 'Nao foi possivel salvar a categoria.';
+      setFormError(
+        typeof message === 'string' ? message : 'Erro ao salvar categoria.',
+      );
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.companyId) return;
-
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setFormLoading(true);
+    setFormError(null);
     try {
-      if (editingId) {
-        await api.patch(`/categories/${editingId}`, formData);
-      } else {
-        await api.post('/categories', {
-          ...formData,
-          companyId: user.companyId,
-        });
-      }
-      loadCategories();
-      resetForm();
-    } catch (error) {
-      console.error('Error saving category:', error);
+      await api.delete(`/categories/${deleteTarget.id}`);
+      await loadCategories();
+      setDeleteTarget(null);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || 'Nao foi possivel remover a categoria.';
+      setFormError(
+        typeof message === 'string' ? message : 'Erro ao remover categoria.',
+      );
+    } finally {
+      setFormLoading(false);
     }
   };
-
-  const handleEdit = (category: Category) => {
-    setFormData({
-      name: category.name,
-      color: category.color || '#3b82f6',
-      icon: category.icon || '',
-      adminOnly: category.adminOnly,
-    });
-    setEditingId(category.id);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
-
-    try {
-      await api.delete(`/categories/${id}`);
-      loadCategories();
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      alert('Erro ao excluir categoria. Ela pode estar em uso.');
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      color: '#3b82f6',
-      icon: '',
-      adminOnly: false,
-    });
-    setEditingId(null);
-    setShowForm(false);
-  };
-
-  if (loading) {
-    return (
-      <MaxWidth>
-        <div className="py-8 text-center text-muted-foreground">Carregando...</div>
-      </MaxWidth>
-    );
-  }
 
   return (
-    <MaxWidth>
-      <div className="space-y-6 py-8">
-        {error && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Categorias</h1>
-            <p className="text-sm text-muted-foreground">
-              Gerencie as categorias do portal
-            </p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0 space-y-2 xl:flex-1">
+          <h1 className="font-display text-3xl text-foreground">Categorias</h1>
+          <p className="text-sm text-muted-foreground">
+            Gerencie as categorias usadas no portal.
+          </p>
+        </div>
+        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] xl:w-auto xl:max-w-[420px] xl:shrink-0">
+          <input
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Buscar categoria"
+            className="w-full min-w-0 rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+          />
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:opacity-90"
+            type="button"
+            className="w-full rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] sm:w-auto"
+            onClick={openCreate}
           >
-            {showForm ? 'Cancelar' : 'Nova Categoria'}
+            Nova categoria
           </button>
         </div>
+      </div>
 
-        {showForm && (
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              {editingId ? 'Editar Categoria' : 'Nova Categoria'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-foreground focus:outline-none"
-                />
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="surface animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 px-4 py-4 sm:px-6">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Lista
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {loading ? 'Carregando...' : `${filteredCategories.length} registros`}
+          </p>
+        </div>
+        <div className="grid auto-rows-fr gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
+          {paginatedCategories.map((category) => (
+            <article
+              key={category.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(category)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  openEdit(category);
+                }
+              }}
+              className="group flex h-full cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-[0_10px_24px_rgba(16,44,50,0.08)] transition hover:-translate-y-0.5 hover:border-foreground/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Categoria
+                  </p>
+                  <p className="truncate text-base font-semibold text-foreground">
+                    {category.name}
+                  </p>
+                </div>
+                <StatusBadge status={category.status} />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
+                    Icone
+                  </span>
+                  <span className="text-right text-foreground/80">
+                    {category.icon || '--'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
                     Cor
-                  </label>
-                  <input
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="h-10 w-full rounded-lg border border-border bg-background"
-                  />
+                  </span>
+                  <span className="flex items-center gap-2 text-right text-foreground/80">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full border border-border/70"
+                      style={{ backgroundColor: category.color || '#3b82f6' }}
+                    />
+                    {category.color || '#3b82f6'}
+                  </span>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Ícone (emoji)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.icon}
-                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    placeholder="📁"
-                    maxLength={2}
-                    className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-foreground focus:outline-none"
-                  />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
+                    Uso
+                  </span>
+                  <span className="text-right text-foreground/80">
+                    {category._count?.links || 0} links,{' '}
+                    {category._count?.schedules || 0} agendas
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
+                    Acesso
+                  </span>
+                  <span className="text-right text-foreground/80">
+                    {category.adminOnly ? 'Somente admin' : 'Todos'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
+                    Criado
+                  </span>
+                  <span className="text-right text-foreground/80">
+                    {formatDate(category.createdAt || undefined)}
+                  </span>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="adminOnly"
-                  checked={formData.adminOnly}
-                  onChange={(e) => setFormData({ ...formData, adminOnly: e.target.checked })}
-                  className="rounded border-border"
-                />
-                <label htmlFor="adminOnly" className="text-sm text-foreground">
-                  Apenas administradores podem criar nesta categoria
-                </label>
-              </div>
-
-              <div className="flex gap-3">
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-3">
                 <button
-                  type="submit"
-                  className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:opacity-90"
+                  type="button"
+                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEdit(category);
+                  }}
                 >
-                  {editingId ? 'Salvar' : 'Criar'}
+                  Editar
                 </button>
                 <button
                   type="button"
-                  onClick={resetForm}
-                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-foreground"
+                  className="rounded-md border border-destructive/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-destructive transition hover:border-destructive"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setFormError(null);
+                    setDeleteTarget(category);
+                  }}
                 >
-                  Cancelar
+                  Remover
                 </button>
               </div>
-            </form>
+            </article>
+          ))}
+          {!loading && paginatedCategories.length === 0 && (
+            <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
+              Nenhuma categoria encontrada.
+            </div>
+          )}
+        </div>
+        <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
+      </div>
+
+      <AdminModal
+        open={modalOpen}
+        title={editing ? 'Editar categoria' : 'Nova categoria'}
+        description="Categorias organizam links e documentos."
+        onClose={() => setModalOpen(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rounded-lg border border-border/70 px-4 py-2 text-xs uppercase tracking-[0.18em] text-foreground"
+              onClick={() => setModalOpen(false)}
+              disabled={formLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-primary px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary-foreground"
+              onClick={handleSave}
+              disabled={formLoading || !name.trim()}
+            >
+              {formLoading ? 'Salvando' : 'Salvar'}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <AdminField label="Nome" htmlFor="category-name">
+            <input
+              id="category-name"
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </AdminField>
+          <AdminField label="Icone" htmlFor="category-icon" hint="Opcional">
+            <input
+              id="category-icon"
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+              value={icon}
+              onChange={(event) => setIcon(event.target.value)}
+            />
+          </AdminField>
+          <AdminField label="Cor" htmlFor="category-color">
+            <input
+              id="category-color"
+              type="color"
+              className="h-11 w-full rounded-lg border border-border/70 bg-white/80"
+              value={color}
+              onChange={(event) => setColor(event.target.value)}
+            />
+          </AdminField>
+        </div>
+        <div className="mt-4 flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            id="category-admin-only"
+            checked={adminOnly}
+            onChange={(event) => setAdminOnly(event.target.checked)}
+            className="rounded border-border/70"
+          />
+          <label htmlFor="category-admin-only">
+            Apenas administradores podem criar nesta categoria
+          </label>
+        </div>
+        {formError && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+            {formError}
           </div>
         )}
+      </AdminModal>
 
-        <div className="rounded-lg border border-border bg-card">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="px-6 py-3 text-sm font-medium text-muted-foreground">
-                    Nome
-                  </th>
-                  <th className="px-6 py-3 text-sm font-medium text-muted-foreground">
-                    Cor
-                  </th>
-                  <th className="px-6 py-3 text-sm font-medium text-muted-foreground">
-                    Uso
-                  </th>
-                  <th className="px-6 py-3 text-sm font-medium text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-sm font-medium text-muted-foreground">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((category) => (
-                  <tr key={category.id} className="border-b border-border last:border-0">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {category.icon && <span className="text-lg">{category.icon}</span>}
-                        <span className="font-medium text-foreground">{category.name}</span>
-                        {category.adminOnly && (
-                          <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            Admin
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-4 w-4 rounded border border-border"
-                          style={{ backgroundColor: category.color || '#3b82f6' }}
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          {category.color || '#3b82f6'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-muted-foreground">
-                        {category._count?.links || 0} links, {category._count?.schedules || 0} agendas
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={category.status} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(category)}
-                          className="text-sm text-muted-foreground hover:text-foreground"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(category.id)}
-                          className="text-sm text-muted-foreground hover:text-red-500"
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {categories.length === 0 && (
-              <div className="py-12 text-center text-muted-foreground">
-                Nenhuma categoria cadastrada
-              </div>
-            )}
+      <AdminModal
+        open={Boolean(deleteTarget)}
+        title="Remover categoria"
+        description="Essa acao nao pode ser desfeita."
+        onClose={() => setDeleteTarget(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rounded-lg border border-border/70 px-4 py-2 text-xs uppercase tracking-[0.18em] text-foreground"
+              onClick={() => setDeleteTarget(null)}
+              disabled={formLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-destructive px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary-foreground"
+              onClick={confirmDelete}
+              disabled={formLoading}
+            >
+              {formLoading ? 'Removendo' : 'Remover'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Confirme a exclusao de{' '}
+          <span className="text-foreground">{deleteTarget?.name}</span>.
+        </p>
+        {formError && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+            {formError}
           </div>
-        </div>
-      </div>
-    </MaxWidth>
+        )}
+      </AdminModal>
+    </div>
   );
 }

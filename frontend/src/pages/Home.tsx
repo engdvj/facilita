@@ -109,7 +109,6 @@ export default function Home() {
     <div
       className="min-h-screen flex flex-col"
       style={{
-        backgroundColor: 'var(--background-main)',
         color: 'var(--text-color)',
       }}
     >
@@ -121,15 +120,15 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden relative">
         {loggedIn && (
           <motion.aside
-            className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
-            style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+            className="nav-rail w-64 p-5 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20 rounded-r-3xl"
+            style={{ color: 'var(--link-bar-text)' }}
             initial={false}
             animate={{ x: open ? 0 : -256 }}
           >
             <NavLink
               to="/"
               onClick={() => setOpen(false)}
-              className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+              className="nav-pill w-full justify-start text-sm font-medium mb-4"
             >
               <HomeIcon size={18} /> Início
             </NavLink>
@@ -140,67 +139,37 @@ export default function Home() {
                   <NavLink
                     end
                     to="/admin"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                    }
+                    className="nav-pill w-full justify-start text-sm font-medium"
                   >
                     <HomeIcon size={18} /> Dashboard
                   </NavLink>
                   <NavLink
                     to="/admin/links"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                    }
+                    className="nav-pill w-full justify-start text-sm font-medium"
                   >
                     <Link2 size={18} /> Links
                   </NavLink>
                   <NavLink
                     to="/admin/files"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                    }
+                    className="nav-pill w-full justify-start text-sm font-medium"
                   >
                     <FileIcon size={18} /> Arquivos
                   </NavLink>
                   <NavLink
                     to="/admin/categories"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                    }
+                    className="nav-pill w-full justify-start text-sm font-medium"
                   >
                     <Folder size={18} /> Categorias
                   </NavLink>
                   <NavLink
                     to="/admin/colors"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                    }
+                    className="nav-pill w-full justify-start text-sm font-medium"
                   >
                     <Palette size={18} /> Cores
                   </NavLink>
                   <NavLink
                     to="/admin/users"
-                    className={({ isActive }) =>
-                      `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                    }
-                    style={({ isActive }) =>
-                      isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                    }
+                    className="nav-pill w-full justify-start text-sm font-medium"
                   >
                     <Users size={18} /> Usuários
                   </NavLink>
@@ -208,12 +177,7 @@ export default function Home() {
               ) : (
                 <NavLink
                   to="/user/links"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <Link2 size={18} /> Links
                 </NavLink>
@@ -237,11 +201,11 @@ export default function Home() {
           >
             <div className="mx-auto w-full max-w-7xl px-4">
               {/* ---------- BUSCA ---------- */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-6">
                 <div className="relative flex-1 max-w-xs mx-auto sm:max-w-none">
                   <Search
                     size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
                   />
                   <input
                     value={search}
@@ -249,20 +213,28 @@ export default function Home() {
                       setSearch(e.target.value)
                     }
                     placeholder="Buscar..."
-                    className="w-full pl-8 rounded-full border border-gray-300 bg-white text-black py-1 px-2 text-sm sm:text-base shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-10 pr-4 py-2 rounded-full border border-white/70 bg-white/80 text-slate-900 text-sm sm:text-base shadow-[0_14px_28px_rgba(15,23,42,0.12)] outline-none backdrop-blur focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent"
                   />
                 </div>
               </div>
 
               {/* ---------- CATEGORIAS ---------- */}
-              <div className="flex flex-wrap justify-center gap-2 pb-4 mb-4">
+              <div className="flex flex-wrap justify-center gap-3 pb-6 mb-6">
                 <button
                   onClick={() => setCategoryId('all')}
-                  className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all border ${
                     categoryId === 'all'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
+                      ? 'text-white shadow-[0_12px_26px_rgba(249,115,22,0.35)] border-transparent'
+                      : 'bg-white/70 border-white/60 text-slate-900 hover:bg-white'
                   }`}
+                  style={
+                    categoryId === 'all'
+                      ? {
+                          background:
+                            'linear-gradient(120deg, var(--button-primary), var(--accent-color))',
+                        }
+                      : undefined
+                  }
                 >
                   Todos
                 </button>
@@ -276,10 +248,10 @@ export default function Home() {
                     <button
                       key={c.id}
                       onClick={() => setCategoryId(c.id)}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      className={`flex items-center gap-1 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all border ${
                         active
-                          ? textColor
-                          : 'bg-indigo-50 dark:bg-slate-700 text-gray-900 dark:text-white'
+                          ? `${textColor} shadow-[0_12px_26px_rgba(15,23,42,0.25)] border-transparent`
+                          : 'bg-white/70 border-white/60 text-slate-900 hover:bg-white'
                       }`}
                       style={active ? { backgroundColor: c.color } : undefined}
                     >

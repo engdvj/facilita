@@ -31,12 +31,17 @@ let LinksController = class LinksController {
             userId: req.user.id,
         });
     }
-    findAll(companyId, sectorId, categoryId, isPublic) {
-        return this.linksService.findAll(companyId, {
+    async findAll(companyId, sectorId, categoryId, isPublic) {
+        const normalizedCompanyId = companyId?.trim() || undefined;
+        const filters = {
             sectorId,
             categoryId,
-            isPublic: isPublic === 'true',
-        });
+            isPublic: isPublic ? isPublic === 'true' : normalizedCompanyId ? undefined : true,
+        };
+        console.log('LinksController.findAll - companyId:', normalizedCompanyId, 'filters:', filters);
+        const result = await this.linksService.findAll(normalizedCompanyId, filters);
+        console.log('LinksController.findAll - resultado:', result.length, 'links');
+        return result;
     }
     findOne(id) {
         return this.linksService.findOne(id);
@@ -70,7 +75,7 @@ __decorate([
     __param(3, (0, common_1.Query)('isPublic')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, String, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], LinksController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),

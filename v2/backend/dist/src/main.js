@@ -29,12 +29,15 @@ async function bootstrap() {
     }));
     const corsOrigin = config.get('CORS_ORIGIN');
     const allowAllOrigins = !corsOrigin || corsOrigin === '*' || corsOrigin === '0.0.0.0';
-    const allowedOrigins = allowAllOrigins
-        ? true
-        : corsOrigin.split(',').map((origin) => origin.trim());
     app.enableCors({
-        origin: allowedOrigins,
+        origin: allowAllOrigins
+            ? (origin, callback) => {
+                callback(null, true);
+            }
+            : corsOrigin.split(',').map((origin) => origin.trim()),
         credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     });
     const port = config.get('PORT') ?? 3001;
     await app.listen(port);

@@ -49,7 +49,7 @@ export declare class LinksService {
         order: number;
         deletedAt: Date | null;
     }>;
-    findAll(companyId: string, filters?: {
+    findAll(companyId?: string, filters?: {
         sectorId?: string;
         categoryId?: string;
         isPublic?: boolean;

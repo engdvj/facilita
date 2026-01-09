@@ -20,6 +20,14 @@ export class CategoriesService {
         companyId,
         status: EntityStatus.ACTIVE,
       },
+      include: {
+        _count: {
+          select: {
+            links: true,
+            schedules: true,
+          },
+        },
+      },
       orderBy: {
         name: 'asc',
       },

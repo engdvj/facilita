@@ -319,7 +319,7 @@ export default function AdminLinks() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="app-panel text-white/90 rounded-3xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar Link" : "Novo Link"}</h2>
           <form
             onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
@@ -542,7 +542,7 @@ export default function AdminLinks() {
 
                     navigate("/admin/links");
                   }}
-                  className="px-4 py-2 rounded border"
+                  className="px-4 py-2 rounded border border-white/20 text-white/80 hover:bg-white/10 transition"
                 >
                   Cancelar
                 </button>
@@ -551,16 +551,16 @@ export default function AdminLinks() {
           </form>
         </section>
 
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Links ({links.length})</h2>
-          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-3 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedLinks.map((l) => {
               const Icon = (Icons as any)[categoryMap[l.categoryId || 0]?.icon || "Link2"];
               return (
                 <motion.li
                   key={l.id}
                   layout
-                  className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
+                  className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5"
                 >
                   <span
                     className="w-4 h-4 rounded"
@@ -590,7 +590,7 @@ export default function AdminLinks() {
                     </a>
                   )}
                   {l.user && (
-                    <span className="text-xs px-2 py-1 rounded bg-slate-700 opacity-80">
+                    <span className="text-xs px-2 py-1 rounded bg-white/10 text-white/80">
                       {l.user}
                     </span>
                   )}
@@ -609,17 +609,17 @@ export default function AdminLinks() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="self-center">
+              <span className="self-center text-sm text-white/70">
                 {page} / {pageCount}
               </span>
               <button
                 disabled={page === pageCount}
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronRight size={16} />
               </button>

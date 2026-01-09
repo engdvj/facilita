@@ -15,7 +15,12 @@ export declare class CategoriesController {
         icon: string | null;
         adminOnly: boolean;
     }>;
-    findAll(companyId: string): Promise<{
+    findAll(companyId: string): Promise<({
+        _count: {
+            links: number;
+            schedules: number;
+        };
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -25,7 +30,7 @@ export declare class CategoriesController {
         color: string | null;
         icon: string | null;
         adminOnly: boolean;
-    }[]>;
+    })[]>;
     findOne(id: string): Promise<{
         _count: {
             links: number;

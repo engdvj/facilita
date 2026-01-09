@@ -49,7 +49,7 @@ export declare class LinksController {
         order: number;
         deletedAt: Date | null;
     }>;
-    findAll(companyId: string, sectorId?: string, categoryId?: string, isPublic?: string): Promise<({
+    findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string): Promise<({
         sector: {
             id: string;
             createdAt: Date;

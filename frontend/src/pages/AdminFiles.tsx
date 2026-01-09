@@ -89,7 +89,7 @@ export default function AdminFiles() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="app-panel text-white/90 rounded-3xl p-6">
           <h2 className="text-lg font-semibold mb-4">Novo Arquivo</h2>
           <form onSubmit={handleCreate} className="flex flex-col gap-3">
             <input
@@ -138,14 +138,14 @@ export default function AdminFiles() {
             </button>
           </form>
         </section>
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Arquivos ({files.length})</h2>
-          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-3 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {files.map((f) => (
               <motion.li
                 key={f.id}
                 layout
-                className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
+                className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5"
               >
                 <span className="flex-1">
                   {f.title}

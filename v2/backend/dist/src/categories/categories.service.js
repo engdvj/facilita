@@ -28,6 +28,14 @@ let CategoriesService = class CategoriesService {
                 companyId,
                 status: client_1.EntityStatus.ACTIVE,
             },
+            include: {
+                _count: {
+                    select: {
+                        links: true,
+                        schedules: true,
+                    },
+                },
+            },
             orderBy: {
                 name: 'asc',
             },

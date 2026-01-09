@@ -33,17 +33,21 @@ export class UploadedSchedulesController {
   }
 
   @Get()
-  findAll(
+  async findAll(
     @Query('companyId') companyId: string,
     @Query('sectorId') sectorId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
   ) {
-    return this.schedulesService.findAll(companyId, {
+    const filters = {
       sectorId,
       categoryId,
-      isPublic: isPublic === 'true',
-    });
+      isPublic: isPublic ? isPublic === 'true' : undefined,
+    };
+    console.log('SchedulesController.findAll - companyId:', companyId, 'filters:', filters);
+    const result = await this.schedulesService.findAll(companyId, filters);
+    console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
+    return result;
   }
 
   @Get(':id')

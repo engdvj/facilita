@@ -15,7 +15,15 @@
       "Bash(npm run prisma:generate:*)",
       "Bash(npm run build:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npm run start:dev:*)",
+      "Bash(npx prisma:*)",
+      "Bash(dir:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 69188 -Force\")",
+      "Bash(\"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\\\\admin\\\\schedules\\\\page.tsx\")"
     ]
   }
 }

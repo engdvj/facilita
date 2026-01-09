@@ -377,12 +377,12 @@ function LinksColumn({
   categoryMap,
 }: LinksColumnProps) {
   return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+    <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden transition-transform duration-300 hover:-translate-y-1">
       <Header title="Links" total={total} />
       <SearchBar value={query} onChange={setQuery} />
 
       <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
+        className="space-y-3 flex-1 overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -393,7 +393,7 @@ function LinksColumn({
             <motion.li
               key={l.id}
               layout
-              className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
+              className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 w-full"
             >
               <span
                 className="w-4 h-4 rounded"
@@ -404,7 +404,7 @@ function LinksColumn({
               {CatIcon && <CatIcon size={16} className="opacity-70" />}
               <span className="flex-1">{l.title}</span>
               {l.user && (
-                <span className="text-xs px-2 py-1 rounded bg-slate-700 opacity-80">
+                <span className="text-xs px-2 py-1 rounded bg-white/10 text-white/80">
                   {l.user}
                 </span>
               )}
@@ -443,12 +443,12 @@ function FilesColumn({
   userMap,
 }: FilesColumnProps) {
   return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+    <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden transition-transform duration-300 hover:-translate-y-1">
       <Header title="Arquivos" total={total} />
       <SearchBar value={query} onChange={setQuery} />
 
       <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
+        className="space-y-3 flex-1 overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -456,7 +456,7 @@ function FilesColumn({
           <motion.li
             key={f.id}
             layout
-            className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl w-full"
+            className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 w-full"
           >
             <span className="flex-1">
               {f.title}
@@ -511,12 +511,12 @@ function CategoriesColumn({
   removeCat,
 }: CategoriesColumnProps) {
   return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+    <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden transition-transform duration-300 hover:-translate-y-1">
       <Header title="Categorias" total={total} />
       <SearchBar value={query} onChange={setQuery} />
 
       <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
+        className="space-y-3 flex-1 overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -526,7 +526,7 @@ function CategoriesColumn({
             <motion.li
               key={c.id}
               layout
-              className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
+              className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 w-full"
             >
               <span
                 className="w-4 h-4 rounded"
@@ -594,12 +594,12 @@ function ColorsColumn({
   colorInputClass,
 }: ColorsColumnProps) {
   return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+    <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden transition-transform duration-300 hover:-translate-y-1">
       <Header title="Cores" total={total} />
       <SearchBar value={query} onChange={setQuery} />
 
       <motion.ul
-        className="space-y-2 flex-1 overflow-y-auto"
+        className="space-y-3 flex-1 overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -607,7 +607,7 @@ function ColorsColumn({
           <motion.li
             key={c.id}
             layout
-            className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl shadow-md hover:shadow-xl text-white w-full"
+            className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 w-full"
           >
             <span className="w-4 h-4 rounded" style={{ backgroundColor: c.value }} />
             {editColorId === c.id ? (
@@ -698,20 +698,22 @@ function UsersColumn({
   removeUser,
 }: UsersColumnProps) {
   return (
-    <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+    <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden transition-transform duration-300 hover:-translate-y-1">
       <Header title="Usuários" total={total} />
       <SearchBar value={query} onChange={setQuery} />
 
-      <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <motion.ul className="space-y-3 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         {users.map((u) => (
           <motion.li
             key={u.id}
             layout
-            className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl w-full"
+            className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 w-full"
           >
             <span className="flex-1">{u.username}</span>
             {u.isAdmin && (
-              <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">ADM</span>
+              <span className="text-xs bg-[var(--accent-color)] text-slate-900 px-2 py-0.5 rounded-full font-semibold">
+                ADM
+              </span>
             )}
             <button onClick={() => startEditUser(u)} className="p-1 hover:text-[var(--accent-color)]">
               <Pencil size={16} />
@@ -743,16 +745,16 @@ function Header({ title, total }: { title: string; total: number }) {
   const path = pathMap[title] || title.toLowerCase();
 
   return (
-    <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
-      <h2 className="text-lg font-semibold flex items-center gap-2">
+    <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
+      <h2 className="text-lg font-semibold section-title flex items-center gap-2">
         {title}
-        <span className="bg-[var(--accent-color)] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+        <span className="bg-[var(--accent-color)] text-slate-900 text-xs font-semibold px-2 py-0.5 rounded-full">
           {total}
         </span>
       </h2>
       <Link
         to={`/admin/${path}`}
-        className="px-3 py-1.5 rounded-md bg-[var(--accent-color)] text-white text-sm hover:bg-[var(--hover-effect)] flex items-center gap-1"
+        className="btn-primary px-3 py-1.5 rounded-full text-sm flex items-center gap-1"
       >
         <Plus size={16} /> Novo
       </Link>
@@ -768,10 +770,10 @@ function SearchBar({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center mb-2">
-      <Search size={16} className="mr-2 opacity-70" />
+    <div className="flex items-center gap-2 mb-4 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-white/80">
+      <Search size={16} className="opacity-70" />
       <input
-        className="flex-1 bg-transparent border-b border-gray-600 focus:outline-none text-sm"
+        className="flex-1 bg-transparent text-sm placeholder:text-white/60 focus:outline-none"
         placeholder="Buscar"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -795,17 +797,17 @@ function Paginator({
       <button
         disabled={page === 1}
         onClick={() => setPage((p) => Math.max(1, p - 1))}
-        className="px-3 py-1 rounded border disabled:opacity-50"
+        className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
       >
         <ChevronLeft size={16} />
       </button>
-      <span className="self-center">
+      <span className="self-center text-sm text-white/70">
         {page} / {pageCount}
       </span>
       <button
         disabled={page === pageCount}
         onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-        className="px-3 py-1 rounded border disabled:opacity-50"
+        className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
       >
         <ChevronRight size={16} />
       </button>

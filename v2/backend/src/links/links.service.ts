@@ -27,16 +27,23 @@ export class LinksService {
     return link;
   }
 
-  async findAll(companyId: string, filters?: { sectorId?: string; categoryId?: string; isPublic?: boolean }) {
-    return this.prisma.link.findMany({
-      where: {
-        companyId,
-        status: EntityStatus.ACTIVE,
-        deletedAt: null,
-        ...(filters?.sectorId && { sectorId: filters.sectorId }),
-        ...(filters?.categoryId && { categoryId: filters.categoryId }),
-        ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
-      },
+  async findAll(
+    companyId?: string,
+    filters?: { sectorId?: string; categoryId?: string; isPublic?: boolean },
+  ) {
+    const where = {
+      status: EntityStatus.ACTIVE,
+      deletedAt: null,
+      ...(companyId ? { companyId } : {}),
+      ...(filters?.sectorId && { sectorId: filters.sectorId }),
+      ...(filters?.categoryId && { categoryId: filters.categoryId }),
+      ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+    };
+
+    console.log('LinksService.findAll - where clause:', JSON.stringify(where, null, 2));
+
+    const links = await this.prisma.link.findMany({
+      where,
       include: {
         category: true,
         sector: true,
@@ -58,6 +65,9 @@ export class LinksService {
         { createdAt: 'desc' },
       ],
     });
+
+    console.log('LinksService.findAll - links encontrados:', links.length);
+    return links;
   }
 
   async findOne(id: string) {

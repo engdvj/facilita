@@ -28,7 +28,7 @@ export default function AppHeader() {
         <div className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/"
               className="text-lg font-semibold text-foreground"
             >
               Facilita V2

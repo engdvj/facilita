@@ -334,20 +334,20 @@ export default function UserLinks() {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ backgroundColor: 'var(--background-main)', color: 'var(--text-color)' }}
+      style={{ color: 'var(--text-color)' }}
     >
       <Header onMenuClick={() => setOpen((o) => !o)} sidebarOpen={open} />
       <div className="flex flex-1 overflow-hidden relative">
         <motion.aside
-          className="w-64 p-6 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20"
-          style={{ backgroundColor: 'var(--card-background)', color: 'var(--link-bar-text)' }}
+          className="nav-rail w-64 p-5 space-y-4 transform transition-transform fixed top-16 bottom-0 left-0 z-20 rounded-r-3xl"
+          style={{ color: 'var(--link-bar-text)' }}
           initial={false}
           animate={{ x: open ? 0 : -256 }}
         >
           <NavLink
             to="/"
             onClick={() => setOpen(false)}
-            className="mb-4 hover:underline flex items-center gap-1 px-2 py-1 rounded"
+            className="nav-pill w-full justify-start text-sm font-medium mb-4"
           >
             <HomeIcon size={18} /> Início
           </NavLink>
@@ -357,67 +357,37 @@ export default function UserLinks() {
                 <NavLink
                   end
                   to="/admin"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <HomeIcon size={18} /> Dashboard
                 </NavLink>
                 <NavLink
                   to="/admin/links"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <Link2 size={18} /> Links
                 </NavLink>
                 <NavLink
                   to="/admin/files"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <FileIcon size={18} /> Arquivos
                 </NavLink>
                 <NavLink
                   to="/admin/categories"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <Folder size={18} /> Categorias
                 </NavLink>
                 <NavLink
                   to="/admin/colors"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <Palette size={18} /> Cores
                 </NavLink>
                 <NavLink
                   to="/admin/users"
-                  className={({ isActive }) =>
-                    `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                  }
+                  className="nav-pill w-full justify-start text-sm font-medium"
                 >
                   <Users size={18} /> Usuários
                 </NavLink>
@@ -425,12 +395,7 @@ export default function UserLinks() {
             ) : (
               <NavLink
                 to="/user/links"
-                className={({ isActive }) =>
-                  `hover:underline flex items-center gap-1 px-2 py-1 rounded`
-                }
-                style={({ isActive }) =>
-                  isActive ? { backgroundColor: 'var(--hover-effect)' } : undefined
-                }
+                className="nav-pill w-full justify-start text-sm font-medium"
               >
                 <Link2 size={18} /> Links
               </NavLink>
@@ -442,13 +407,13 @@ export default function UserLinks() {
         >
           <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
             <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="app-panel text-white/90 rounded-3xl p-6">
           <h2 className="text-lg font-semibold mb-4">Links Gerais</h2>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {generalLinks.map((l) => {
               const Icon = (Icons as any)[categoryMap[l.categoryId || 0]?.icon || 'Link2']
               return (
-                <li key={l.id} className="flex items-center gap-2">
+                <li key={l.id} className="panel-item flex items-center gap-2 p-3 rounded-2xl text-white/90">
                   {Icon && <Icon size={16} className="opacity-70" />}
                   <a href={l.url} target="_blank" className="flex-1 underline">
                     {l.title}
@@ -458,7 +423,7 @@ export default function UserLinks() {
             })}
           </ul>
         </section>
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="app-panel text-white/90 rounded-3xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? "Editar Link" : "Novo Link"}</h2>
           <form
             onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))}
@@ -655,16 +620,16 @@ export default function UserLinks() {
           </form>
         </section>
 
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Seus Links ({userLinks.length})</h2>
-          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-3 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginatedLinks.map((l) => {
               const Icon = (Icons as any)[categoryMap[l.categoryId || 0]?.icon || "Link2"];
               return (
                 <motion.li
                   key={l.id}
                   layout
-                  className="flex items-center gap-2 bg-[var(--card-background)] text-white p-3 rounded-2xl shadow-md hover:shadow-xl"
+                  className="panel-item flex items-center gap-2 text-white/90 p-3 rounded-2xl transition-transform duration-300 hover:-translate-y-0.5"
                 >
                   <span
                     className="w-4 h-4 rounded"
@@ -708,17 +673,17 @@ export default function UserLinks() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="self-center">
+              <span className="self-center text-sm text-white/70">
                 {page} / {pageCount}
               </span>
               <button
                 disabled={page === pageCount}
                 onClick={() => setPage((p: number) => Math.min(pageCount, p + 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronRight size={16} />
               </button>

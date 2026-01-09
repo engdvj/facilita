@@ -26,15 +26,19 @@ export class UploadedSchedulesService {
   }
 
   async findAll(companyId: string, filters?: { sectorId?: string; categoryId?: string; isPublic?: boolean }) {
-    return this.prisma.uploadedSchedule.findMany({
-      where: {
-        companyId,
-        status: EntityStatus.ACTIVE,
-        deletedAt: null,
-        ...(filters?.sectorId && { sectorId: filters.sectorId }),
-        ...(filters?.categoryId && { categoryId: filters.categoryId }),
-        ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
-      },
+    const where = {
+      companyId,
+      status: EntityStatus.ACTIVE,
+      deletedAt: null,
+      ...(filters?.sectorId && { sectorId: filters.sectorId }),
+      ...(filters?.categoryId && { categoryId: filters.categoryId }),
+      ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+    };
+
+    console.log('SchedulesService.findAll - where clause:', JSON.stringify(where, null, 2));
+
+    const schedules = await this.prisma.uploadedSchedule.findMany({
+      where,
       include: {
         category: true,
         sector: true,
@@ -55,6 +59,9 @@ export class UploadedSchedulesService {
         createdAt: 'desc',
       },
     });
+
+    console.log('SchedulesService.findAll - schedules encontrados:', schedules.length);
+    return schedules;
   }
 
   async findOne(id: string) {

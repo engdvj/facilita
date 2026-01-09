@@ -4,8 +4,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        heading: ['Poppins', 'sans-serif'],
+        sans: ['Onest', 'sans-serif'],
+        heading: ['Fraunces', 'serif'],
       },
       container: {
         center: true,

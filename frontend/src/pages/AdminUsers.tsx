@@ -105,7 +105,7 @@ export default function AdminUsers() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" style={{ color: 'var(--text-color)' }}>
       <div className="grid gap-8 md:grid-cols-2">
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl p-6">
+        <section className="app-panel text-white/90 rounded-3xl p-6">
           <h2 className="text-lg font-semibold mb-4">{editingId ? 'Editar' : 'Novo'} Usuário</h2>
           <form onSubmit={(e) => (editingId ? saveEdit(e) : handleCreate(e))} className="flex flex-col gap-3">
             <input
@@ -152,7 +152,7 @@ export default function AdminUsers() {
                     setEditingId(null);
                     navigate('/admin/users');
                   }}
-                  className="px-4 py-2 rounded border"
+                  className="px-4 py-2 rounded border border-white/20 text-white/80 hover:bg-white/10 transition"
                 >
                   Cancelar
                 </button>
@@ -161,18 +161,20 @@ export default function AdminUsers() {
           </form>
         </section>
 
-        <section className="bg-[var(--card-background)] rounded-2xl shadow-md hover:shadow-xl flex flex-col p-6 overflow-hidden">
+        <section className="app-panel text-white/90 rounded-3xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-lg font-semibold mb-4">Usuários ({users.length})</h2>
-          <motion.ul className="space-y-2 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.ul className="space-y-3 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {paginated.map((u) => (
               <motion.li
                 key={u.id}
                 layout
-                className="flex items-center gap-2 bg-[var(--card-background)] p-3 rounded-2xl text-white shadow-md hover:shadow-xl"
+                className="panel-item flex items-center gap-2 p-3 rounded-2xl text-white/90 transition-transform duration-300 hover:-translate-y-0.5"
               >
                 <span className="flex-1">{u.username}</span>
                 {u.isAdmin && (
-                  <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">ADM</span>
+                <span className="text-xs bg-[var(--accent-color)] text-slate-900 px-2 py-0.5 rounded-full font-semibold">
+                  ADM
+                </span>
                 )}
                 <button onClick={() => startEdit(u)} className="p-1 hover:text-[var(--accent-color)]">
                   <Pencil size={16} />
@@ -188,17 +190,17 @@ export default function AdminUsers() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="self-center">
+              <span className="self-center text-sm text-white/70">
                 {page} / {pageCount}
               </span>
               <button
                 disabled={page === pageCount}
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                className="px-3 py-1 rounded border disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-white/80 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <ChevronRight size={16} />
               </button>

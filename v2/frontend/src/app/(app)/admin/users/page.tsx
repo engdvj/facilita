@@ -263,7 +263,7 @@ export default function UsersPage() {
             {loading ? 'Carregando...' : `${filteredUsers.length} registros`}
           </p>
         </div>
-        <div className="grid gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 p-4 sm:p-6 md:grid-cols-2 xl:grid-cols-3">
           {paginatedUsers.map((user) => (
             <article
               key={user.id}
@@ -276,30 +276,42 @@ export default function UsersPage() {
                   openEdit(user);
                 }
               }}
-              className="group cursor-pointer rounded-2xl border border-border/70 bg-card/80 p-4 text-left shadow-[0_10px_24px_rgba(16,44,50,0.08)] transition hover:border-foreground/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="group flex h-full cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-[0_10px_24px_rgba(16,44,50,0.08)] transition hover:-translate-y-0.5 hover:border-foreground/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Usuario
+                  </p>
+                  <p className="truncate text-base font-semibold text-foreground">
                     {user.name}
-                  </p>
-                  <p className="mt-1 break-all text-xs text-muted-foreground">
-                    Usuario: {user.email}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Role: {user.role}
                   </p>
                 </div>
                 <StatusBadge status={user.status} />
               </div>
-              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Criado</span>
-                <span>{formatDate(user.createdAt || undefined)}</span>
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                <p className="break-all text-foreground/80">{user.email}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
+                    Role
+                  </span>
+                  <span className="text-right text-foreground/80">
+                    {user.role}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]">
+                    Criado
+                  </span>
+                  <span className="text-right text-foreground/80">
+                    {formatDate(user.createdAt || undefined)}
+                  </span>
+                </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-3">
                 <button
                   type="button"
-                  className="rounded-lg border border-border/70 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground"
+                  className="rounded-md border border-border/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/60"
                   onClick={(event) => {
                     event.stopPropagation();
                     openEdit(user);
@@ -309,7 +321,7 @@ export default function UsersPage() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg border border-destructive/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-destructive"
+                  className="rounded-md border border-destructive/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-destructive transition hover:border-destructive"
                   onClick={(event) => {
                     event.stopPropagation();
                     setFormError(null);
