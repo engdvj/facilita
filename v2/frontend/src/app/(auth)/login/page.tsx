@@ -1,7 +1,7 @@
 'use client';
 
 import axios from 'axios';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -45,14 +47,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 motion-stagger">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 rounded-full border border-border/70 px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+        className="motion-item motion-press inline-flex items-center gap-2 rounded-full border border-border/70 px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+        style={staggerStyle(1)}
       >
         Voltar para a pagina inicial
       </Link>
-      <div className="space-y-3">
+      <div className="motion-item space-y-3" style={staggerStyle(2)}>
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Facilita admin
         </p>
@@ -64,7 +67,11 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-5">
+      <form
+        onSubmit={onSubmit}
+        className="motion-item space-y-5"
+        style={staggerStyle(3)}
+      >
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground" htmlFor="username">
             Usuario
@@ -94,14 +101,14 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+          <div className="motion-fade rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
             {error}
           </div>
         )}
 
         <button
           type="submit"
-          className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_10px_20px_rgba(16,44,50,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_26px_rgba(16,44,50,0.25)] disabled:opacity-60"
+          className="motion-press w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_10px_20px_rgba(16,44,50,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_26px_rgba(16,44,50,0.25)] disabled:opacity-60"
           disabled={loading}
         >
           {loading ? 'Entrando...' : 'Entrar'}

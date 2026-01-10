@@ -14,6 +14,7 @@ type BackupEntity =
   | 'categories'
   | 'links'
   | 'uploadedSchedules'
+  | 'notes'
   | 'tags'
   | 'tagOnLink'
   | 'tagOnSchedule';
@@ -41,7 +42,12 @@ const backupOptions: {
   {
     key: 'uploadedSchedules',
     label: 'Documentos',
-    hint: 'Agendas e documentos enviados.',
+    hint: 'Documentos enviados.',
+  },
+  {
+    key: 'notes',
+    label: 'Notas',
+    hint: 'Notas pessoais e compartilhadas.',
   },
   {
     key: 'tags',

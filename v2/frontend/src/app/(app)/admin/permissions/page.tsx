@@ -107,7 +107,7 @@ const permissionGroups: PermissionGroup[] = [
       },
       {
         key: 'canManageSchedules',
-        label: 'Gerenciar agendas',
+        label: 'Gerenciar documentos',
         hint: 'Publica e remove documentos.',
       },
     ],

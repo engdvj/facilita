@@ -33,7 +33,7 @@ export default function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border/60 bg-card/80 backdrop-blur">
+    <header className="motion-header sticky top-0 z-20 border-b border-border/60 bg-card/80 backdrop-blur">
       <MaxWidth>
         <div className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="flex items-center gap-3">
@@ -43,7 +43,7 @@ export default function AppHeader() {
             >
               Facilita
             </Link>
-                      </div>
+          </div>
           {hasHydrated ? (
             user ? (
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -52,7 +52,7 @@ export default function AppHeader() {
                   onClick={() => setMenuOpen((prev) => !prev)}
                   aria-expanded={menuOpen}
                   aria-controls="app-mobile-nav"
-                  className="flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground lg:hidden"
+                  className="motion-press flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground lg:hidden"
                 >
                   <span className="flex flex-col gap-1">
                     <span className="block h-0.5 w-4 rounded-full bg-foreground" />
@@ -67,7 +67,7 @@ export default function AppHeader() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
+                  className="motion-press rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
                 >
                   Logout
                 </button>
@@ -75,7 +75,7 @@ export default function AppHeader() {
             ) : (
               <Link
                 href="/login"
-                className="rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
+                className="motion-press rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
               >
                 Login
               </Link>
@@ -83,10 +83,12 @@ export default function AppHeader() {
           ) : null}
         </div>
       </MaxWidth>
-      {hasHydrated && user && menuOpen ? (
+      {hasHydrated && user ? (
         <div
           id="app-mobile-nav"
-          className="border-t border-border/60 bg-card/95 lg:hidden"
+          data-state={menuOpen ? 'open' : 'closed'}
+          aria-hidden={!menuOpen}
+          className="mobile-nav-panel bg-card/95 lg:hidden"
         >
           <MaxWidth>
             <div className="py-4">

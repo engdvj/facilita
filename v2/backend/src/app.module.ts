@@ -11,8 +11,10 @@ import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { LinksModule } from './links/links.module';
 import { UploadedSchedulesModule } from './uploaded-schedules/uploaded-schedules.module';
+import { NotesModule } from './notes/notes.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { BackupsModule } from './backups/backups.module';
+import { ResetsModule } from './resets/resets.module';
 
 @Module({
   imports: [
@@ -31,8 +33,10 @@ import { BackupsModule } from './backups/backups.module';
     CategoriesModule,
     LinksModule,
     UploadedSchedulesModule,
+    NotesModule,
     UploadsModule,
     BackupsModule,
+    ResetsModule,
   ],
 })
 export class AppModule {}

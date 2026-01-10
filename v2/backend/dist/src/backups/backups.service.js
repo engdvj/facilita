@@ -22,6 +22,7 @@ const restoreOrder = [
     'categories',
     'links',
     'uploadedSchedules',
+    'notes',
     'tags',
     'tagOnLink',
     'tagOnSchedule',
@@ -57,6 +58,9 @@ let BackupsService = class BackupsService {
                     break;
                 case 'uploadedSchedules':
                     data.uploadedSchedules = await this.prisma.uploadedSchedule.findMany();
+                    break;
+                case 'notes':
+                    data.notes = await this.prisma.note.findMany();
                     break;
                 case 'tags':
                     data.tags = await this.prisma.tag.findMany();
@@ -118,6 +122,9 @@ let BackupsService = class BackupsService {
                         break;
                     case 'uploadedSchedules':
                         results.uploadedSchedules = await this.upsertById(tx.uploadedSchedule, items);
+                        break;
+                    case 'notes':
+                        results.notes = await this.upsertById(tx.note, items);
                         break;
                     case 'tags':
                         results.tags = await this.upsertById(tx.tag, items);

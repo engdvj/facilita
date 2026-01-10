@@ -1,25 +1,50 @@
 'use client';
 
+import { useEffect, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
+
 type ContactModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
-export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
-  if (!isOpen) return null;
+const staggerStyle = (index: number) =>
+  ({ '--stagger-index': index } as CSSProperties);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
+  const [mounted, setMounted] = useState(false);
+  const modalState = isOpen ? 'open' : 'closed';
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const modalMarkup = (
+    <div
+      className="modal-root fixed inset-0 z-50 flex items-center justify-center px-4 py-8"
+      data-state={modalState}
+      aria-hidden={!isOpen}
+    >
       <button
         type="button"
         onClick={onClose}
-        className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+        className="modal-backdrop absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+        data-state={modalState}
         aria-label="Fechar modal"
       />
-      <div className="surface-strong relative w-full max-w-lg p-6">
+      <div
+        className="modal-panel surface-strong relative w-full max-w-lg p-6"
+        data-state={modalState}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contact-modal-title"
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <p
+              id="contact-modal-title"
+              className="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+            >
               Contato
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -29,14 +54,17 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-border/70 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-foreground"
+            className="motion-press rounded-lg border border-border/70 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-foreground"
           >
             Fechar
           </button>
         </div>
 
-        <div className="mt-6 space-y-3">
-          <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card/50 p-4 transition hover:border-foreground/30">
+        <div className="mt-6 space-y-3 motion-stagger">
+          <div
+            className="motion-item flex items-start gap-3 rounded-lg border border-border/70 bg-card/50 p-4 transition hover:border-foreground/30"
+            style={staggerStyle(1)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -63,7 +91,10 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
             </div>
           </div>
 
-          <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card/50 p-4">
+          <div
+            className="motion-item flex items-start gap-3 rounded-lg border border-border/70 bg-card/50 p-4 transition hover:border-foreground/30"
+            style={staggerStyle(2)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -87,7 +118,10 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
             </div>
           </div>
 
-          <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card/50 p-4">
+          <div
+            className="motion-item flex items-start gap-3 rounded-lg border border-border/70 bg-card/50 p-4 transition hover:border-foreground/30"
+            style={staggerStyle(3)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -116,4 +150,8 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+
+  return createPortal(modalMarkup, document.body);
 }

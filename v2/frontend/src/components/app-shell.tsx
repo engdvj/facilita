@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import AppHeader from '@/components/app-header';
 import AppNav from '@/components/app-nav';
 import MaxWidth from '@/components/max-width';
@@ -14,6 +15,7 @@ type AppShellProps = {
 export default function AppShell({ children }: AppShellProps) {
   const user = useAuthStore((state) => state.user);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen text-foreground flex flex-col">
@@ -31,12 +33,17 @@ export default function AppShell({ children }: AppShellProps) {
             }`}
           >
             {user ? (
-              <aside className="hidden lg:block w-fit max-w-[200px] justify-self-start self-start space-y-4 text-sm lg:sticky lg:top-24">
+              <aside className="motion-fade-up hidden lg:block w-fit max-w-[200px] justify-self-start self-start space-y-4 text-sm lg:sticky lg:top-24">
                 <AppNav />
               </aside>
             ) : null}
 
-            <main className="space-y-6 min-w-0">{children}</main>
+            <main
+              key={pathname}
+              className="motion-page motion-stagger space-y-6 min-w-0"
+            >
+              {children}
+            </main>
           </div>
         </MaxWidth>
       </div>
@@ -51,7 +58,7 @@ export default function AppShell({ children }: AppShellProps) {
               <span className="hidden sm:inline text-border/70">•</span>
               <button
                 onClick={() => setIsContactModalOpen(true)}
-                className="hover:text-foreground transition-colors"
+                className="motion-press hover:text-foreground transition-colors"
               >
                 Contato
               </button>
@@ -60,7 +67,7 @@ export default function AppShell({ children }: AppShellProps) {
                   <span className="text-border/70">•</span>
                   <a
                     href="/dashboard"
-                    className="hover:text-foreground transition-colors"
+                    className="motion-press hover:text-foreground transition-colors"
                   >
                     Dashboard
                   </a>
@@ -71,7 +78,7 @@ export default function AppShell({ children }: AppShellProps) {
                   <span className="text-border/70">•</span>
                   <a
                     href="/admin/links"
-                    className="hover:text-foreground transition-colors"
+                    className="motion-press hover:text-foreground transition-colors"
                   >
                     Administração
                   </a>

@@ -40,6 +40,7 @@ export declare class UploadedSchedulesController {
         sectorId: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
@@ -98,6 +99,7 @@ export declare class UploadedSchedulesController {
         sectorId: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
@@ -156,6 +158,7 @@ export declare class UploadedSchedulesController {
         sectorId: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
@@ -203,6 +206,7 @@ export declare class UploadedSchedulesController {
         sectorId: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
@@ -223,6 +227,7 @@ export declare class UploadedSchedulesController {
         sectorId: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;
@@ -243,6 +248,7 @@ export declare class UploadedSchedulesController {
         sectorId: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
         categoryId: string | null;
         title: string;
         imageUrl: string | null;

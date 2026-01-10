@@ -10,6 +10,7 @@ exports.backupEntities = [
     'categories',
     'links',
     'uploadedSchedules',
+    'notes',
     'tags',
     'tagOnLink',
     'tagOnSchedule',

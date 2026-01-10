@@ -6,7 +6,7 @@ export declare class BackupsService {
     export(entities: BackupEntity[]): Promise<BackupPayload>;
     restore(payload: BackupPayload, entities?: BackupEntity[], mode?: 'merge'): Promise<{
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "tags", "tagOnLink", "tagOnSchedule"];
+        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "tags", "tagOnLink", "tagOnSchedule"];
     } | {
         restored: Record<string, number>;
         skipped?: undefined;

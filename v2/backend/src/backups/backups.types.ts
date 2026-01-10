@@ -7,6 +7,7 @@ export const backupEntities = [
   'categories',
   'links',
   'uploadedSchedules',
+  'notes',
   'tags',
   'tagOnLink',
   'tagOnSchedule',

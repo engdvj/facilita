@@ -54,6 +54,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
+], CreateScheduleDto.prototype, "color", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
 ], CreateScheduleDto.prototype, "imageUrl", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),

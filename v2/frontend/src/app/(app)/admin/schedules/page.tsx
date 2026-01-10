@@ -28,6 +28,7 @@ const emptyFormData = {
   fileUrl: '',
   fileName: '',
   fileSize: 0,
+  color: '',
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
@@ -59,6 +60,7 @@ export default function SchedulesPage() {
   const [formData, setFormData] = useState({ ...emptyFormData });
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
+  const [useCustomColor, setUseCustomColor] = useState(false);
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const resolvedCompanyId =
@@ -79,6 +81,31 @@ export default function SchedulesPage() {
     if (audience === 'PRIVATE') return 'Privado';
     if (audience === 'ADMIN') return 'Admins';
     return 'Superadmins';
+  };
+
+  const isLight = (hex?: string) => {
+    if (!hex || !hex.startsWith('#') || hex.length < 7) return false;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
+  };
+
+  const toRgba = (hex: string, alpha: number) => {
+    const normalized = hex.replace('#', '');
+    const value =
+      normalized.length === 3
+        ? normalized
+            .split('')
+            .map((char) => `${char}${char}`)
+            .join('')
+        : normalized;
+    if (value.length !== 6) return undefined;
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    if ([r, g, b].some((channel) => Number.isNaN(channel))) return undefined;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
   const canViewSchedule = (schedule: UploadedSchedule) => {
@@ -280,6 +307,7 @@ export default function SchedulesPage() {
       audience: 'COMPANY',
       sectorId: '',
     });
+    setUseCustomColor(false);
     setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
     setModalOpen(true);
@@ -294,11 +322,13 @@ export default function SchedulesPage() {
       fileUrl: schedule.fileUrl,
       fileName: schedule.fileName,
       fileSize: schedule.fileSize,
+      color: schedule.color || '',
       imageUrl: schedule.imageUrl || '',
       imagePosition: schedule.imagePosition || '50% 50%',
       imageScale: schedule.imageScale || 1,
       audience: getAudience(schedule),
     });
+    setUseCustomColor(Boolean(schedule.color));
     setFormCompanyId(schedule.companyId || '');
     setFormError(null);
     setModalOpen(true);
@@ -388,6 +418,12 @@ export default function SchedulesPage() {
         return;
       }
 
+      const resolvedColor = useCustomColor
+        ? formData.color || '#3b82f6'
+        : editing
+          ? null
+          : undefined;
+
       const dataToSend = {
         companyId: formResolvedCompanyId,
         categoryId: formData.categoryId || undefined,
@@ -398,6 +434,7 @@ export default function SchedulesPage() {
         fileUrl: formData.fileUrl,
         fileName: formData.fileName,
         fileSize: formData.fileSize,
+        color: resolvedColor,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -468,12 +505,49 @@ export default function SchedulesPage() {
     }));
   };
 
+  const previewCategory = formData.categoryId
+    ? formCategories.find((category) => category.id === formData.categoryId) ||
+      categories.find((category) => category.id === formData.categoryId)
+    : undefined;
+  const previewTitle = formData.title.trim() || 'Nome do documento';
+  const previewAccentColor =
+    (useCustomColor ? formData.color : '') || previewCategory?.color || '';
+  const previewCategoryStyle = previewCategory?.color
+    ? {
+        backgroundColor: previewCategory.color,
+        borderColor: previewCategory.color,
+        color: isLight(previewCategory.color)
+          ? 'var(--foreground)'
+          : 'var(--primary-foreground)',
+      }
+    : undefined;
+  const accentSoft = previewAccentColor
+    ? toRgba(previewAccentColor, 0.08)
+    : undefined;
+  const accentStrong = previewAccentColor
+    ? toRgba(previewAccentColor, 0.22)
+    : undefined;
+  const previewPanelStyle =
+    accentSoft && accentStrong
+      ? {
+          backgroundImage: `linear-gradient(180deg, ${accentSoft} 0%, ${accentStrong} 100%)`,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+        }
+      : {
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+        };
+  const previewImageUrl = formData.imageUrl
+    ? formData.imageUrl.startsWith('http')
+      ? formData.imageUrl
+      : `${serverURL}${formData.imageUrl}`
+    : '';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0 space-y-2 xl:flex-1">
           <h1 className="font-display text-3xl text-foreground">
-            Agendas e Documentos
+            Documentos
           </h1>
           <p className="text-sm text-muted-foreground">
             Gerencie os arquivos publicados no portal.
@@ -679,6 +753,7 @@ export default function SchedulesPage() {
         title={editing ? 'Editar documento' : 'Novo documento'}
         description="Adicione arquivos para consulta no portal."
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-5xl"
         footer={
           <>
             {editing && (
@@ -719,7 +794,8 @@ export default function SchedulesPage() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
           {isSuperAdmin && (
             <AdminField label="Empresa" htmlFor="schedule-company">
               <select
@@ -798,20 +874,6 @@ export default function SchedulesPage() {
             )}
             {formData.imageUrl && (
               <div className="mt-3 space-y-3">
-                <div className="overflow-hidden rounded-lg border border-border/70">
-                  <div className="relative h-32 w-full overflow-hidden bg-secondary/60">
-                    <img
-                      src={`${serverURL}${formData.imageUrl}`}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: formData.imagePosition,
-                        transform: `scale(${formData.imageScale})`,
-                      }}
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2 rounded-lg border border-border/70 bg-card/50 p-3">
                   <p className="text-xs font-medium text-foreground">
                     Ajustar enquadramento
@@ -903,6 +965,43 @@ export default function SchedulesPage() {
               </div>
             )}
           </AdminField>
+          <AdminField label="Cor do card" htmlFor="schedule-color" hint="Opcional">
+            <div className="flex flex-wrap items-center gap-3">
+              <label
+                htmlFor="schedule-use-color"
+                className="flex items-center gap-2 text-xs text-muted-foreground"
+              >
+                <input
+                  id="schedule-use-color"
+                  type="checkbox"
+                  checked={useCustomColor}
+                  onChange={(event) => {
+                    const nextValue = event.target.checked;
+                    setUseCustomColor(nextValue);
+                    setFormData((prev) => ({
+                      ...prev,
+                      color: nextValue ? prev.color || '#3b82f6' : '',
+                    }));
+                  }}
+                  className="rounded border-border/70"
+                />
+                Usar cor personalizada
+              </label>
+              <input
+                id="schedule-color"
+                type="color"
+                className="h-11 w-16 rounded-lg border border-border/70 bg-white/80 disabled:cursor-not-allowed"
+                value={useCustomColor ? formData.color || '#3b82f6' : '#e2e8f0'}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    color: event.target.value,
+                  }))
+                }
+                disabled={!useCustomColor}
+              />
+            </div>
+          </AdminField>
           <div className="grid gap-4 md:grid-cols-2">
             <AdminField label="Categoria" htmlFor="schedule-category">
               <select
@@ -973,6 +1072,63 @@ export default function SchedulesPage() {
               </select>
             )}
           </AdminField>
+          </div>
+
+          <div className="space-y-4 motion-fade-up">
+            <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Previa do card
+              </p>
+              <div className="mt-3 flex justify-center">
+                <div className="w-full max-w-[360px]">
+                  <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)]">
+                    <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+                      {previewImageUrl ? (
+                        <img
+                          src={previewImageUrl}
+                          alt="Preview do card"
+                          className="h-full w-full object-cover"
+                          style={{
+                            objectPosition: formData.imagePosition,
+                            transform: `scale(${formData.imageScale})`,
+                          }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+                      )}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
+                    </div>
+                    <div
+                      className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
+                      style={previewPanelStyle}
+                    >
+                      <div className="space-y-1">
+                        <h3 className="text-base font-semibold text-foreground">
+                          {previewTitle}
+                        </h3>
+                      </div>
+                      <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        {previewCategory?.name && (
+                          <span
+                            className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
+                            style={previewCategoryStyle}
+                          >
+                            {previewCategory.name}
+                          </span>
+                        )}
+                        {formData.audience !== 'PUBLIC' && (
+                          <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
+                            Restrito
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         {formError && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">

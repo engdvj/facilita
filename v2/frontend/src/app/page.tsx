@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import api, { serverURL } from '@/lib/api';
 import AppShell from '@/components/app-shell';
 import {
   Category,
   ContentAudience,
   Link as LinkType,
+  Note,
   UploadedSchedule,
 } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
@@ -14,9 +15,10 @@ import { useAuthStore } from '@/stores/auth-store';
 type CategoryOption = Category;
 type ContentItem = {
   id: string;
-  type: 'link' | 'document';
+  type: 'link' | 'document' | 'note';
   title: string;
   description?: string | null;
+  content?: string | null;
   categoryId?: string | null;
   category?: CategoryOption | null;
   audience: ContentAudience;
@@ -38,11 +40,12 @@ export default function Home() {
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [links, setLinks] = useState<LinkType[]>([]);
   const [documents, setDocuments] = useState<UploadedSchedule[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [filterType, setFilterType] = useState<'ALL' | 'LINK' | 'DOCUMENT'>(
-    'ALL',
-  );
+  const [filterType, setFilterType] = useState<
+    'ALL' | 'LINK' | 'DOCUMENT' | 'NOTE'
+  >('ALL');
   const [filterVisibility, setFilterVisibility] = useState<
     'ALL' | 'PUBLIC' | 'RESTRICTED'
   >('ALL');
@@ -50,6 +53,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const getAudience = (link: LinkType): ContentAudience => {
     if (link.isPublic) return 'PUBLIC';
@@ -65,10 +70,18 @@ export default function Home() {
     return 'COMPANY';
   };
 
-  const matchesTypeFilter = (type: 'link' | 'document') => {
+  const getNoteAudience = (note: Note): ContentAudience => {
+    if (note.isPublic) return 'PUBLIC';
+    if (note.audience) return note.audience;
+    if (note.sectorId) return 'SECTOR';
+    return 'COMPANY';
+  };
+
+  const matchesTypeFilter = (type: 'link' | 'document' | 'note') => {
     if (filterType === 'ALL') return true;
     if (filterType === 'LINK') return type === 'link';
-    return type === 'document';
+    if (filterType === 'DOCUMENT') return type === 'document';
+    return type === 'note';
   };
 
   const matchesVisibilityFilter = (audience: ContentAudience) => {
@@ -141,20 +154,25 @@ export default function Home() {
               queryString ? `/schedules?${queryString}` : '/schedules',
             )
           : Promise.resolve({ data: [] });
-        const [linksResponse, documentsResponse] = await Promise.all([
+        const notesRequest = isLoggedIn
+          ? api.get(queryString ? `/notes?${queryString}` : '/notes')
+          : Promise.resolve({ data: [] });
+        const [linksResponse, documentsResponse, notesResponse] = await Promise.all([
           linksRequest,
           documentsRequest,
+          notesRequest,
         ]);
         if (!active) return;
         setLinks(linksResponse.data);
         setDocuments(documentsResponse.data);
+        setNotes(notesResponse.data);
       } catch (err: any) {
         if (!active) return;
         const status = err?.response?.status;
         if (status === 401 || status === 403) {
           setError('Sessao expirada. Faca login novamente.');
         } else {
-          setError('Nao foi possivel carregar os links e documentos.');
+          setError('Nao foi possivel carregar os links, documentos e notas.');
         }
       } finally {
         if (active) setLoading(false);
@@ -231,6 +249,38 @@ export default function Home() {
     return documents.filter(canView);
   }, [documents, user]);
 
+  const visibleNotes = useMemo(() => {
+    const canView = (note: Note) => {
+      const audience = getNoteAudience(note);
+      if (audience === 'PUBLIC') return true;
+      if (!user) return false;
+      if (user.role === 'SUPERADMIN') {
+        return true;
+      }
+      if (audience === 'SUPERADMIN') return false;
+      if (audience === 'ADMIN') {
+        return user.role === 'ADMIN';
+      }
+      if (audience === 'PRIVATE') {
+        return note.userId === user.id;
+      }
+      if (audience === 'SECTOR') {
+        if (user.role === 'ADMIN') return true;
+        return Boolean(user.sectorId) && note.sectorId === user.sectorId;
+      }
+      if (audience === 'COMPANY') {
+        return (
+          user.role === 'ADMIN' &&
+          Boolean(user.companyId) &&
+          note.companyId === user.companyId
+        );
+      }
+      return false;
+    };
+
+    return notes.filter(canView);
+  }, [notes, user]);
+
   const categories = useMemo(() => {
     const map: Record<string, CategoryOption> = {};
     visibleLinks.forEach((link) => {
@@ -255,12 +305,24 @@ export default function Home() {
         map[document.category.id] = document.category;
       }
     });
+    visibleNotes.forEach((note) => {
+      if (
+        !matchesTypeFilter('note') ||
+        !matchesVisibilityFilter(getNoteAudience(note))
+      ) {
+        return;
+      }
+      if (note.category) {
+        map[note.category.id] = note.category;
+      }
+    });
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
   }, [
     filterType,
     filterVisibility,
     visibleDocuments,
     visibleLinks,
+    visibleNotes,
   ]);
 
   const visibleCategories = useMemo(() => {
@@ -359,8 +421,45 @@ export default function Home() {
         imageUrl: document.imageUrl || null,
         imagePosition: document.imagePosition,
         imageScale: document.imageScale,
-        accentColor: category?.color || null,
+        accentColor: document.color || category?.color || null,
         favoritesCount: document._count?.favorites ?? 0,
+      });
+    });
+
+    visibleNotes.forEach((note) => {
+      const audience = getNoteAudience(note);
+      if (
+        !matchesTypeFilter('note') ||
+        !matchesVisibilityFilter(audience)
+      ) {
+        return;
+      }
+      const category = note.categoryId
+        ? categoryMap[note.categoryId] ?? note.category
+        : note.category;
+      if (!canUseCategory(category)) return;
+      if (activeCategory !== 'all' && note.categoryId !== activeCategory) {
+        return;
+      }
+      if (term) {
+        const haystack = `${note.title} ${note.content} ${
+          category?.name ?? ''
+        }`.toLowerCase();
+        if (!haystack.includes(term)) return;
+      }
+      items.push({
+        id: note.id,
+        type: 'note',
+        title: note.title,
+        content: note.content,
+        categoryId: note.categoryId,
+        category,
+        audience,
+        imageUrl: note.imageUrl || null,
+        imagePosition: note.imagePosition,
+        imageScale: note.imageScale,
+        accentColor: note.color || category?.color || null,
+        favoritesCount: 0,
       });
     });
 
@@ -374,6 +473,7 @@ export default function Home() {
     search,
     visibleDocuments,
     visibleLinks,
+    visibleNotes,
   ]);
 
   const categoryCounts = useMemo(() => {
@@ -398,8 +498,18 @@ export default function Home() {
       if (!document.categoryId) return;
       counts[document.categoryId] = (counts[document.categoryId] || 0) + 1;
     });
+    visibleNotes.forEach((note) => {
+      if (
+        !matchesTypeFilter('note') ||
+        !matchesVisibilityFilter(getNoteAudience(note))
+      ) {
+        return;
+      }
+      if (!note.categoryId) return;
+      counts[note.categoryId] = (counts[note.categoryId] || 0) + 1;
+    });
     return counts;
-  }, [filterType, filterVisibility, visibleDocuments, visibleLinks]);
+  }, [filterType, filterVisibility, visibleDocuments, visibleLinks, visibleNotes]);
 
   const favoriteItems = useMemo(() => {
     return filteredItems
@@ -443,6 +553,19 @@ export default function Home() {
       if (!canUseCategory(category)) return;
       count += 1;
     });
+    visibleNotes.forEach((note) => {
+      if (
+        !matchesTypeFilter('note') ||
+        !matchesVisibilityFilter(getNoteAudience(note))
+      ) {
+        return;
+      }
+      const category = note.categoryId
+        ? categoryMap[note.categoryId] ?? note.category
+        : note.category;
+      if (!canUseCategory(category)) return;
+      count += 1;
+    });
     return count;
   }, [
     categoryMap,
@@ -451,10 +574,13 @@ export default function Home() {
     isAdminUser,
     visibleDocuments,
     visibleLinks,
+    visibleNotes,
   ]);
 
-  const renderItemCard = (item: ContentItem) => {
+  const renderItemCard = (item: ContentItem, index?: number) => {
     const categoryColor = item.category?.color;
+    const motionStyle =
+      typeof index === 'number' ? staggerStyle(index) : undefined;
     const categoryTagStyle = categoryColor
       ? {
           backgroundColor: categoryColor,
@@ -465,33 +591,34 @@ export default function Home() {
         }
       : undefined;
     const accentSoft = item.accentColor
-      ? toRgba(item.accentColor, 0.12)
+      ? toRgba(item.accentColor, 0.08)
       : undefined;
     const accentStrong = item.accentColor
-      ? toRgba(item.accentColor, 0.28)
+      ? toRgba(item.accentColor, 0.22)
       : undefined;
     const panelStyle =
       accentSoft && accentStrong
         ? {
             backgroundImage: `linear-gradient(180deg, ${accentSoft} 0%, ${accentStrong} 100%)`,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
           }
-        : undefined;
+        : {
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+          };
 
-    if (item.type === 'link') {
+    if (item.type === 'note') {
       const imageUrl = item.imageUrl
         ? item.imageUrl.startsWith('http')
           ? item.imageUrl
           : `${serverURL}${item.imageUrl}`
         : null;
       return (
-        <a
+        <article
           key={`${item.type}-${item.id}`}
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+          className="motion-item group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_26px_52px_rgba(16,44,50,0.2)]"
+          style={motionStyle}
         >
-          <div className="relative h-48 w-full overflow-hidden bg-secondary/60">
+          <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -507,11 +634,79 @@ export default function Home() {
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
             )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
-            <div className="pointer-events-none absolute inset-0 ring-1 ring-white/20" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
           </div>
           <div
-            className="flex flex-1 flex-col gap-2 px-4 py-3"
+            className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
+            style={panelStyle}
+          >
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-foreground">
+                {item.title}
+              </h3>
+              {item.content && (
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {item.content}
+                </p>
+              )}
+            </div>
+            <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {item.category?.name && (
+                <span
+                  className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
+                  style={categoryTagStyle}
+                >
+                  {item.category.name}
+                </span>
+              )}
+              {item.audience !== 'PUBLIC' && (
+                <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
+                  Restrito
+                </span>
+              )}
+            </div>
+          </div>
+        </article>
+      );
+    }
+
+    if (item.type === 'link') {
+      const imageUrl = item.imageUrl
+        ? item.imageUrl.startsWith('http')
+          ? item.imageUrl
+          : `${serverURL}${item.imageUrl}`
+        : null;
+      return (
+        <a
+          key={`${item.type}-${item.id}`}
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="motion-item group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_26px_52px_rgba(16,44,50,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+          style={motionStyle}
+        >
+          <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={item.title}
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+                style={{
+                  objectPosition: item.imagePosition || '50% 50%',
+                  transform: `scale(${item.imageScale || 1})`,
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
+          </div>
+          <div
+            className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
             style={panelStyle}
           >
             <div className="space-y-1">
@@ -560,9 +755,10 @@ export default function Home() {
         href={fileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+        className="motion-item group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_26px_52px_rgba(16,44,50,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+        style={motionStyle}
       >
-        <div className="relative h-48 w-full overflow-hidden bg-secondary/60">
+        <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -578,11 +774,11 @@ export default function Home() {
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
           )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
-          <div className="pointer-events-none absolute inset-0 ring-1 ring-white/20" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
         </div>
         <div
-          className="flex flex-1 flex-col gap-2 px-4 py-3"
+          className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
           style={panelStyle}
         >
           <div className="space-y-1">
@@ -612,16 +808,19 @@ export default function Home() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div
+        className="motion-item flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        style={staggerStyle(1)}
+      >
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Inicio
           </p>
           <h1 className="font-display text-3xl text-foreground">
-            Links e documentos do portal
+            Links, documentos e notas do portal
           </h1>
           <p className="text-sm text-muted-foreground">
-            Encontre rapidamente documentos, sistemas e atalhos da equipe.
+            Encontre rapidamente documentos, sistemas, atalhos e notas da equipe.
           </p>
         </div>
 
@@ -629,7 +828,7 @@ export default function Home() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar link ou documento"
+            placeholder="Buscar link, documento ou nota"
             className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
           />
           <div className="grid grid-cols-2 gap-2">
@@ -640,7 +839,9 @@ export default function Home() {
               <select
                 value={filterType}
                 onChange={(event) => {
-                  setFilterType(event.target.value as 'ALL' | 'LINK' | 'DOCUMENT');
+                  setFilterType(
+                    event.target.value as 'ALL' | 'LINK' | 'DOCUMENT' | 'NOTE',
+                  );
                   setActiveCategory('all');
                 }}
                 className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
@@ -648,6 +849,7 @@ export default function Home() {
                 <option value="ALL">Todos</option>
                 <option value="LINK">Links</option>
                 <option value="DOCUMENT">Documentos</option>
+                <option value="NOTE">Notas</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -674,16 +876,16 @@ export default function Home() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
+        <div className="motion-fade rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="motion-item flex flex-wrap gap-2" style={staggerStyle(2)}>
         <button
           type="button"
           onClick={() => setActiveCategory('all')}
-          className={`rounded-full border px-4 py-1.5 text-xs uppercase tracking-[0.22em] transition ${
+          className={`motion-press rounded-full border px-4 py-1.5 text-xs uppercase tracking-[0.22em] transition ${
             activeCategory === 'all'
               ? 'border-transparent bg-foreground text-background'
               : 'border-border/70 bg-card/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground'
@@ -707,7 +909,7 @@ export default function Home() {
               key={category.id}
               type="button"
               onClick={() => setActiveCategory(category.id)}
-              className={`rounded-full border px-4 py-1.5 text-xs uppercase tracking-[0.22em] transition ${
+              className={`motion-press rounded-full border px-4 py-1.5 text-xs uppercase tracking-[0.22em] transition ${
                 active
                   ? 'border-transparent bg-foreground text-background'
                   : 'border-border/70 bg-card/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground'
@@ -721,7 +923,7 @@ export default function Home() {
       </div>
 
       {favoriteItems.length > 0 && (
-        <div className="space-y-3">
+        <div className="motion-item space-y-3" style={staggerStyle(3)}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Favoritos
@@ -731,22 +933,26 @@ export default function Home() {
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {favoriteItems.map((item) => renderItemCard(item))}
+            {favoriteItems.map((item, index) =>
+              renderItemCard(item, index + 1),
+            )}
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
+        <div className="motion-fade rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
           Carregando conteudo...
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
+        <div className="motion-fade rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
           Nenhum item encontrado.
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredItems.map((item) => renderItemCard(item))}
+        <div className="motion-item grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredItems.map((item, index) =>
+            renderItemCard(item, index + 1),
+          )}
         </div>
       )}
     </AppShell>

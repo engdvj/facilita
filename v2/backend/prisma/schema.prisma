@@ -46,6 +46,7 @@ model Company {
   categories    Category[]
   links         Link[]
   schedules     UploadedSchedule[]
+  notes         Note[]
   notifications Notification[]
 }
 
@@ -78,6 +79,7 @@ model Sector {
   users     User[]
   links     Link[]
   schedules UploadedSchedule[]
+  notes     Note[]
 }
 
 model User {
@@ -102,6 +104,7 @@ model User {
   refreshTokens   RefreshToken[]
   linksCreated    Link[]          @relation("LinkCreator")
   schedulesCreated UploadedSchedule[] @relation("ScheduleCreator")
+  notesCreated    Note[]          @relation("NoteCreator")
   favorites       Favorite[]
   linkVersions    LinkVersion[]   @relation("LinkVersionChanger")
   notifications   Notification[]  @relation("NotificationRecipient")
@@ -162,6 +165,7 @@ model Category {
   company   Company            @relation(fields: [companyId], references: [id])
   links     Link[]
   schedules UploadedSchedule[]
+  notes     Note[]
 
   @@index([companyId])
 }
@@ -228,6 +232,36 @@ model UploadedSchedule {
   category  Category? @relation(fields: [categoryId], references: [id])
   favorites Favorite[]
   tags      TagOnSchedule[]
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([sectorId])
+  @@index([categoryId])
+}
+
+model Note {
+  id            String          @id @default(uuid()) @db.Uuid
+  companyId     String          @db.Uuid
+  userId        String?         @db.Uuid
+  sectorId      String?         @db.Uuid
+  categoryId    String?         @db.Uuid
+  title         String
+  content       String
+  color         String?
+  imageUrl      String?
+  imagePosition String?
+  imageScale    Float?
+  audience      ContentAudience @default(COMPANY)
+  isPublic      Boolean         @default(true)
+  status        EntityStatus    @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  user     User?     @relation("NoteCreator", fields: [userId], references: [id])
+  sector   Sector?   @relation(fields: [sectorId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
 
   @@index([companyId])
   @@index([userId])

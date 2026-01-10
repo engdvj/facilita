@@ -61,7 +61,7 @@ export default function NotificationStack() {
             <button
               type="button"
               onClick={() => remove(toast.id)}
-              className="rounded-full border border-border/70 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:text-foreground"
+              className="motion-press rounded-full border border-border/70 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:text-foreground"
               aria-label="Fechar notificacao"
             >
               X

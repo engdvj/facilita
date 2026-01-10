@@ -78,6 +78,7 @@ export interface Category {
   _count?: {
     links: number;
     schedules: number;
+    notes?: number;
   };
 }
 
@@ -130,6 +131,7 @@ export interface UploadedSchedule {
   fileUrl: string;
   fileName: string;
   fileSize: number;
+  color?: string;
   imageUrl?: string;
   imagePosition?: string;
   imageScale?: number;
@@ -148,6 +150,29 @@ export interface UploadedSchedule {
   _count?: {
     favorites: number;
   };
+}
+
+export interface Note {
+  id: string;
+  companyId: string;
+  userId?: string;
+  sectorId?: string;
+  categoryId?: string;
+  title: string;
+  content: string;
+  color?: string;
+  imageUrl?: string;
+  imagePosition?: string;
+  imageScale?: number;
+  isPublic: boolean;
+  audience?: ContentAudience;
+  status: EntityStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  category?: Category;
+  sector?: Sector;
+  user?: Pick<User, 'id' | 'name' | 'email'>;
 }
 
 export interface LinkVersion {

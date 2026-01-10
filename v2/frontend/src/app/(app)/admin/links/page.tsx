@@ -126,6 +126,31 @@ export default function LinksPage() {
     return 'Superadmins';
   };
 
+  const isLight = (hex?: string) => {
+    if (!hex || !hex.startsWith('#') || hex.length < 7) return false;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
+  };
+
+  const toRgba = (hex: string, alpha: number) => {
+    const normalized = hex.replace('#', '');
+    const value =
+      normalized.length === 3
+        ? normalized
+            .split('')
+            .map((char) => `${char}${char}`)
+            .join('')
+        : normalized;
+    if (value.length !== 6) return undefined;
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    if ([r, g, b].some((channel) => Number.isNaN(channel))) return undefined;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
   const canViewLink = (link: Link) => {
     const audience = getAudience(link);
     if (audience === 'PUBLIC') return true;
@@ -468,6 +493,43 @@ export default function LinksPage() {
     }));
   };
 
+  const previewCategory = formData.categoryId
+    ? formCategories.find((category) => category.id === formData.categoryId) ||
+      categories.find((category) => category.id === formData.categoryId)
+    : undefined;
+  const previewTitle = formData.title.trim() || 'Nome do link';
+  const previewDescription = formData.description.trim();
+  const previewAccentColor = formData.color || previewCategory?.color || '';
+  const previewCategoryStyle = previewCategory?.color
+    ? {
+        backgroundColor: previewCategory.color,
+        borderColor: previewCategory.color,
+        color: isLight(previewCategory.color)
+          ? 'var(--foreground)'
+          : 'var(--primary-foreground)',
+      }
+    : undefined;
+  const accentSoft = previewAccentColor
+    ? toRgba(previewAccentColor, 0.08)
+    : undefined;
+  const accentStrong = previewAccentColor
+    ? toRgba(previewAccentColor, 0.22)
+    : undefined;
+  const previewPanelStyle =
+    accentSoft && accentStrong
+      ? {
+          backgroundImage: `linear-gradient(180deg, ${accentSoft} 0%, ${accentStrong} 100%)`,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+        }
+      : {
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+        };
+  const previewImageUrl = formData.imageUrl
+    ? formData.imageUrl.startsWith('http')
+      ? formData.imageUrl
+      : `${serverURL}${formData.imageUrl}`
+    : '';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -689,6 +751,7 @@ export default function LinksPage() {
         title={editing ? 'Editar link' : 'Novo link'}
         description="Atualize os principais dados do link."
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-5xl"
         footer={
           <>
             {editing && (
@@ -729,7 +792,8 @@ export default function LinksPage() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
           {isSuperAdmin && (
             <AdminField label="Empresa" htmlFor="link-company">
               <select
@@ -867,20 +931,6 @@ export default function LinksPage() {
             )}
             {formData.imageUrl && (
               <div className="mt-3 space-y-3">
-                <div className="overflow-hidden rounded-lg border border-border/70">
-                  <div className="relative h-32 w-full overflow-hidden bg-secondary/60">
-                    <img
-                      src={`${serverURL}${formData.imageUrl}`}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: formData.imagePosition,
-                        transform: `scale(${formData.imageScale})`,
-                      }}
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2 rounded-lg border border-border/70 bg-card/50 p-3">
                   <p className="text-xs font-medium text-foreground">
                     Ajustar enquadramento
@@ -1000,6 +1050,68 @@ export default function LinksPage() {
                 onChange={(event) => updateOrder(event.target.value)}
               />
             </AdminField>
+          </div>
+          </div>
+
+          <div className="space-y-4 motion-fade-up">
+            <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Previa do card
+              </p>
+              <div className="mt-3 flex justify-center">
+                <div className="w-full max-w-[360px]">
+                  <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)]">
+                    <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+                      {previewImageUrl ? (
+                        <img
+                          src={previewImageUrl}
+                          alt="Preview do card"
+                          className="h-full w-full object-cover"
+                          style={{
+                            objectPosition: formData.imagePosition,
+                            transform: `scale(${formData.imageScale})`,
+                          }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+                      )}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
+                    </div>
+                    <div
+                      className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
+                      style={previewPanelStyle}
+                    >
+                      <div className="space-y-1">
+                        <h3 className="text-base font-semibold text-foreground">
+                          {previewTitle}
+                        </h3>
+                        {previewDescription && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {previewDescription}
+                          </p>
+                        )}
+                      </div>
+                      <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        {previewCategory?.name && (
+                          <span
+                            className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
+                            style={previewCategoryStyle}
+                          >
+                            {previewCategory.name}
+                          </span>
+                        )}
+                        {formData.audience !== 'PUBLIC' && (
+                          <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
+                            Restrito
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         {formError && (

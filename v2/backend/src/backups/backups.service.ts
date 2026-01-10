@@ -12,6 +12,7 @@ const restoreOrder: BackupEntity[] = [
   'categories',
   'links',
   'uploadedSchedules',
+  'notes',
   'tags',
   'tagOnLink',
   'tagOnSchedule',
@@ -49,6 +50,9 @@ export class BackupsService {
           break;
         case 'uploadedSchedules':
           data.uploadedSchedules = await this.prisma.uploadedSchedule.findMany();
+          break;
+        case 'notes':
+          data.notes = await this.prisma.note.findMany();
           break;
         case 'tags':
           data.tags = await this.prisma.tag.findMany();
@@ -146,6 +150,12 @@ export class BackupsService {
             results.uploadedSchedules = await this.upsertById(
               tx.uploadedSchedule,
               items as Prisma.UploadedScheduleUncheckedCreateInput[],
+            );
+            break;
+          case 'notes':
+            results.notes = await this.upsertById(
+              tx.note,
+              items as Prisma.NoteUncheckedCreateInput[],
             );
             break;
           case 'tags':

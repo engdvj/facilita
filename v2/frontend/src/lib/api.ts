@@ -42,7 +42,8 @@ const resolveEntityLabel = (url?: string) => {
   if (normalized.includes('/permissions')) return 'Permissoes';
   if (normalized.includes('/links')) return 'Link';
   if (normalized.includes('/categories')) return 'Categoria';
-  if (normalized.includes('/schedules')) return 'Agenda';
+  if (normalized.includes('/schedules')) return 'Documento';
+  if (normalized.includes('/notes')) return 'Nota';
   if (normalized.includes('/users')) return 'Usuario';
   if (normalized.includes('/sectors')) return 'Setor';
   if (normalized.includes('/units')) return 'Unidade';
