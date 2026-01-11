@@ -26,6 +26,7 @@ export default function AppNav() {
           label: 'Navegacao',
           items: [
             { href: '/', label: 'Inicio' },
+            { href: '/favoritos', label: 'Favoritos' },
             { href: '/admin/links', label: 'Meus links' },
             { href: '/admin/notes', label: 'Notas' },
           ],
@@ -39,6 +40,7 @@ export default function AppNav() {
           label: 'Portal',
           items: [
             { href: '/', label: 'Inicio' },
+            { href: '/favoritos', label: 'Favoritos' },
             { href: '/admin/categories', label: 'Categorias' },
             { href: '/admin/links', label: 'Links' },
             { href: '/admin/schedules', label: 'Documentos' },
@@ -51,7 +53,10 @@ export default function AppNav() {
     return [
       {
         label: 'Navegacao',
-        items: [{ href: '/', label: 'Inicio' }],
+        items: [
+          { href: '/', label: 'Inicio' },
+          { href: '/favoritos', label: 'Favoritos' },
+        ],
       },
       {
         label: 'Portal',

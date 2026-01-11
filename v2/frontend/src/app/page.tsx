@@ -14,7 +14,6 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 import { FavoriteButton } from '@/components/FavoriteButton';
-import { FavoritesSection } from '@/components/FavoritesSection';
 
 type CategoryOption = Category;
 type ContentItem = {
@@ -895,7 +894,7 @@ export default function Home() {
 
       {user && (
         <div className="motion-item" style={staggerStyle(3)}>
-          <FavoritesSection />
+  
         </div>
       )}
 
