@@ -3,27 +3,44 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
+import * as express from 'express';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import { AppModule } from './app.module';
+import { SystemConfigService } from './system-config/system-config.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+  const systemConfigService = app.get(SystemConfigService);
+
+  await systemConfigService.syncStore();
 
   // Create upload directories if they don't exist
-  const uploadDirs = ['uploads', 'uploads/images', 'uploads/documents'];
+  const uploadRoot = systemConfigService.resolvePath(
+    'upload_directory',
+    'uploads',
+  );
+  const uploadDirs = [
+    uploadRoot,
+    join(uploadRoot, 'images'),
+    join(uploadRoot, 'documents'),
+  ];
   for (const dir of uploadDirs) {
     try {
-      await mkdir(join(process.cwd(), dir), { recursive: true });
+      await mkdir(dir, { recursive: true });
     } catch (error) {
       // Directory already exists
     }
   }
 
-  // Serve static files
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
+  // Serve static files (allowing dynamic upload directory changes)
+  app.use('/uploads', (req: any, res: any, next: any) => {
+    const root = systemConfigService.resolvePath(
+      'upload_directory',
+      'uploads',
+    );
+    return express.static(root)(req, res, next);
   });
 
   app.setGlobalPrefix('api');

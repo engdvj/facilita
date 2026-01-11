@@ -39,9 +39,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -79,17 +79,6 @@ export declare class LinksController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            linkId: string;
-            tagId: string;
-        })[];
     } & {
         url: string;
         id: string;
@@ -98,9 +87,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -138,17 +127,6 @@ export declare class LinksController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            linkId: string;
-            tagId: string;
-        })[];
     } & {
         url: string;
         id: string;
@@ -157,9 +135,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -197,17 +175,6 @@ export declare class LinksController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            linkId: string;
-            tagId: string;
-        })[];
     } & {
         url: string;
         id: string;
@@ -216,9 +183,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -256,17 +223,6 @@ export declare class LinksController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            linkId: string;
-            tagId: string;
-        })[];
         versions: ({
             changedByUser: {
                 id: string;
@@ -291,9 +247,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -331,17 +287,6 @@ export declare class LinksController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            linkId: string;
-            tagId: string;
-        })[];
     } & {
         url: string;
         id: string;
@@ -350,9 +295,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -371,9 +316,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;
@@ -392,9 +337,9 @@ export declare class LinksController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        description: string | null;
         userId: string | null;
         audience: import(".prisma/client").$Enums.ContentAudience;
-        description: string | null;
         color: string | null;
         categoryId: string | null;
         title: string;

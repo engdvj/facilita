@@ -258,6 +258,7 @@ model Note {
   user     User?     @relation("NoteCreator", fields: [userId], references: [id])
   sector   Sector?   @relation(fields: [sectorId], references: [id])
   category Category? @relation(fields: [categoryId], references: [id])
+  favorites Favorite[]
 
   @@index([companyId])
   @@index([userId])
@@ -285,13 +286,15 @@ model Favorite {
   entityType EntityType
   linkId     String?     @db.Uuid
   scheduleId String?     @db.Uuid
+  noteId     String?     @db.Uuid
   createdAt  DateTime    @default(now())
 
   user     User              @relation(fields: [userId], references: [id])
   link     Link?             @relation(fields: [linkId], references: [id])
   schedule UploadedSchedule? @relation(fields: [scheduleId], references: [id])
+  note     Note?             @relation(fields: [noteId], references: [id])
 
-  @@unique([userId, entityType, linkId, scheduleId])
+  @@unique([userId, entityType, linkId, scheduleId, noteId])
   @@index([userId])
 }
 

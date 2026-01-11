@@ -2,57 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
-import AdminField from '@/components/admin/field';
+import BackupSelectionPanel from '@/components/admin/backup-selection';
+import {
+  buildInitialSelection,
+  countSelectedOptions,
+  getSelectedEntities,
+} from '@/lib/backup';
 import { useAuthStore } from '@/stores/auth-store';
-
-type BackupEntity =
-  | 'companies'
-  | 'units'
-  | 'sectors'
-  | 'users'
-  | 'rolePermissions'
-  | 'categories'
-  | 'links'
-  | 'uploadedSchedules'
-  | 'notes'
-  | 'tags'
-  | 'tagOnLink'
-  | 'tagOnSchedule';
-
-const backupOptions: {
-  key: BackupEntity;
-  label: string;
-  hint: string;
-}[] = [
-  { key: 'companies', label: 'Empresas', hint: 'Cadastro de empresas.' },
-  { key: 'units', label: 'Unidades', hint: 'Unidades vinculadas as empresas.' },
-  { key: 'sectors', label: 'Setores', hint: 'Departamentos e areas.' },
-  { key: 'users', label: 'Usuarios', hint: 'Perfis e credenciais.' },
-  { key: 'rolePermissions', label: 'Permissoes', hint: 'Regras por role.' },
-  { key: 'categories', label: 'Categorias', hint: 'Categorias de links.' },
-  { key: 'links', label: 'Links', hint: 'Links e conteudo.' },
-  {
-    key: 'uploadedSchedules',
-    label: 'Documentos',
-    hint: 'Documentos enviados.',
-  },
-  {
-    key: 'notes',
-    label: 'Notas',
-    hint: 'Notas pessoais e compartilhadas.',
-  },
-  {
-    key: 'tags',
-    label: 'Tags',
-    hint: 'Inclui vinculos com links e documentos.',
-  },
-];
-
-const buildInitialSelection = () =>
-  backupOptions.reduce<Record<BackupEntity, boolean>>((acc, option) => {
-    acc[option.key] = true;
-    return acc;
-  }, {} as Record<BackupEntity, boolean>);
+import { notify } from '@/lib/notify';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 export default function BackupPage() {
   const user = useAuthStore((state) => state.user);
@@ -60,9 +18,8 @@ export default function BackupPage() {
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState(buildInitialSelection);
   const [exporting, setExporting] = useState(false);
-  const [restoring, setRestoring] = useState(false);
-  const [restoreFile, setRestoreFile] = useState<File | null>(null);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  useNotifyOnChange(error);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -73,7 +30,7 @@ export default function BackupPage() {
     }
 
     if (user.role !== 'SUPERADMIN') {
-      setError('Apenas superadmins podem acessar backup e restauracao.');
+      setError('Apenas superadmins podem acessar o backup.');
       return;
     }
 
@@ -81,33 +38,18 @@ export default function BackupPage() {
   }, [hasHydrated, user]);
 
   const selectedEntities = useMemo(
-    () => {
-      const base = backupOptions
-        .filter((option) => selection[option.key])
-        .map((option) => option.key);
-      if (selection.tags) {
-        base.push('tagOnLink', 'tagOnSchedule');
-      }
-      return Array.from(new Set(base));
-    },
+    () => getSelectedEntities(selection),
     [selection],
   );
-
-  const allSelected = selectedEntities.length === backupOptions.length;
-  const hasSelection = selectedEntities.length > 0;
-  const toggleAll = (value: boolean) => {
-    setSelection((current) => {
-      const next = { ...current };
-      backupOptions.forEach((option) => {
-        next[option.key] = value;
-      });
-      return next;
-    });
-  };
+  const selectedCount = useMemo(
+    () => countSelectedOptions(selection),
+    [selection],
+  );
+  const hasSelection = selectedCount > 0;
 
   const handleExport = async () => {
     if (!hasSelection) {
-      setError('Selecione pelo menos um item para exportar.');
+      notify.error('Selecione pelo menos um item para exportar.');
       return;
     }
 
@@ -118,7 +60,8 @@ export default function BackupPage() {
       const response = await api.post(
         '/backups/export',
         { entities: selectedEntities },
-        { responseType: 'blob' },
+        // @ts-expect-error - skipNotify is a custom property
+        { responseType: 'blob', skipNotify: true },
       );
       const blob = new Blob([response.data], { type: 'application/zip' });
       const url = URL.createObjectURL(blob);
@@ -130,56 +73,16 @@ export default function BackupPage() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
+      notify.success('Backup gerado com sucesso.');
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
         'Nao foi possivel gerar o backup.';
-      setError(typeof message === 'string' ? message : 'Erro ao gerar backup.');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0] || null;
-    setRestoreFile(file);
-    setRestoreError(null);
-  };
-
-  const handleRestore = async () => {
-    if (!restoreFile) {
-      setRestoreError('Selecione um arquivo valido para restaurar.');
-      return;
-    }
-
-    if (!hasSelection) {
-      setRestoreError('Selecione pelo menos um item para restaurar.');
-      return;
-    }
-
-    setRestoring(true);
-    setRestoreError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', restoreFile);
-      formData.append('entities', JSON.stringify(selectedEntities));
-      formData.append('mode', 'merge');
-      await api.post('/backups/restore', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setRestoreFile(null);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel restaurar o backup.';
-      setRestoreError(
-        typeof message === 'string' ? message : 'Erro ao restaurar backup.',
+      notify.error(
+        typeof message === 'string' ? message : 'Erro ao gerar backup.',
       );
     } finally {
-      setRestoring(false);
+      setExporting(false);
     }
   };
 
@@ -188,162 +91,54 @@ export default function BackupPage() {
       <div className="flex flex-col gap-2">
         <div className="min-w-0 space-y-1 xl:flex-1">
           <h1 className="font-display text-2xl leading-tight text-foreground">
-            Backup e restauracao
+            Backup
           </h1>
           <p className="text-sm text-muted-foreground">
-            Gere backups granulares e restaure apenas o que for necessario.
+            Gere backups granulares e mantenha os arquivos organizados.
           </p>
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-          {error}
-        </div>
-      )}
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <BackupSelectionPanel
+          title="Itens do backup"
+          subtitle="Marque apenas o que voce precisa."
+          selection={selection}
+          setSelection={setSelection}
+        />
 
-      <div className="grid gap-3 xl:grid-cols-[260px_1fr]">
         <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Itens do backup
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Marque apenas o que voce precisa.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-border/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground"
-                onClick={() => toggleAll(true)}
-                disabled={allSelected}
-              >
-                Selecionar tudo
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-border/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground"
-                onClick={() => toggleAll(false)}
-                disabled={!selectedEntities.length}
-              >
-                Limpar
-              </button>
-            </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Backup manual
+            </p>
+            <h2 className="text-lg font-semibold text-foreground">
+              Gere um arquivo compactado com dados e arquivos.
+            </h2>
           </div>
 
-          <div className="mt-2 grid gap-1.5">
-            {backupOptions.map((option) => (
-              <label
-                key={option.key}
-                className="flex items-start gap-2 rounded-md border border-border/70 bg-white/80 px-2.5 py-1.5 text-foreground"
-              >
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-border/70"
-                  checked={selection[option.key]}
-                  onChange={(event) =>
-                    setSelection((current) => ({
-                      ...current,
-                      [option.key]: event.target.checked,
-                    }))
-                  }
-                />
-                <span className="flex flex-col gap-0.5 leading-tight">
-                  <span className="text-sm font-semibold">
-                    {option.label}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {option.hint}
-                  </span>
+          <div className="mt-3 space-y-2">
+            <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
+              {hasSelection
+                ? 'Revise os itens selecionados antes de gerar o arquivo.'
+                : 'Selecione pelo menos um item para gerar o backup.'}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
+                  Itens: {selectedCount}
                 </span>
-              </label>
-            ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="w-full rounded-lg bg-primary px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] disabled:opacity-60"
+              onClick={handleExport}
+              disabled={!hasSelection || exporting || Boolean(error)}
+            >
+              {exporting ? 'Gerando...' : 'Gerar backup'}
+            </button>
           </div>
         </section>
-
-        <div className="space-y-3">
-          <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Backup
-              </p>
-              <h2 className="text-lg font-semibold text-foreground">
-                Gere um arquivo compactado com dados e arquivos.
-              </h2>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                {selectedEntities.length} itens
-              </span>
-              <button
-                type="button"
-                className="rounded-lg bg-primary px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] disabled:opacity-60"
-                onClick={handleExport}
-                disabled={!hasSelection || exporting || Boolean(error)}
-              >
-                {exporting ? 'Gerando...' : 'Gerar backup'}
-              </button>
-            </div>
-          </section>
-
-          <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Restauracao
-              </p>
-              <h2 className="text-lg font-semibold text-foreground">
-                Restaure os dados selecionados.
-              </h2>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              <AdminField label="Arquivo de backup" htmlFor="backup-file">
-                <input
-                  id="backup-file"
-                  type="file"
-                  accept="application/zip,.zip"
-                  className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground"
-                  onChange={handleFileChange}
-                  disabled={Boolean(error)}
-                />
-              </AdminField>
-
-              <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
-                {restoreFile
-                  ? `Arquivo selecionado: ${restoreFile.name}`
-                  : 'Selecione um arquivo ZIP gerado pelo sistema.'}
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                    Itens selecionados: {selectedEntities.length}
-                  </span>
-                </div>
-              </div>
-
-              {restoreError && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                  {restoreError}
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="w-full rounded-lg bg-destructive px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
-                onClick={handleRestore}
-                disabled={
-                  !restoreFile ||
-                  !hasSelection ||
-                  restoring ||
-                  Boolean(error)
-                }
-              >
-                {restoring ? 'Restaurando...' : 'Restaurar selecao'}
-              </button>
-            </div>
-          </section>
-        </div>
       </div>
     </div>
   );

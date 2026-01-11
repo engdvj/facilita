@@ -65,11 +65,6 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                         email: true,
                     },
                 },
-                tags: {
-                    include: {
-                        tag: true,
-                    },
-                },
             },
             orderBy: {
                 createdAt: 'desc',
@@ -89,11 +84,6 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                         id: true,
                         name: true,
                         email: true,
-                    },
-                },
-                tags: {
-                    include: {
-                        tag: true,
                     },
                 },
             },

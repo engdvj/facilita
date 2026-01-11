@@ -115,6 +115,14 @@ export default function NotesPage() {
     return 'Superadmins';
   };
 
+  const normalizeImagePosition = (position?: string) => {
+    if (!position) return '50% 50%';
+    const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
+    const withPercent = (value: string) =>
+      value.includes('%') ? value : `${value}%`;
+    return `${withPercent(x)} ${withPercent(y)}`;
+  };
+
   const canViewNote = (note: Note) => {
     const audience = getAudience(note);
     if (audience === 'PUBLIC') return true;
@@ -315,7 +323,7 @@ export default function NotesPage() {
       categoryId: note.categoryId || '',
       sectorId: note.sectorId || '',
       imageUrl: note.imageUrl || '',
-      imagePosition: note.imagePosition || '50% 50%',
+      imagePosition: normalizeImagePosition(note.imagePosition),
       imageScale: note.imageScale || 1,
       audience: getAudience(note),
     });
@@ -338,6 +346,7 @@ export default function NotesPage() {
       setImageUploading(true);
       const response = await api.post('/uploads/image', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       setFormData((prev) => ({
@@ -459,6 +468,8 @@ export default function NotesPage() {
       ? formData.imageUrl
       : `${serverURL}${formData.imageUrl}`
     : '';
+  const previewImagePosition = normalizeImagePosition(formData.imagePosition);
+  const [previewPosX, previewPosY] = previewImagePosition.split(' ');
 
   return (
     <div className="space-y-6">
@@ -623,8 +634,9 @@ export default function NotesPage() {
                         alt={note.title}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         style={{
-                          objectPosition: note.imagePosition || '50% 50%',
+                          objectPosition: normalizeImagePosition(note.imagePosition),
                           transform: `scale(${note.imageScale || 1})`,
+                          transformOrigin: normalizeImagePosition(note.imagePosition),
                         }}
                       />
                     </div>
@@ -902,16 +914,16 @@ export default function NotesPage() {
                           <label className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>Posicao Horizontal</span>
                             <span className="text-foreground">
-                              {formData.imagePosition.split(' ')[0]}
+                              {previewPosX}
                             </span>
                           </label>
                           <input
                             type="range"
                             min="0"
                             max="100"
-                            value={parseInt(formData.imagePosition.split(' ')[0])}
+                            value={parseInt(previewPosX)}
                             onChange={(event) => {
-                              const y = formData.imagePosition.split(' ')[1];
+                              const y = previewPosY;
                               setFormData((prev) => ({
                                 ...prev,
                                 imagePosition: `${event.target.value}% ${y}`,
@@ -925,16 +937,16 @@ export default function NotesPage() {
                           <label className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>Posicao Vertical</span>
                             <span className="text-foreground">
-                              {formData.imagePosition.split(' ')[1]}
+                              {previewPosY}
                             </span>
                           </label>
                           <input
                             type="range"
                             min="0"
                             max="100"
-                            value={parseInt(formData.imagePosition.split(' ')[1])}
+                            value={parseInt(previewPosY)}
                             onChange={(event) => {
-                              const x = formData.imagePosition.split(' ')[0];
+                              const x = previewPosX;
                               setFormData((prev) => ({
                                 ...prev,
                                 imagePosition: `${x} ${event.target.value}%`,
@@ -1001,8 +1013,9 @@ export default function NotesPage() {
                           alt="Preview do card"
                           className="h-full w-full object-cover"
                           style={{
-                            objectPosition: formData.imagePosition,
+                            objectPosition: previewImagePosition,
                             transform: `scale(${formData.imageScale})`,
+                            transformOrigin: previewImagePosition,
                           }}
                         />
                       ) : (

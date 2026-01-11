@@ -1,6 +1,7 @@
 import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createPrismaAdapter } from '../src/prisma/prisma-adapter';
+import { SYSTEM_CONFIG_DEFAULTS } from '../src/system-config/system-config.defaults';
 
 const prisma = new PrismaClient({ adapter: createPrismaAdapter() });
 const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
@@ -103,10 +104,26 @@ async function seedSuperAdmin() {
   });
 }
 
+async function seedSystemConfig() {
+  for (const entry of SYSTEM_CONFIG_DEFAULTS) {
+    await prisma.systemConfig.upsert({
+      where: { key: entry.key },
+      update: {
+        description: entry.description,
+        type: entry.type,
+        isEditable: entry.isEditable,
+        category: entry.category,
+      },
+      create: entry,
+    });
+  }
+}
+
 async function main() {
   await seedAdmCompany();
   await seedRolePermissions();
   await seedSuperAdmin();
+  await seedSystemConfig();
 }
 
 main()

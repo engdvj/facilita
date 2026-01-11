@@ -4,22 +4,32 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const core_1 = require("@nestjs/core");
 const cookieParser = require("cookie-parser");
+const express = require("express");
 const path_1 = require("path");
 const promises_1 = require("fs/promises");
 const app_module_1 = require("./app.module");
+const system_config_service_1 = require("./system-config/system-config.service");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const config = app.get(config_1.ConfigService);
-    const uploadDirs = ['uploads', 'uploads/images', 'uploads/documents'];
+    const systemConfigService = app.get(system_config_service_1.SystemConfigService);
+    await systemConfigService.syncStore();
+    const uploadRoot = systemConfigService.resolvePath('upload_directory', 'uploads');
+    const uploadDirs = [
+        uploadRoot,
+        (0, path_1.join)(uploadRoot, 'images'),
+        (0, path_1.join)(uploadRoot, 'documents'),
+    ];
     for (const dir of uploadDirs) {
         try {
-            await (0, promises_1.mkdir)((0, path_1.join)(process.cwd(), dir), { recursive: true });
+            await (0, promises_1.mkdir)(dir, { recursive: true });
         }
         catch (error) {
         }
     }
-    app.useStaticAssets((0, path_1.join)(process.cwd(), 'uploads'), {
-        prefix: '/uploads/',
+    app.use('/uploads', (req, res, next) => {
+        const root = systemConfigService.resolvePath('upload_directory', 'uploads');
+        return express.static(root)(req, res, next);
     });
     app.setGlobalPrefix('api');
     app.use(cookieParser());

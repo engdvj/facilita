@@ -10,9 +10,13 @@ export declare class BackupsService {
     constructor(prisma: PrismaService);
     export(entities: BackupEntity[]): Promise<BackupPayload>;
     exportArchive(entities: BackupEntity[]): Promise<BackupArchive>;
+    exportArchiveToFile(entities: BackupEntity[], targetDir: string, prefix?: string): Promise<{
+        path: string;
+        filename: string;
+    }>;
     restore(payload: BackupPayload, entities?: BackupEntity[], mode?: 'merge'): Promise<{
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "tags", "tagOnLink", "tagOnSchedule"];
+        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes"];
     } | {
         restored: Record<string, number>;
         skipped?: undefined;
@@ -23,7 +27,7 @@ export declare class BackupsService {
             skipped: number;
         };
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "tags", "tagOnLink", "tagOnSchedule"];
+        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes"];
     } | {
         files: {
             restored: number;
@@ -32,6 +36,7 @@ export declare class BackupsService {
         restored: Record<string, number>;
         skipped?: undefined;
     }>;
+    cleanupOldBackups(directory: string, retentionDays: number): Promise<number>;
     private resolveSelectedEntities;
     private collectUploadRelativePaths;
     private extractUploadRelativePath;
@@ -41,7 +46,5 @@ export declare class BackupsService {
     private isWithinRoot;
     private upsertById;
     private upsertByRole;
-    private upsertTagOnLink;
-    private upsertTagOnSchedule;
 }
 export {};

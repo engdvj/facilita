@@ -8,9 +8,6 @@ export const backupEntities = [
   'links',
   'uploadedSchedules',
   'notes',
-  'tags',
-  'tagOnLink',
-  'tagOnSchedule',
 ] as const;
 
 export type BackupEntity = (typeof backupEntities)[number];

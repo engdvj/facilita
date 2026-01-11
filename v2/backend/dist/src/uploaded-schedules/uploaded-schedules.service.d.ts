@@ -90,17 +90,6 @@ export declare class UploadedSchedulesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            tagId: string;
-            scheduleId: string;
-        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -149,17 +138,6 @@ export declare class UploadedSchedulesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
-        tags: ({
-            tag: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                color: string | null;
-            };
-        } & {
-            tagId: string;
-            scheduleId: string;
-        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;

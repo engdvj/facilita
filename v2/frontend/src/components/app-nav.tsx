@@ -63,14 +63,21 @@ export default function AppNav() {
         ],
       },
       {
-        label: 'Administracao',
+        label: 'Cadastros',
         items: [
           { href: '/admin/companies', label: 'Empresas' },
           { href: '/admin/units', label: 'Unidades' },
           { href: '/admin/sectors', label: 'Setores' },
           { href: '/admin/users', label: 'Usuarios' },
+        ],
+      },
+      {
+        label: 'Plataforma',
+        items: [
           { href: '/admin/permissions', label: 'Permissoes' },
-          { href: '/admin/backup', label: 'Backup e restauracao' },
+          { href: '/admin/settings', label: 'Configuracoes' },
+          { href: '/admin/backup', label: 'Backup' },
+          { href: '/admin/restore', label: 'Restauracao' },
           { href: '/admin/reset', label: 'Reset do sistema' },
         ],
       },
@@ -78,17 +85,17 @@ export default function AppNav() {
   }, [user]);
 
   return (
-    <div className="space-y-4 motion-stagger">
+    <div className="space-y-5 motion-stagger lg:rounded-3xl lg:border lg:border-border/70 lg:bg-card/80 lg:p-4 lg:shadow-[0_18px_40px_rgba(16,32,36,0.12)] lg:backdrop-blur-sm">
       {sections.map((section, sectionIndex) => (
         <div
           key={section.label}
           className="motion-item space-y-2"
           style={staggerStyle(sectionIndex + 1)}
         >
-          <p className="text-[9px] uppercase tracking-[0.4em] text-muted-foreground/70">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground/80 font-display">
             {section.label}
           </p>
-          <nav className="space-y-2">
+          <nav className="space-y-3">
             {section.items.map((item, itemIndex) => {
               const active = isActive(pathname, item.href);
               const staggerIndex = sectionIndex * 6 + itemIndex + 1;
@@ -99,13 +106,13 @@ export default function AppNav() {
                   aria-current={active ? 'page' : undefined}
                   data-active={active ? 'true' : 'false'}
                   style={staggerStyle(staggerIndex)}
-                  className={`motion-item motion-press nav-card flex items-center px-3 py-2 text-[12px] ${
+                  className={`motion-item motion-press nav-card flex items-center gap-2 pl-5 pr-4 py-2.5 text-[13px] font-medium tracking-[0.02em] ${
                     active
-                      ? 'text-foreground font-medium'
+                      ? 'text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {item.label}
+                  <span className="relative z-10">{item.label}</span>
                 </Link>
               );
             })}

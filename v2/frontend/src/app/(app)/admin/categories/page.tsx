@@ -397,6 +397,7 @@ export default function CategoriesPage() {
         title={editing ? 'Editar categoria' : 'Nova categoria'}
         description="Categorias organizam links e documentos."
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-4xl"
         footer={
           <>
             {editing && (
@@ -432,53 +433,59 @@ export default function CategoriesPage() {
           </>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           {isSuperAdmin && (
-            <AdminField label="Empresa" htmlFor="category-company">
-              <select
-                id="category-company"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formCompanyId}
-                onChange={(event) => setFormCompanyId(event.target.value)}
-              >
-                <option value="">Selecione uma empresa</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
+            <div className="md:col-span-2">
+              <AdminField label="Empresa" htmlFor="category-company">
+                <select
+                  id="category-company"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formCompanyId}
+                  onChange={(event) => setFormCompanyId(event.target.value)}
+                >
+                  <option value="">Selecione uma empresa</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+            </div>
           )}
-          <AdminField label="Nome" htmlFor="category-name">
-            <input
-              id="category-name"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="Cor" htmlFor="category-color">
-            <input
-              id="category-color"
-              type="color"
-              className="h-11 w-full rounded-lg border border-border/70 bg-white/80"
-              value={color}
-              onChange={(event) => setColor(event.target.value)}
-            />
-          </AdminField>
-        </div>
-        <div className="mt-4 flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            id="category-admin-only"
-            checked={adminOnly}
-            onChange={(event) => setAdminOnly(event.target.checked)}
-            className="rounded border-border/70"
-          />
-          <label htmlFor="category-admin-only">
-            Apenas administradores podem criar nesta categoria
-          </label>
+          <div className="md:col-span-2">
+            <AdminField label="Nome" htmlFor="category-name">
+              <input
+                id="category-name"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </AdminField>
+          </div>
+          <div className="md:col-span-1">
+            <AdminField label="Cor" htmlFor="category-color">
+              <input
+                id="category-color"
+                type="color"
+                className="h-11 w-full rounded-lg border border-border/70 bg-white/80"
+                value={color}
+                onChange={(event) => setColor(event.target.value)}
+              />
+            </AdminField>
+          </div>
+          <div className="md:col-span-3 rounded-lg border border-border/70 bg-card/60 px-3 py-2 text-sm text-foreground">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="category-admin-only"
+                checked={adminOnly}
+                onChange={(event) => setAdminOnly(event.target.checked)}
+                className="rounded border-border/70"
+              />
+              Apenas administradores podem criar nesta categoria
+            </label>
+          </div>
         </div>
         {formError && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">

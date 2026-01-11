@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BackupsService = void 0;
 const common_1 = require("@nestjs/common");
-const archiver_1 = require("archiver");
+const archiver = require("archiver");
 const fs_1 = require("fs");
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
@@ -19,6 +19,7 @@ const stream_1 = require("stream");
 const promises_2 = require("stream/promises");
 const unzipper = require("unzipper");
 const prisma_service_1 = require("../prisma/prisma.service");
+const system_config_store_1 = require("../system-config/system-config.store");
 const backups_types_1 = require("./backups.types");
 const restoreOrder = [
     'companies',
@@ -30,9 +31,6 @@ const restoreOrder = [
     'links',
     'uploadedSchedules',
     'notes',
-    'tags',
-    'tagOnLink',
-    'tagOnSchedule',
 ];
 let BackupsService = class BackupsService {
     constructor(prisma) {
@@ -69,15 +67,6 @@ let BackupsService = class BackupsService {
                 case 'notes':
                     data.notes = await this.prisma.note.findMany();
                     break;
-                case 'tags':
-                    data.tags = await this.prisma.tag.findMany();
-                    break;
-                case 'tagOnLink':
-                    data.tagOnLink = await this.prisma.tagOnLink.findMany();
-                    break;
-                case 'tagOnSchedule':
-                    data.tagOnSchedule = await this.prisma.tagOnSchedule.findMany();
-                    break;
                 default:
                     break;
             }
@@ -96,7 +85,7 @@ let BackupsService = class BackupsService {
         const selectedEntities = this.resolveSelectedEntities(payload, entities);
         const relativePaths = this.collectUploadRelativePaths(payload, selectedEntities);
         const fileEntries = this.resolveExistingUploadEntries(relativePaths);
-        const archive = (0, archiver_1.default)('zip', { zlib: { level: 9 } });
+        const archive = archiver('zip', { zlib: { level: 9 } });
         const stream = new stream_1.PassThrough();
         archive.on('warning', (err) => {
             if (err.code === 'ENOENT') {
@@ -116,6 +105,18 @@ let BackupsService = class BackupsService {
             stream,
             filename: `facilita-backup-${date}.zip`,
         };
+    }
+    async exportArchiveToFile(entities, targetDir, prefix = 'facilita-backup') {
+        const resolvedDir = (0, path_1.isAbsolute)(targetDir)
+            ? targetDir
+            : (0, path_1.resolve)(process.cwd(), targetDir);
+        await (0, promises_1.mkdir)(resolvedDir, { recursive: true });
+        const archive = await this.exportArchive(entities);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${prefix}-${timestamp}.zip`;
+        const filePath = (0, path_1.resolve)(resolvedDir, filename);
+        await (0, promises_2.pipeline)(archive.stream, (0, fs_1.createWriteStream)(filePath));
+        return { path: filePath, filename };
     }
     async restore(payload, entities, mode = 'merge') {
         if (mode !== 'merge') {
@@ -155,15 +156,6 @@ let BackupsService = class BackupsService {
                         break;
                     case 'notes':
                         results.notes = await this.upsertById(tx.note, items);
-                        break;
-                    case 'tags':
-                        results.tags = await this.upsertById(tx.tag, items);
-                        break;
-                    case 'tagOnLink':
-                        results.tagOnLink = await this.upsertTagOnLink(tx, items);
-                        break;
-                    case 'tagOnSchedule':
-                        results.tagOnSchedule = await this.upsertTagOnSchedule(tx, items);
                         break;
                     default:
                         break;
@@ -223,6 +215,40 @@ let BackupsService = class BackupsService {
         finally {
             await (0, promises_1.unlink)(filePath).catch(() => undefined);
         }
+    }
+    async cleanupOldBackups(directory, retentionDays) {
+        if (retentionDays <= 0) {
+            return 0;
+        }
+        const resolvedDir = (0, path_1.isAbsolute)(directory)
+            ? directory
+            : (0, path_1.resolve)(process.cwd(), directory);
+        let entries = [];
+        try {
+            entries = await (0, promises_1.readdir)(resolvedDir, { withFileTypes: true }).then((items) => items.filter((item) => item.isFile()));
+        }
+        catch {
+            return 0;
+        }
+        const threshold = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+        let deleted = 0;
+        for (const entry of entries) {
+            if (!entry.name.endsWith('.zip')) {
+                continue;
+            }
+            const filePath = (0, path_1.resolve)(resolvedDir, entry.name);
+            try {
+                const fileStat = await (0, promises_1.stat)(filePath);
+                if (fileStat.mtimeMs < threshold) {
+                    await (0, promises_1.unlink)(filePath);
+                    deleted += 1;
+                }
+            }
+            catch {
+                continue;
+            }
+        }
+        return deleted;
     }
     resolveSelectedEntities(payload, entities) {
         const fallbackEntities = Object.keys(payload.data || {});
@@ -325,7 +351,7 @@ let BackupsService = class BackupsService {
         return entries;
     }
     getUploadsRoot() {
-        return (0, path_1.resolve)(process.cwd(), 'uploads');
+        return (0, system_config_store_1.resolveConfigPath)('upload_directory', 'uploads');
     }
     isWithinRoot(root, target) {
         const relativePath = (0, path_1.relative)(root, target);
@@ -358,40 +384,6 @@ let BackupsService = class BackupsService {
                 where: { role },
                 update: data,
                 create: { role, ...data },
-            });
-            count += 1;
-        }
-        return count;
-    }
-    async upsertTagOnLink(tx, items) {
-        let count = 0;
-        for (const item of items) {
-            await tx.tagOnLink.upsert({
-                where: {
-                    linkId_tagId: {
-                        linkId: item.linkId,
-                        tagId: item.tagId,
-                    },
-                },
-                update: {},
-                create: item,
-            });
-            count += 1;
-        }
-        return count;
-    }
-    async upsertTagOnSchedule(tx, items) {
-        let count = 0;
-        for (const item of items) {
-            await tx.tagOnSchedule.upsert({
-                where: {
-                    scheduleId_tagId: {
-                        scheduleId: item.scheduleId,
-                        tagId: item.tagId,
-                    },
-                },
-                update: {},
-                create: item,
             });
             count += 1;
         }

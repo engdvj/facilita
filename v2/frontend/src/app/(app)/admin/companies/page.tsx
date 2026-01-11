@@ -326,6 +326,7 @@ export default function CompaniesPage() {
         title={editing ? 'Editar empresa' : 'Nova empresa'}
         description="Preencha os dados principais da empresa."
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-4xl"
         footer={
           <>
             {editing && (
@@ -361,23 +362,17 @@ export default function CompaniesPage() {
           </>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <AdminField label="Nome" htmlFor="company-name">
-            <input
-              id="company-name"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="CNPJ" htmlFor="company-cnpj" hint="Opcional">
-            <input
-              id="company-cnpj"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={cnpj}
-              onChange={(event) => setCnpj(event.target.value)}
-            />
-          </AdminField>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <AdminField label="Nome" htmlFor="company-name">
+              <input
+                id="company-name"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </AdminField>
+          </div>
           <AdminField label="Status" htmlFor="company-status">
             <select
               id="company-status"
@@ -389,6 +384,18 @@ export default function CompaniesPage() {
               <option value="INACTIVE">INACTIVE</option>
             </select>
           </AdminField>
+          <div className="md:col-span-2">
+            <AdminField label="CNPJ" htmlFor="company-cnpj" hint="Opcional">
+              <input
+                id="company-cnpj"
+                inputMode="numeric"
+                placeholder="00.000.000/0000-00"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={cnpj}
+                onChange={(event) => setCnpj(event.target.value)}
+              />
+            </AdminField>
+          </div>
         </div>
         {formError && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">

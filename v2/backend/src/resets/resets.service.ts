@@ -13,11 +13,6 @@ export class ResetsService {
   async reset(entities: BackupEntity[]) {
     const selection = new Set<BackupEntity>(entities);
 
-    if (selection.has('tags')) {
-      selection.add('tagOnLink');
-      selection.add('tagOnSchedule');
-    }
-
     if (selection.has('units')) {
       selection.add('sectors');
     }
@@ -157,11 +152,6 @@ export class ResetsService {
         data: { userId: null },
         where: { userId: { not: null } },
       });
-
-      await tx.notification.updateMany({
-        data: { userId: null },
-        where: { userId: { not: null } },
-      });
     }
   }
 
@@ -171,7 +161,6 @@ export class ResetsService {
     deleted: Partial<Record<BackupEntity, number>>,
   ) {
     if (selection.has('companies')) {
-      await tx.notification.deleteMany();
     }
 
     if (selection.has('users')) {
@@ -195,21 +184,6 @@ export class ResetsService {
       }
     }
 
-    if (
-      selection.has('tagOnLink') &&
-      !selection.has('links') &&
-      !selection.has('tags')
-    ) {
-      deleted.tagOnLink = (await tx.tagOnLink.deleteMany()).count;
-    }
-
-    if (
-      selection.has('tagOnSchedule') &&
-      !selection.has('uploadedSchedules') &&
-      !selection.has('tags')
-    ) {
-      deleted.tagOnSchedule = (await tx.tagOnSchedule.deleteMany()).count;
-    }
   }
 
   private async deleteEntities(
@@ -247,10 +221,6 @@ export class ResetsService {
 
     if (selection.has('rolePermissions')) {
       deleted.rolePermissions = (await tx.rolePermission.deleteMany()).count;
-    }
-
-    if (selection.has('tags')) {
-      deleted.tags = (await tx.tag.deleteMany()).count;
     }
 
     if (selection.has('companies')) {

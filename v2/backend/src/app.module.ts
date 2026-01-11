@@ -15,6 +15,8 @@ import { NotesModule } from './notes/notes.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { BackupsModule } from './backups/backups.module';
 import { ResetsModule } from './resets/resets.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { SystemConfigModule } from './system-config/system-config.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { ResetsModule } from './resets/resets.module';
     UploadsModule,
     BackupsModule,
     ResetsModule,
+    FavoritesModule,
+    SystemConfigModule,
   ],
 })
 export class AppModule {}

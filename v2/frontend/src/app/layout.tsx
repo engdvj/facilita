@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Fraunces, Onest } from 'next/font/google';
 import NotificationStack from '@/components/notification-stack';
 import ThemeSync from '@/components/theme-sync';
+import { FavoritesProvider } from '@/hooks/useFavorites';
 import './globals.css';
 
 const onest = Onest({
@@ -32,7 +33,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`${onest.variable} ${fraunces.variable} antialiased`}>
         <ThemeSync />
-        {children}
+        <FavoritesProvider>{children}</FavoritesProvider>
         <NotificationStack />
       </body>
     </html>

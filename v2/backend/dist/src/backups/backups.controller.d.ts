@@ -8,7 +8,7 @@ export declare class BackupsController {
     export(data: ExportBackupDto, res: Response): Promise<StreamableFile>;
     restore(file: Express.Multer.File | undefined, body: Record<string, unknown>): Promise<{
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "tags", "tagOnLink", "tagOnSchedule"];
+        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes"];
     } | {
         restored: Record<string, number>;
         skipped?: undefined;

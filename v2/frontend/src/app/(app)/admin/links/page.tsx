@@ -119,7 +119,7 @@ export default function LinksPage() {
 
   const normalizeImagePosition = (position?: string) => {
     if (!position) return '50% 50%';
-    const [x = '50%', y = '50%'] = position.split(' ');
+    const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
     const withPercent = (value: string) =>
       value.includes('%') ? value : `${value}%`;
     return `${withPercent(x)} ${withPercent(y)}`;
@@ -315,7 +315,7 @@ export default function LinksPage() {
       categoryId: link.categoryId || '',
       sectorId: link.sectorId || '',
       imageUrl: link.imageUrl || '',
-      imagePosition: link.imagePosition || '50% 50%',
+      imagePosition: normalizeImagePosition(link.imagePosition),
       imageScale: link.imageScale || 1,
       audience: getAudience(link),
       order: link.order,
@@ -337,6 +337,7 @@ export default function LinksPage() {
       setUploading(true);
       const response = await api.post('/uploads/image', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       setFormData((prev) => ({ ...prev, imageUrl: response.data.url }));
@@ -463,6 +464,8 @@ export default function LinksPage() {
       ? formData.imageUrl
       : `${serverURL}${formData.imageUrl}`
     : '';
+  const previewImagePosition = normalizeImagePosition(formData.imagePosition);
+  const [previewPosX, previewPosY] = previewImagePosition.split(' ');
 
   return (
     <div className="space-y-6">
@@ -628,8 +631,9 @@ export default function LinksPage() {
                       alt={link.title}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       style={{
-                        objectPosition: link.imagePosition || '50% 50%',
+                        objectPosition: normalizeImagePosition(link.imagePosition),
                         transform: `scale(${link.imageScale || 1})`,
+                        transformOrigin: normalizeImagePosition(link.imagePosition),
                       }}
                     />
                   </div>
@@ -932,16 +936,16 @@ export default function LinksPage() {
                           <label className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>Posicao Horizontal</span>
                             <span className="text-foreground">
-                              {formData.imagePosition.split(' ')[0]}
+                              {previewPosX}
                             </span>
                           </label>
                           <input
                             type="range"
                             min="0"
                             max="100"
-                            value={parseInt(formData.imagePosition.split(' ')[0])}
+                            value={parseInt(previewPosX)}
                             onChange={(e) => {
-                              const y = formData.imagePosition.split(' ')[1];
+                              const y = previewPosY;
                               setFormData((prev) => ({
                                 ...prev,
                                 imagePosition: `${e.target.value}% ${y}`,
@@ -955,16 +959,16 @@ export default function LinksPage() {
                           <label className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>Posicao Vertical</span>
                             <span className="text-foreground">
-                              {formData.imagePosition.split(' ')[1]}
+                              {previewPosY}
                             </span>
                           </label>
                           <input
                             type="range"
                             min="0"
                             max="100"
-                            value={parseInt(formData.imagePosition.split(' ')[1])}
+                            value={parseInt(previewPosY)}
                             onChange={(e) => {
-                              const x = formData.imagePosition.split(' ')[0];
+                              const x = previewPosX;
                               setFormData((prev) => ({
                                 ...prev,
                                 imagePosition: `${x} ${e.target.value}%`,
@@ -1031,8 +1035,9 @@ export default function LinksPage() {
                           alt="Preview do card"
                           className="h-full w-full object-cover"
                           style={{
-                            objectPosition: formData.imagePosition,
+                            objectPosition: previewImagePosition,
                             transform: `scale(${formData.imageScale})`,
+                            transformOrigin: previewImagePosition,
                           }}
                         />
                       ) : (

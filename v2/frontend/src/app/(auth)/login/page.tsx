@@ -1,6 +1,5 @@
 'use client';
 
-import axios from 'axios';
 import { FormEvent, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,7 +9,6 @@ import { useAuthStore } from '@/stores/auth-store';
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
@@ -19,7 +17,6 @@ export default function LoginPage() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
@@ -27,20 +24,7 @@ export default function LoginPage() {
       setAuth(response.data.user, response.data.accessToken);
       router.push('/');
     } catch (err) {
-      let message = 'Invalid credentials.';
-
-      if (axios.isAxiosError(err)) {
-        const apiMessage = err.response?.data?.message;
-        if (typeof apiMessage === 'string') {
-          message = apiMessage;
-        } else if (Array.isArray(apiMessage)) {
-          message = apiMessage.join(', ');
-        } else if (err.message) {
-          message = err.message;
-        }
-      }
-
-      setError(message);
+      // Notifications handled in the API interceptor.
     } finally {
       setLoading(false);
     }
@@ -99,12 +83,6 @@ export default function LoginPage() {
             required
           />
         </div>
-
-        {error && (
-          <div className="motion-fade rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {error}
-          </div>
-        )}
 
         <button
           type="submit"

@@ -24,6 +24,8 @@ const notes_module_1 = require("./notes/notes.module");
 const uploads_module_1 = require("./uploads/uploads.module");
 const backups_module_1 = require("./backups/backups.module");
 const resets_module_1 = require("./resets/resets.module");
+const favorites_module_1 = require("./favorites/favorites.module");
+const system_config_module_1 = require("./system-config/system-config.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -49,6 +51,8 @@ exports.AppModule = AppModule = __decorate([
             uploads_module_1.UploadsModule,
             backups_module_1.BackupsModule,
             resets_module_1.ResetsModule,
+            favorites_module_1.FavoritesModule,
+            system_config_module_1.SystemConfigModule,
         ],
     })
 ], AppModule);

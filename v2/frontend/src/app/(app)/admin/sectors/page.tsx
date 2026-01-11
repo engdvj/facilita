@@ -395,6 +395,7 @@ export default function SectorsPage() {
         title={editing ? 'Editar setor' : 'Novo setor'}
         description="Setores organizam times dentro de uma unidade." 
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-5xl"
         footer={
           <>
             {editing && (
@@ -430,56 +431,17 @@ export default function SectorsPage() {
           </>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <AdminField label="Nome" htmlFor="sector-name">
-            <input
-              id="sector-name"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="Descricao" htmlFor="sector-description" hint="Opcional">
-            <input
-              id="sector-description"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="Empresa" htmlFor="sector-company">
-            <select
-              id="sector-company"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={companyId}
-              onChange={(event) => {
-                setCompanyId(event.target.value);
-                setUnitId('');
-              }}
-            >
-              <option value="">Selecione</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
-          <AdminField label="Unidade" htmlFor="sector-unit">
-            <select
-              id="sector-unit"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={unitId}
-              onChange={(event) => setUnitId(event.target.value)}
-            >
-              <option value="">Selecione</option>
-              {filteredUnits.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <AdminField label="Nome" htmlFor="sector-name">
+              <input
+                id="sector-name"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </AdminField>
+          </div>
           <AdminField label="Status" htmlFor="sector-status">
             <select
               id="sector-status"
@@ -489,6 +451,57 @@ export default function SectorsPage() {
             >
               <option value="ACTIVE">ACTIVE</option>
               <option value="INACTIVE">INACTIVE</option>
+            </select>
+          </AdminField>
+          <div className="md:col-span-3">
+            <AdminField label="Descricao" htmlFor="sector-description" hint="Opcional">
+              <textarea
+                id="sector-description"
+                rows={3}
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </AdminField>
+          </div>
+          <div className="md:col-span-2">
+            <AdminField label="Empresa" htmlFor="sector-company">
+              <select
+                id="sector-company"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={companyId}
+                onChange={(event) => {
+                  setCompanyId(event.target.value);
+                  setUnitId('');
+                }}
+              >
+                <option value="">Selecione</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </AdminField>
+          </div>
+          <AdminField
+            label="Unidade"
+            htmlFor="sector-unit"
+            hint={!companyId ? 'Selecione uma empresa primeiro.' : undefined}
+          >
+            <select
+              id="sector-unit"
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+              value={unitId}
+              onChange={(event) => setUnitId(event.target.value)}
+              disabled={!companyId}
+            >
+              <option value="">Selecione</option>
+              {filteredUnits.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.name}
+                </option>
+              ))}
             </select>
           </AdminField>
         </div>

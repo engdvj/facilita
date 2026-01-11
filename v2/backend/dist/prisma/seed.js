@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const prisma_adapter_1 = require("../src/prisma/prisma-adapter");
+const system_config_defaults_1 = require("../src/system-config/system-config.defaults");
 const prisma = new client_1.PrismaClient({ adapter: (0, prisma_adapter_1.createPrismaAdapter)() });
 const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
 async function seedAdmCompany() {
@@ -97,10 +98,25 @@ async function seedSuperAdmin() {
         },
     });
 }
+async function seedSystemConfig() {
+    for (const entry of system_config_defaults_1.SYSTEM_CONFIG_DEFAULTS) {
+        await prisma.systemConfig.upsert({
+            where: { key: entry.key },
+            update: {
+                description: entry.description,
+                type: entry.type,
+                isEditable: entry.isEditable,
+                category: entry.category,
+            },
+            create: entry,
+        });
+    }
+}
 async function main() {
     await seedAdmCompany();
     await seedRolePermissions();
     await seedSuperAdmin();
+    await seedSystemConfig();
 }
 main()
     .catch((error) => {

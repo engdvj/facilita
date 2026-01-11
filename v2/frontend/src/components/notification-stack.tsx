@@ -4,9 +4,21 @@ import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '@/stores/notification-store';
 
 const variantStyles = {
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  error: 'border-destructive/40 bg-destructive/10 text-destructive',
-  info: 'border-border/70 bg-card/90 text-foreground',
+  success: {
+    accent: 'bg-emerald-500',
+    ring: 'ring-emerald-200/60',
+    label: 'Sucesso',
+  },
+  error: {
+    accent: 'bg-destructive',
+    ring: 'ring-destructive/30',
+    label: 'Erro',
+  },
+  info: {
+    accent: 'bg-foreground/40',
+    ring: 'ring-border/70',
+    label: 'Aviso',
+  },
 };
 
 export default function NotificationStack() {
@@ -44,19 +56,32 @@ export default function NotificationStack() {
 
   return (
     <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-full max-w-sm flex-col gap-3 sm:right-6 sm:top-6">
-      {notifications.map((toast) => (
+      {notifications.map((toast) => {
+        const variant = variantStyles[toast.variant];
+        const title = toast.title ?? variant.label;
+        return (
         <div
           key={toast.id}
-          className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-[0_12px_30px_rgba(16,32,36,0.12)] backdrop-blur animate-in fade-in slide-in-from-top-2 ${variantStyles[toast.variant]}`}
+          className={`pointer-events-auto relative overflow-hidden rounded-2xl border border-border/70 bg-card/95 px-4 py-3 shadow-[0_12px_30px_rgba(16,32,36,0.12)] backdrop-blur ring-1 animate-in fade-in slide-in-from-top-2 ${variant.ring}`}
         >
+          <span
+            className={`absolute left-0 top-0 h-full w-1 ${variant.accent}`}
+            aria-hidden="true"
+          />
           <div className="flex items-start justify-between gap-3">
-            <div>
-              {toast.title && (
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  {toast.title}
+            <div className="flex items-start gap-3">
+              <span
+                className={`mt-1.5 h-2.5 w-2.5 rounded-full ${variant.accent}`}
+                aria-hidden="true"
+              />
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  {title}
                 </p>
-              )}
-              <p className="text-sm font-medium">{toast.message}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {toast.message}
+                </p>
+              </div>
             </div>
             <button
               type="button"
@@ -68,7 +93,8 @@ export default function NotificationStack() {
             </button>
           </div>
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }

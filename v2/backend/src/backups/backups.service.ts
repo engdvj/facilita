@@ -2,12 +2,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import * as archiver from 'archiver';
 import { createWriteStream, existsSync } from 'fs';
-import { mkdir, unlink } from 'fs/promises';
+import { mkdir, readdir, stat, unlink } from 'fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'path';
 import { PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
 import * as unzipper from 'unzipper';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveConfigPath } from '../system-config/system-config.store';
 import { BackupEntity, BackupPayload, backupEntities } from './backups.types';
 
 const restoreOrder: BackupEntity[] = [
@@ -20,9 +21,6 @@ const restoreOrder: BackupEntity[] = [
   'links',
   'uploadedSchedules',
   'notes',
-  'tags',
-  'tagOnLink',
-  'tagOnSchedule',
 ];
 
 type BackupArchive = {
@@ -65,15 +63,6 @@ export class BackupsService {
           break;
         case 'notes':
           data.notes = await this.prisma.note.findMany();
-          break;
-        case 'tags':
-          data.tags = await this.prisma.tag.findMany();
-          break;
-        case 'tagOnLink':
-          data.tagOnLink = await this.prisma.tagOnLink.findMany();
-          break;
-        case 'tagOnSchedule':
-          data.tagOnSchedule = await this.prisma.tagOnSchedule.findMany();
           break;
         default:
           break;
@@ -123,6 +112,25 @@ export class BackupsService {
       stream,
       filename: `facilita-backup-${date}.zip`,
     };
+  }
+
+  async exportArchiveToFile(
+    entities: BackupEntity[],
+    targetDir: string,
+    prefix = 'facilita-backup',
+  ) {
+    const resolvedDir = isAbsolute(targetDir)
+      ? targetDir
+      : resolve(process.cwd(), targetDir);
+    await mkdir(resolvedDir, { recursive: true });
+
+    const archive = await this.exportArchive(entities);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${prefix}-${timestamp}.zip`;
+    const filePath = resolve(resolvedDir, filename);
+
+    await pipeline(archive.stream, createWriteStream(filePath));
+    return { path: filePath, filename };
   }
 
   async restore(
@@ -199,24 +207,6 @@ export class BackupsService {
             results.notes = await this.upsertById(
               tx.note,
               items as Prisma.NoteUncheckedCreateInput[],
-            );
-            break;
-          case 'tags':
-            results.tags = await this.upsertById(
-              tx.tag,
-              items as Prisma.TagUncheckedCreateInput[],
-            );
-            break;
-          case 'tagOnLink':
-            results.tagOnLink = await this.upsertTagOnLink(
-              tx,
-              items as Prisma.TagOnLinkUncheckedCreateInput[],
-            );
-            break;
-          case 'tagOnSchedule':
-            results.tagOnSchedule = await this.upsertTagOnSchedule(
-              tx,
-              items as Prisma.TagOnScheduleUncheckedCreateInput[],
             );
             break;
           default:
@@ -303,6 +293,46 @@ export class BackupsService {
     } finally {
       await unlink(filePath).catch(() => undefined);
     }
+  }
+
+  async cleanupOldBackups(directory: string, retentionDays: number) {
+    if (retentionDays <= 0) {
+      return 0;
+    }
+
+    const resolvedDir = isAbsolute(directory)
+      ? directory
+      : resolve(process.cwd(), directory);
+    let entries: { name: string }[] = [];
+
+    try {
+      entries = await readdir(resolvedDir, { withFileTypes: true }).then(
+        (items) => items.filter((item) => item.isFile()),
+      );
+    } catch {
+      return 0;
+    }
+
+    const threshold = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    let deleted = 0;
+
+    for (const entry of entries) {
+      if (!entry.name.endsWith('.zip')) {
+        continue;
+      }
+      const filePath = resolve(resolvedDir, entry.name);
+      try {
+        const fileStat = await stat(filePath);
+        if (fileStat.mtimeMs < threshold) {
+          await unlink(filePath);
+          deleted += 1;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return deleted;
   }
 
   private resolveSelectedEntities(
@@ -436,7 +466,7 @@ export class BackupsService {
   }
 
   private getUploadsRoot() {
-    return resolve(process.cwd(), 'uploads');
+    return resolveConfigPath('upload_directory', 'uploads');
   }
 
   private isWithinRoot(root: string, target: string) {
@@ -494,45 +524,4 @@ export class BackupsService {
     return count;
   }
 
-  private async upsertTagOnLink(
-    tx: Prisma.TransactionClient,
-    items: Prisma.TagOnLinkUncheckedCreateInput[],
-  ) {
-    let count = 0;
-    for (const item of items) {
-      await tx.tagOnLink.upsert({
-        where: {
-          linkId_tagId: {
-            linkId: item.linkId,
-            tagId: item.tagId,
-          },
-        },
-        update: {},
-        create: item,
-      });
-      count += 1;
-    }
-    return count;
-  }
-
-  private async upsertTagOnSchedule(
-    tx: Prisma.TransactionClient,
-    items: Prisma.TagOnScheduleUncheckedCreateInput[],
-  ) {
-    let count = 0;
-    for (const item of items) {
-      await tx.tagOnSchedule.upsert({
-        where: {
-          scheduleId_tagId: {
-            scheduleId: item.scheduleId,
-            tagId: item.tagId,
-          },
-        },
-        update: {},
-        create: item,
-      });
-      count += 1;
-    }
-    return count;
-  }
 }

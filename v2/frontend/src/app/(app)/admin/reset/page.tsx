@@ -94,8 +94,16 @@ export default function ResetPage() {
     return Array.from(new Set(base));
   }, [selection]);
 
+  const selectedCount = useMemo(
+    () =>
+      resetOptions.reduce(
+        (total, option) => total + (selection[option.key] ? 1 : 0),
+        0,
+      ),
+    [selection],
+  );
   const allSelected = resetOptions.every((option) => selection[option.key]);
-  const hasSelection = selectedEntities.length > 0;
+  const hasSelection = selectedCount > 0;
 
   const toggleAll = (value: boolean) => {
     setSelection((current) => {
@@ -140,10 +148,10 @@ export default function ResetPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3">
-        <div className="min-w-0 space-y-2 xl:flex-1">
-          <h1 className="font-display text-3xl text-foreground">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2">
+        <div className="min-w-0 space-y-1 xl:flex-1">
+          <h1 className="font-display text-2xl leading-tight text-foreground">
             Reset do sistema
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -153,108 +161,113 @@ export default function ResetPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
           {error}
         </div>
       )}
 
-      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-xs text-destructive">
-        Reset remove dados permanentemente. Reset total executa o seed e recria
-        superadmin/superadmin e a empresa ADM.
-      </div>
-
-      <section className="surface animate-in fade-in slide-in-from-bottom-2 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Itens do reset
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Marque apenas o que voce precisa.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-border/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-foreground"
-              onClick={() => toggleAll(true)}
-              disabled={allSelected}
-            >
-              Selecionar tudo
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-border/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-foreground"
-              onClick={() => toggleAll(false)}
-              disabled={!hasSelection}
-            >
-              Limpar
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3 grid gap-2">
-          {resetOptions.map((option) => (
-            <label
-              key={option.key}
-              className="flex items-start gap-3 rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground"
-            >
-              <input
-                type="checkbox"
-                className="mt-1 rounded border-border/70"
-                checked={selection[option.key]}
-                onChange={(event) =>
-                  setSelection((current) => ({
-                    ...current,
-                    [option.key]: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                <span className="block text-sm font-semibold">
-                  {option.label}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {option.hint}
-                </span>
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Itens do reset
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Marque apenas o que voce precisa.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                {selectedCount} selecionados
               </span>
-            </label>
-          ))}
-        </div>
-      </section>
+              <button
+                type="button"
+                className="rounded-lg border border-border/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground"
+                onClick={() => toggleAll(true)}
+                disabled={allSelected}
+              >
+                Selecionar tudo
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-border/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground"
+                onClick={() => toggleAll(false)}
+                disabled={!hasSelection}
+              >
+                Limpar
+              </button>
+            </div>
+          </div>
 
-      <section className="surface animate-in fade-in slide-in-from-bottom-2 p-4 sm:p-5">
-        <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            Reset
-          </p>
-          <h2 className="text-lg font-semibold text-foreground">
-            Execute o reset dos itens selecionados.
-          </h2>
-        </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {resetOptions.map((option) => (
+              <label
+                key={option.key}
+                className="flex items-start gap-2 rounded-lg border border-border/70 bg-white/80 px-2.5 py-2 text-foreground"
+              >
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-border/70"
+                  checked={selection[option.key]}
+                  onChange={(event) =>
+                    setSelection((current) => ({
+                      ...current,
+                      [option.key]: event.target.checked,
+                    }))
+                  }
+                />
+                <span className="flex flex-col gap-0.5 leading-tight">
+                  <span className="text-sm font-semibold">
+                    {option.label}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {option.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </section>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-            {selectedEntities.length} itens
-          </span>
-          {allSelected && (
-            <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
-              Reset total + seed
-            </span>
-          )}
-        </div>
+        <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Reset
+            </p>
+            <h2 className="text-lg font-semibold text-foreground">
+              Execute o reset dos itens selecionados.
+            </h2>
+          </div>
 
-        <div className="mt-3">
-          <button
-            type="button"
-            className="w-full rounded-lg bg-destructive px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
-            onClick={handleReset}
-            disabled={!hasSelection || resetting || Boolean(error)}
-          >
-            {resetting ? 'Resetando...' : 'Resetar selecao'}
-          </button>
-        </div>
-      </section>
+          <div className="mt-3 space-y-2">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              Reset remove dados permanentemente. Reset total executa o seed e
+              recria superadmin/superadmin e a empresa ADM.
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
+                Itens: {selectedCount}
+              </span>
+              {allSelected && (
+                <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-destructive">
+                  Reset total + seed
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="w-full rounded-lg bg-destructive px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
+              onClick={handleReset}
+              disabled={!hasSelection || resetting || Boolean(error)}
+            >
+              {resetting ? 'Resetando...' : 'Resetar selecao'}
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -372,6 +372,7 @@ export default function UnitsPage() {
         title={editing ? 'Editar unidade' : 'Nova unidade'}
         description="Unidades pertencem a uma empresa." 
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-4xl"
         footer={
           <>
             {editing && (
@@ -407,38 +408,17 @@ export default function UnitsPage() {
           </>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <AdminField label="Nome" htmlFor="unit-name">
-            <input
-              id="unit-name"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="CNPJ" htmlFor="unit-cnpj" hint="Opcional">
-            <input
-              id="unit-cnpj"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={cnpj}
-              onChange={(event) => setCnpj(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="Empresa" htmlFor="unit-company">
-            <select
-              id="unit-company"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={companyId}
-              onChange={(event) => setCompanyId(event.target.value)}
-            >
-              <option value="">Selecione</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <AdminField label="Nome" htmlFor="unit-name">
+              <input
+                id="unit-name"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </AdminField>
+          </div>
           <AdminField label="Status" htmlFor="unit-status">
             <select
               id="unit-status"
@@ -449,6 +429,33 @@ export default function UnitsPage() {
               <option value="ACTIVE">ACTIVE</option>
               <option value="INACTIVE">INACTIVE</option>
             </select>
+          </AdminField>
+          <div className="md:col-span-2">
+            <AdminField label="Empresa" htmlFor="unit-company">
+              <select
+                id="unit-company"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                value={companyId}
+                onChange={(event) => setCompanyId(event.target.value)}
+              >
+                <option value="">Selecione</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </AdminField>
+          </div>
+          <AdminField label="CNPJ" htmlFor="unit-cnpj" hint="Opcional">
+            <input
+              id="unit-cnpj"
+              inputMode="numeric"
+              placeholder="00.000.000/0000-00"
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+              value={cnpj}
+              onChange={(event) => setCnpj(event.target.value)}
+            />
           </AdminField>
         </div>
         {formError && (

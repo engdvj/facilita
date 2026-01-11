@@ -478,6 +478,7 @@ export default function UsersPage() {
         title={editing ? 'Editar usuario' : 'Novo usuario'}
         description="Configure credenciais e vinculos do usuario." 
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-5xl"
         footer={
           <>
             {editing && (
@@ -518,111 +519,152 @@ export default function UsersPage() {
           </>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <AdminField label="Nome" htmlFor="user-name">
-            <input
-              id="user-name"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="Usuario" htmlFor="user-username">
-            <input
-              id="user-username"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </AdminField>
-          <AdminField
-            label="Senha"
-            htmlFor="user-password"
-            hint={editing ? 'Deixe em branco para manter.' : undefined}
-          >
-            <input
-              id="user-password"
-              type="password"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </AdminField>
-          <AdminField label="Role" htmlFor="user-role">
-            <select
-              id="user-role"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={role}
-              onChange={(event) => setRole(event.target.value)}
-            >
-              <option value="SUPERADMIN">SUPERADMIN</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="COLLABORATOR">COLLABORATOR</option>
-            </select>
-          </AdminField>
-          <AdminField label="Status" htmlFor="user-status">
-            <select
-              id="user-status"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
-            </select>
-          </AdminField>
-          <AdminField label="Empresa" htmlFor="user-company" hint="Opcional">
-            <select
-              id="user-company"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={companyId}
-              onChange={(event) => {
-                setCompanyId(event.target.value);
-                setUnitId('');
-                setSectorId('');
-              }}
-            >
-              <option value="">Sem vinculo</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
-          <AdminField label="Unidade" htmlFor="user-unit" hint="Opcional">
-            <select
-              id="user-unit"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={unitId}
-              onChange={(event) => {
-                setUnitId(event.target.value);
-                setSectorId('');
-              }}
-            >
-              <option value="">Sem vinculo</option>
-              {filteredUnits.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
-          <AdminField label="Setor" htmlFor="user-sector" hint="Opcional">
-            <select
-              id="user-sector"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={sectorId}
-              onChange={(event) => setSectorId(event.target.value)}
-            >
-              <option value="">Sem vinculo</option>
-              {filteredSectors.map((sector) => (
-                <option key={sector.id} value={sector.id}>
-                  {sector.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Identidade
+              </p>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <AdminField label="Nome" htmlFor="user-name">
+                  <input
+                    id="user-name"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                </AdminField>
+                <AdminField label="Usuario" htmlFor="user-username">
+                  <input
+                    id="user-username"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                  />
+                </AdminField>
+                <div className="md:col-span-2">
+                  <AdminField
+                    label="Senha"
+                    htmlFor="user-password"
+                    hint={editing ? 'Deixe em branco para manter.' : undefined}
+                  >
+                    <input
+                      id="user-password"
+                      type="password"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                  </AdminField>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Vinculos
+              </p>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <AdminField label="Empresa" htmlFor="user-company" hint="Opcional">
+                  <select
+                    id="user-company"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={companyId}
+                    onChange={(event) => {
+                      setCompanyId(event.target.value);
+                      setUnitId('');
+                      setSectorId('');
+                    }}
+                  >
+                    <option value="">Sem vinculo</option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                </AdminField>
+                <AdminField
+                  label="Unidade"
+                  htmlFor="user-unit"
+                  hint={!companyId ? 'Selecione uma empresa primeiro.' : 'Opcional'}
+                >
+                  <select
+                    id="user-unit"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                    value={unitId}
+                    onChange={(event) => {
+                      setUnitId(event.target.value);
+                      setSectorId('');
+                    }}
+                    disabled={!companyId}
+                  >
+                    <option value="">Sem vinculo</option>
+                    {filteredUnits.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
+                </AdminField>
+                <div className="md:col-span-2">
+                  <AdminField
+                    label="Setor"
+                    htmlFor="user-sector"
+                    hint={!unitId ? 'Selecione uma unidade primeiro.' : 'Opcional'}
+                  >
+                    <select
+                      id="user-sector"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                      value={sectorId}
+                      onChange={(event) => setSectorId(event.target.value)}
+                      disabled={!unitId}
+                    >
+                      <option value="">Sem vinculo</option>
+                      {filteredSectors.map((sector) => (
+                        <option key={sector.id} value={sector.id}>
+                          {sector.name}
+                        </option>
+                      ))}
+                    </select>
+                  </AdminField>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Acesso
+              </p>
+              <div className="mt-3 grid gap-4">
+                <AdminField label="Role" htmlFor="user-role">
+                  <select
+                    id="user-role"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={role}
+                    onChange={(event) => setRole(event.target.value)}
+                  >
+                    <option value="SUPERADMIN">SUPERADMIN</option>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="COLLABORATOR">COLLABORATOR</option>
+                  </select>
+                </AdminField>
+                <AdminField label="Status" htmlFor="user-status">
+                  <select
+                    id="user-status"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value)}
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                  </select>
+                </AdminField>
+              </div>
+            </div>
+          </div>
         </div>
         {formError && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">

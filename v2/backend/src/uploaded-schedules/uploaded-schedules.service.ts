@@ -73,11 +73,6 @@ export class UploadedSchedulesService {
             email: true,
           },
         },
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -99,11 +94,6 @@ export class UploadedSchedulesService {
             id: true,
             name: true,
             email: true,
-          },
-        },
-        tags: {
-          include: {
-            tag: true,
           },
         },
       },

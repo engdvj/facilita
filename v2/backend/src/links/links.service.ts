@@ -75,11 +75,6 @@ export class LinksService {
             email: true,
           },
         },
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
       },
       orderBy: [
         { order: 'asc' },
@@ -102,11 +97,6 @@ export class LinksService {
             id: true,
             name: true,
             email: true,
-          },
-        },
-        tags: {
-          include: {
-            tag: true,
           },
         },
         versions: {
@@ -203,11 +193,6 @@ export class LinksService {
             id: true,
             name: true,
             email: true,
-          },
-        },
-        tags: {
-          include: {
-            tag: true,
           },
         },
       },

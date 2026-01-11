@@ -49,6 +49,7 @@ const resolveEntityLabel = (url?: string) => {
   if (normalized.includes('/units')) return 'Unidade';
   if (normalized.includes('/companies')) return 'Empresa';
   if (normalized.includes('/uploads')) return 'Arquivo';
+  if (normalized.includes('/system-config')) return 'Configuracoes';
   return 'Operacao';
 };
 
@@ -97,10 +98,7 @@ const parseErrorMessage = (error: AxiosError) => {
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
+    config.headers.set('Authorization', `Bearer ${token}`);
   }
   return config;
 });
@@ -141,10 +139,8 @@ api.interceptors.response.use(
         const newAccessToken = await refreshAccessToken();
         useAuthStore.getState().setAccessToken(newAccessToken);
 
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          Authorization: `Bearer ${newAccessToken}`,
-        };
+        // @ts-expect-error - headers is always defined in axios requests
+        originalRequest.headers?.set('Authorization', `Bearer ${newAccessToken}`);
 
         return api(originalRequest);
       } catch (refreshError) {

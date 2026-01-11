@@ -10,10 +10,27 @@ exports.UploadsService = void 0;
 const common_1 = require("@nestjs/common");
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
+const system_config_store_1 = require("../system-config/system-config.store");
+const resolveUploadRoot = () => {
+    const configured = system_config_store_1.systemConfigStore.getString('upload_directory', 'uploads');
+    const value = configured.trim() || 'uploads';
+    return (0, path_1.isAbsolute)(value) ? value : (0, path_1.resolve)(process.cwd(), value);
+};
+const resolveUploadPath = (filePath) => {
+    if ((0, path_1.isAbsolute)(filePath)) {
+        return filePath;
+    }
+    const trimmed = filePath.replace(/^[/\\]+/, '');
+    const root = resolveUploadRoot();
+    if (trimmed.startsWith('uploads/')) {
+        return (0, path_1.resolve)(root, trimmed.slice('uploads/'.length));
+    }
+    return (0, path_1.resolve)(root, trimmed);
+};
 let UploadsService = class UploadsService {
     async deleteFile(filePath) {
         try {
-            const fullPath = (0, path_1.join)(process.cwd(), filePath);
+            const fullPath = resolveUploadPath(filePath);
             await (0, promises_1.unlink)(fullPath);
         }
         catch (error) {

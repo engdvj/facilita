@@ -66,11 +66,6 @@ let LinksService = class LinksService {
                         email: true,
                     },
                 },
-                tags: {
-                    include: {
-                        tag: true,
-                    },
-                },
             },
             orderBy: [
                 { order: 'asc' },
@@ -91,11 +86,6 @@ let LinksService = class LinksService {
                         id: true,
                         name: true,
                         email: true,
-                    },
-                },
-                tags: {
-                    include: {
-                        tag: true,
                     },
                 },
                 versions: {
@@ -169,11 +159,6 @@ let LinksService = class LinksService {
                         id: true,
                         name: true,
                         email: true,
-                    },
-                },
-                tags: {
-                    include: {
-                        tag: true,
                     },
                 },
             },

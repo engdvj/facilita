@@ -3,7 +3,7 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type EntityStatus = 'ACTIVE' | 'INACTIVE';
 export type NotificationType = 'EMAIL' | 'IN_APP';
 export type NotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'READ';
-export type EntityType = 'LINK' | 'SCHEDULE' | 'USER' | 'SECTOR' | 'COMPANY';
+export type EntityType = 'LINK' | 'SCHEDULE' | 'NOTE' | 'USER' | 'SECTOR' | 'COMPANY';
 export type ContentAudience =
   | 'PUBLIC'
   | 'COMPANY'
@@ -193,6 +193,7 @@ export interface Favorite {
   entityType: EntityType;
   linkId?: string;
   scheduleId?: string;
+  noteId?: string;
   createdAt: string;
 }
 
@@ -230,6 +231,18 @@ export interface RolePermission {
   canViewAuditLogs: boolean;
   canManageSystemConfig: boolean;
   restrictToOwnSector: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SystemConfig {
+  id: string;
+  key: string;
+  value: string;
+  description?: string;
+  type: string;
+  isEditable: boolean;
+  category?: string;
   createdAt: string;
   updatedAt: string;
 }

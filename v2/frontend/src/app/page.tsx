@@ -12,6 +12,9 @@ import {
   UploadedSchedule,
 } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { FavoriteButton } from '@/components/FavoriteButton';
+import { FavoritesSection } from '@/components/FavoritesSection';
 
 type CategoryOption = Category;
 type ContentItem = {
@@ -58,6 +61,8 @@ export default function Home() {
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
 
+  useNotifyOnChange(error);
+
   const getAudience = (link: LinkType): ContentAudience => {
     if (link.isPublic) return 'PUBLIC';
     if (link.audience) return link.audience;
@@ -103,6 +108,14 @@ export default function Home() {
   const getTagTextColor = (hex?: string) => {
     if (!hex) return undefined;
     return isLight(hex) ? '#1f2a2e' : '#fdf7ef';
+  };
+
+  const normalizeImagePosition = (position?: string) => {
+    if (!position) return '50% 50%';
+    const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
+    const withPercent = (value: string) =>
+      value.includes('%') ? value : `${value}%`;
+    return `${withPercent(x)} ${withPercent(y)}`;
   };
 
   useEffect(() => {
@@ -598,6 +611,16 @@ export default function Home() {
     const topFade = (
       <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 via-black/12 to-transparent" />
     );
+    const bottomFade = (
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 via-black/12 to-transparent" />
+    );
+    const typeLabel =
+      item.type === 'link' ? 'LINK' : item.type === 'document' ? 'DOC' : 'NOTA';
+    const typeBadge = (
+      <div className="absolute bottom-3 right-3 z-10 rounded-[10px] border border-black/5 bg-white/90 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#111] shadow-[0_2px_5px_rgba(0,0,0,0.06)] sm:text-[12px]">
+        {typeLabel}
+      </div>
+    );
 
     if (item.type === 'note') {
       const imageUrl = item.imageUrl
@@ -630,15 +653,26 @@ export default function Home() {
                 decoding="async"
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
                 style={{
-                  objectPosition: item.imagePosition || '50% 50%',
+                  objectPosition: normalizeImagePosition(item.imagePosition),
                   transform: `scale(${item.imageScale || 1})`,
+                  transformOrigin: normalizeImagePosition(item.imagePosition),
                 }}
               />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
             )}
             {topFade}
+            {bottomFade}
             {titleBadge}
+            {typeBadge}
+            {user && (
+              <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
+                <FavoriteButton
+                  entityType="NOTE"
+                  entityId={item.id}
+                />
+              </div>
+            )}
             <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
           </div>
         </article>
@@ -669,15 +703,26 @@ export default function Home() {
                 decoding="async"
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
                 style={{
-                  objectPosition: item.imagePosition || '50% 50%',
+                  objectPosition: normalizeImagePosition(item.imagePosition),
                   transform: `scale(${item.imageScale || 1})`,
+                  transformOrigin: normalizeImagePosition(item.imagePosition),
                 }}
               />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
             )}
             {topFade}
+            {bottomFade}
             {titleBadge}
+            {typeBadge}
+            {user && (
+              <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
+                <FavoriteButton
+                  entityType="LINK"
+                  entityId={item.id}
+                />
+              </div>
+            )}
             <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
           </div>
         </a>
@@ -712,15 +757,26 @@ export default function Home() {
               decoding="async"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
               style={{
-                objectPosition: item.imagePosition || '50% 50%',
+                objectPosition: normalizeImagePosition(item.imagePosition),
                 transform: `scale(${item.imageScale || 1})`,
+                transformOrigin: normalizeImagePosition(item.imagePosition),
               }}
             />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
           )}
           {topFade}
+          {bottomFade}
           {titleBadge}
+          {typeBadge}
+          {user && (
+            <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
+              <FavoriteButton
+                entityType="SCHEDULE"
+                entityId={item.id}
+              />
+            </div>
+          )}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
         </div>
       </a>
@@ -798,12 +854,6 @@ export default function Home() {
         </div>
       </div>
 
-      {error && (
-        <div className="motion-fade rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
       <div className="motion-item flex flex-wrap gap-2" style={staggerStyle(2)}>
         <button
           type="button"
@@ -822,9 +872,7 @@ export default function Home() {
             active && category.color
               ? {
                   backgroundColor: category.color,
-                  color: isLight(category.color)
-                    ? 'var(--foreground)'
-                    : 'var(--primary-foreground)',
+                  color: getTagTextColor(category.color),
                 }
               : undefined;
           return (
@@ -845,21 +893,9 @@ export default function Home() {
         })}
       </div>
 
-      {favoriteItems.length > 0 && (
-        <div className="motion-item space-y-3" style={staggerStyle(3)}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Favoritos
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {favoriteItems.length} itens
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {favoriteItems.map((item, index) =>
-              renderItemCard(item, index + 1),
-            )}
-          </div>
+      {user && (
+        <div className="motion-item" style={staggerStyle(3)}>
+          <FavoritesSection />
         </div>
       )}
 
@@ -898,8 +934,9 @@ export default function Home() {
                   alt={selectedNote.title}
                   className="h-full w-full object-cover"
                   style={{
-                    objectPosition: selectedNote.imagePosition || '50% 50%',
+                    objectPosition: normalizeImagePosition(selectedNote.imagePosition),
                     transform: `scale(${selectedNote.imageScale || 1})`,
+                    transformOrigin: normalizeImagePosition(selectedNote.imagePosition),
                   }}
                 />
               </div>
