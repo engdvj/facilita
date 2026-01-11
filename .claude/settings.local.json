@@ -23,7 +23,10 @@
       "Bash(npm run dev:*)",
       "Bash(timeout:*)",
       "Bash(powershell -Command \"Stop-Process -Id 69188 -Force\")",
-      "Bash(\"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\\\\admin\\\\schedules\\\\page.tsx\")"
+      "Bash(\"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\\\\admin\\\\schedules\\\\page.tsx\")",
+      "Bash(npx kill-port:*)",
+      "Bash(curl:*)",
+      "Bash(node check-notes.js:*)"
     ]
   }
 }

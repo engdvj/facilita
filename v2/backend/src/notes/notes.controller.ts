@@ -114,9 +114,28 @@ export class NotesController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
   async findAll(
+    @Query('companyId') companyId?: string,
+    @Query('sectorId') sectorId?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('isPublic') isPublic?: string,
+    @Query('audience') audience?: string,
+  ) {
+    const normalizedCompanyId = companyId?.trim() || undefined;
+    const parsedAudience = parseAudienceParam(audience);
+    const filters = {
+      sectorId,
+      categoryId,
+      audience: parsedAudience || (isPublic === 'true' ? ContentAudience.PUBLIC : undefined),
+      isPublic: isPublic === 'true' ? true : isPublic === 'false' ? false : undefined,
+    };
+    return this.notesService.findAll(normalizedCompanyId, filters);
+  }
+
+  @Get('admin/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  async findAllAdmin(
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
@@ -124,27 +143,48 @@ export class NotesController {
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
   ) {
-    const parsedAudience = parseAudienceParam(audience);
+    const normalizedCompanyId = companyId?.trim() || undefined;
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
     const resolvedCompanyId =
-      companyId?.trim() || (!isSuperAdmin ? req.user?.companyId : undefined);
+      normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
 
     if (!resolvedCompanyId && !isSuperAdmin) {
       throw new ForbiddenException('Empresa obrigatoria.');
     }
 
+    const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
       categoryId,
       audience: parsedAudience,
       isPublic: isPublic ? isPublic === 'true' : undefined,
     };
+
     return this.notesService.findAll(resolvedCompanyId, filters);
   }
 
-  @Get(':id')
+  @Get('admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  async findAllAdminAlias(
+    @Request() req: any,
+    @Query('companyId') companyId?: string,
+    @Query('sectorId') sectorId?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('isPublic') isPublic?: string,
+    @Query('audience') audience?: string,
+  ) {
+    return this.findAllAdmin(
+      req,
+      companyId,
+      sectorId,
+      categoryId,
+      isPublic,
+      audience,
+    );
+  }
+
+  @Get(':id')
   findOne(@Param('id') id: string) {
     return this.notesService.findOne(id);
   }

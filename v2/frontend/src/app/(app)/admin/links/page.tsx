@@ -11,14 +11,6 @@ import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Link, Sector } from '@/types';
 
 const pageSize = 8;
-const audienceFilterOptions: ContentAudience[] = [
-  'PUBLIC',
-  'COMPANY',
-  'SECTOR',
-  'ADMIN',
-  'SUPERADMIN',
-  'PRIVATE',
-];
 
 const emptyFormData = {
   title: '',
@@ -26,7 +18,6 @@ const emptyFormData = {
   description: '',
   categoryId: '',
   sectorId: '',
-  color: '',
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
@@ -47,7 +38,6 @@ export default function LinksPage() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [filterSectorId, setFilterSectorId] = useState('');
-  const [filterAudience, setFilterAudience] = useState('ALL');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Link | null>(null);
@@ -58,6 +48,7 @@ export default function LinksPage() {
   const [formData, setFormData] = useState({ ...emptyFormData });
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
+  const [formTab, setFormTab] = useState<'basic' | 'category' | 'visual'>('basic');
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isCollaborator = user?.role === 'COLLABORATOR';
@@ -126,29 +117,12 @@ export default function LinksPage() {
     return 'Superadmins';
   };
 
-  const isLight = (hex?: string) => {
-    if (!hex || !hex.startsWith('#') || hex.length < 7) return false;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
-  };
-
-  const toRgba = (hex: string, alpha: number) => {
-    const normalized = hex.replace('#', '');
-    const value =
-      normalized.length === 3
-        ? normalized
-            .split('')
-            .map((char) => `${char}${char}`)
-            .join('')
-        : normalized;
-    if (value.length !== 6) return undefined;
-    const r = parseInt(value.slice(0, 2), 16);
-    const g = parseInt(value.slice(2, 4), 16);
-    const b = parseInt(value.slice(4, 6), 16);
-    if ([r, g, b].some((channel) => Number.isNaN(channel))) return undefined;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const normalizeImagePosition = (position?: string) => {
+    if (!position) return '50% 50%';
+    const [x = '50%', y = '50%'] = position.split(' ');
+    const withPercent = (value: string) =>
+      value.includes('%') ? value : `${value}%`;
+    return `${withPercent(x)} ${withPercent(y)}`;
   };
 
   const canViewLink = (link: Link) => {
@@ -290,20 +264,12 @@ export default function LinksPage() {
       if (filterSectorId && link.sectorId !== filterSectorId) {
         return false;
       }
-      if (
-        filterAudience !== 'ALL' &&
-        getAudience(link) !== filterAudience
-      ) {
-        return false;
-      }
       return true;
     });
   }, [
-    filterAudience,
     filterCategoryId,
     filterSectorId,
     filterStatus,
-    getAudience,
     search,
     visibleLinks,
   ]);
@@ -311,8 +277,7 @@ export default function LinksPage() {
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId)) +
-    Number(filterAudience !== 'ALL');
+    Number(Boolean(filterSectorId));
 
   const totalPages = Math.max(1, Math.ceil(filteredLinks.length / pageSize));
   const paginatedLinks = filteredLinks.slice(
@@ -337,6 +302,7 @@ export default function LinksPage() {
       isSuperAdmin ? companyId : user?.companyId || '',
     );
     setFormError(null);
+    setFormTab('basic');
     setModalOpen(true);
   };
 
@@ -348,7 +314,6 @@ export default function LinksPage() {
       description: link.description || '',
       categoryId: link.categoryId || '',
       sectorId: link.sectorId || '',
-      color: link.color || '',
       imageUrl: link.imageUrl || '',
       imagePosition: link.imagePosition || '50% 50%',
       imageScale: link.imageScale || 1,
@@ -357,6 +322,7 @@ export default function LinksPage() {
     });
     setFormCompanyId(link.companyId || '');
     setFormError(null);
+    setFormTab('basic');
     setModalOpen(true);
   };
 
@@ -417,7 +383,6 @@ export default function LinksPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
-        color: formData.color || undefined,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -473,7 +438,6 @@ export default function LinksPage() {
     setFilterStatus('ALL');
     setFilterCategoryId('');
     setFilterSectorId('');
-    setFilterAudience('ALL');
     setPage(1);
   };
 
@@ -493,37 +457,7 @@ export default function LinksPage() {
     }));
   };
 
-  const previewCategory = formData.categoryId
-    ? formCategories.find((category) => category.id === formData.categoryId) ||
-      categories.find((category) => category.id === formData.categoryId)
-    : undefined;
   const previewTitle = formData.title.trim() || 'Nome do link';
-  const previewDescription = formData.description.trim();
-  const previewAccentColor = formData.color || previewCategory?.color || '';
-  const previewCategoryStyle = previewCategory?.color
-    ? {
-        backgroundColor: previewCategory.color,
-        borderColor: previewCategory.color,
-        color: isLight(previewCategory.color)
-          ? 'var(--foreground)'
-          : 'var(--primary-foreground)',
-      }
-    : undefined;
-  const accentSoft = previewAccentColor
-    ? toRgba(previewAccentColor, 0.08)
-    : undefined;
-  const accentStrong = previewAccentColor
-    ? toRgba(previewAccentColor, 0.22)
-    : undefined;
-  const previewPanelStyle =
-    accentSoft && accentStrong
-      ? {
-          backgroundImage: `linear-gradient(180deg, ${accentSoft} 0%, ${accentStrong} 100%)`,
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
-        }
-      : {
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
-        };
   const previewImageUrl = formData.imageUrl
     ? formData.imageUrl.startsWith('http')
       ? formData.imageUrl
@@ -621,26 +555,6 @@ export default function LinksPage() {
                   {visibleSectors.map((sector) => (
                     <option key={sector.id} value={sector.id}>
                       {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Visibilidade
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterAudience}
-                  onChange={(event) => {
-                    setFilterAudience(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="ALL">Todas</option>
-                  {audienceFilterOptions.map((audience) => (
-                    <option key={audience} value={audience}>
-                      {getAudienceLabel(audience)}
                     </option>
                   ))}
                 </select>
@@ -792,274 +706,323 @@ export default function LinksPage() {
           </>
         }
       >
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-4">
-          {isSuperAdmin && (
-            <AdminField label="Empresa" htmlFor="link-company">
-              <select
-                id="link-company"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formCompanyId}
-                onChange={(event) => {
-                  const nextCompanyId = event.target.value;
-                  setFormCompanyId(nextCompanyId);
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryId: '',
-                    sectorId: '',
-                  }));
-                }}
-              >
-                <option value="">Selecione uma empresa</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
-          )}
-          <div className="grid gap-4 md:grid-cols-2">
-            <AdminField label="Titulo" htmlFor="link-title">
-              <input
-                id="link-title"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.title}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, title: event.target.value }))
-                }
-              />
-            </AdminField>
-            <AdminField label="URL" htmlFor="link-url">
-              <input
-                id="link-url"
-                type="url"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.url}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, url: event.target.value }))
-                }
-                placeholder="https://exemplo.com"
-              />
-            </AdminField>
-          </div>
-          <AdminField label="Descricao" htmlFor="link-description" hint="Opcional">
-            <textarea
-              id="link-description"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              rows={3}
-              value={formData.description}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
-            />
-          </AdminField>
-          <div className="grid gap-4 md:grid-cols-3">
-            <AdminField label="Categoria" htmlFor="link-category">
-              <select
-                id="link-category"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.categoryId}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryId: event.target.value,
-                  }))
-                }
-                disabled={isSuperAdmin && !formCompanyId}
-              >
-                <option value="">Sem categoria</option>
-                {formCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
-            <AdminField label="Setor" htmlFor="link-sector">
-              <select
-                id="link-sector"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.sectorId}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    sectorId: event.target.value,
-                  }))
-                }
-                disabled={
-                  formData.audience !== 'SECTOR' ||
-                  (isSuperAdmin && !formCompanyId)
-                }
-              >
-                <option value="">Todos os setores</option>
-                {formSectors.map((sector) => (
-                  <option key={sector.id} value={sector.id}>
-                    {sector.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
-            <AdminField label="Cor" htmlFor="link-color" hint="Opcional">
-              <input
-                id="link-color"
-                type="color"
-                className="h-11 w-full rounded-lg border border-border/70 bg-white/80"
-                value={formData.color || '#3b82f6'}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, color: event.target.value }))
-                }
-              />
-            </AdminField>
-          </div>
-          <AdminField label="Imagem" htmlFor="link-image" hint="Opcional">
-            <input
-              id="link-image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={uploading}
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-            />
-            {uploading && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Fazendo upload...
-              </p>
-            )}
-            {formData.imageUrl && (
-              <div className="mt-3 space-y-3">
-                <div className="space-y-2 rounded-lg border border-border/70 bg-card/50 p-3">
-                  <p className="text-xs font-medium text-foreground">
-                    Ajustar enquadramento
-                  </p>
+        {/* Navegação de abas */}
+        <div className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-border/70 bg-card/60 p-2">
+          <button
+            type="button"
+            onClick={() => setFormTab('basic')}
+            className={`flex-1 min-w-[140px] rounded-xl px-4 py-2 text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
+              formTab === 'basic'
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            }`}
+          >
+            Básico
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormTab('category')}
+            className={`flex-1 min-w-[140px] rounded-xl px-4 py-2 text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
+              formTab === 'category'
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            }`}
+          >
+            Categorização
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormTab('visual')}
+            className={`flex-1 min-w-[140px] rounded-xl px-4 py-2 text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
+              formTab === 'visual'
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            }`}
+          >
+            Visual
+          </button>
+        </div>
 
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Posição Horizontal</span>
-                      <span className="text-foreground">{formData.imagePosition.split(' ')[0]}</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={parseInt(formData.imagePosition.split(' ')[0])}
-                      onChange={(e) => {
-                        const y = formData.imagePosition.split(' ')[1];
-                        setFormData((prev) => ({
-                          ...prev,
-                          imagePosition: `${e.target.value}% ${y}`,
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Posição Vertical</span>
-                      <span className="text-foreground">{formData.imagePosition.split(' ')[1]}</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={parseInt(formData.imagePosition.split(' ')[1])}
-                      onChange={(e) => {
-                        const x = formData.imagePosition.split(' ')[0];
-                        setFormData((prev) => ({
-                          ...prev,
-                          imagePosition: `${x} ${e.target.value}%`,
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Zoom</span>
-                      <span className="text-foreground">{formData.imageScale.toFixed(1)}x</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="0.1"
-                      value={formData.imageScale}
-                      onChange={(e) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          imageScale: parseFloat(e.target.value),
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
+        {/* Aba Básico */}
+        {formTab === 'basic' && (
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+            <div className="space-y-5">
+              {isSuperAdmin && (
+                <AdminField label="Empresa" htmlFor="link-company">
+                  <select
+                    id="link-company"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formCompanyId}
+                    onChange={(event) => {
+                      const nextCompanyId = event.target.value;
+                      setFormCompanyId(nextCompanyId);
                       setFormData((prev) => ({
                         ...prev,
-                        imagePosition: '50% 50%',
-                        imageScale: 1,
+                        categoryId: '',
+                        sectorId: '',
                       }));
                     }}
-                    className="mt-2 w-full rounded-md border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:border-foreground/60"
                   >
-                    Resetar enquadramento
-                  </button>
-                </div>
+                    <option value="">Selecione uma empresa</option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                </AdminField>
+              )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <AdminField label="Titulo" htmlFor="link-title">
+                  <input
+                    id="link-title"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formData.title}
+                    onChange={(event) =>
+                      setFormData((prev) => ({ ...prev, title: event.target.value }))
+                    }
+                  />
+                </AdminField>
+                <AdminField label="URL" htmlFor="link-url">
+                  <input
+                    id="link-url"
+                    type="url"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formData.url}
+                    onChange={(event) =>
+                      setFormData((prev) => ({ ...prev, url: event.target.value }))
+                    }
+                    placeholder="https://exemplo.com"
+                  />
+                </AdminField>
               </div>
-            )}
-          </AdminField>
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_120px]">
-            <AdminField label="Visibilidade" htmlFor="link-audience">
-              {!isSuperAdmin &&
-              !audienceOptions.some((option) => option.value === formData.audience) ? (
-                <div className="rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground">
-                  {getAudienceLabel(formData.audience)} (somente superadmin)
-                </div>
-              ) : (
-                <select
-                  id="link-audience"
+              <AdminField label="Descricao" htmlFor="link-description" hint="Opcional">
+                <textarea
+                  id="link-description"
                   className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                  value={formData.audience}
+                  rows={4}
+                  value={formData.description}
                   onChange={(event) =>
-                    updateAudience(event.target.value as ContentAudience)
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
                   }
-                  disabled={isCollaborator}
+                />
+              </AdminField>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_140px]">
+                <AdminField label="Visibilidade" htmlFor="link-audience">
+                  {!isSuperAdmin &&
+                  !audienceOptions.some((option) => option.value === formData.audience) ? (
+                    <div className="rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground">
+                      {getAudienceLabel(formData.audience)} (somente superadmin)
+                    </div>
+                  ) : (
+                    <select
+                      id="link-audience"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                      value={formData.audience}
+                      onChange={(event) =>
+                        updateAudience(event.target.value as ContentAudience)
+                      }
+                      disabled={isCollaborator}
+                    >
+                      {audienceOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </AdminField>
+                <AdminField label="Ordem" htmlFor="link-order">
+                  <input
+                    id="link-order"
+                    type="number"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formData.order}
+                    onChange={(event) => updateOrder(event.target.value)}
+                  />
+                </AdminField>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Aba Categorização */}
+        {formTab === 'category' && (
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+            <div className="grid gap-4 md:grid-cols-2">
+              <AdminField label="Categoria" htmlFor="link-category">
+                <select
+                  id="link-category"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formData.categoryId}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      categoryId: event.target.value,
+                    }))
+                  }
+                  disabled={isSuperAdmin && !formCompanyId}
                 >
-                  {audienceOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  <option value="">Sem categoria</option>
+                  {formCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
-              )}
-            </AdminField>
-            <AdminField label="Ordem" htmlFor="link-order">
-              <input
-                id="link-order"
-                type="number"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-2 py-2 text-sm text-foreground"
-                value={formData.order}
-                onChange={(event) => updateOrder(event.target.value)}
-              />
-            </AdminField>
+              </AdminField>
+              <AdminField label="Setor" htmlFor="link-sector">
+                <select
+                  id="link-sector"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formData.sectorId}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      sectorId: event.target.value,
+                    }))
+                  }
+                  disabled={
+                    formData.audience !== 'SECTOR' ||
+                    (isSuperAdmin && !formCompanyId)
+                  }
+                >
+                  <option value="">Todos os setores</option>
+                  {formSectors.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+            </div>
           </div>
-          </div>
+        )}
 
-          <div className="space-y-4 motion-fade-up">
-            <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        {/* Aba Visual */}
+        {formTab === 'visual' && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+              <div className="space-y-5">
+                <AdminField label="Imagem" htmlFor="link-image" hint="Opcional">
+                  <input
+                    id="link-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  />
+                  {uploading && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Fazendo upload...
+                    </p>
+                  )}
+                  {formData.imageUrl && (
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-2 rounded-xl border border-border/70 bg-card/50 p-4">
+                        <p className="text-xs font-medium text-foreground">
+                          Ajustar enquadramento
+                        </p>
+
+                        <div className="space-y-2">
+                          <label className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Posicao Horizontal</span>
+                            <span className="text-foreground">
+                              {formData.imagePosition.split(' ')[0]}
+                            </span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={parseInt(formData.imagePosition.split(' ')[0])}
+                            onChange={(e) => {
+                              const y = formData.imagePosition.split(' ')[1];
+                              setFormData((prev) => ({
+                                ...prev,
+                                imagePosition: `${e.target.value}% ${y}`,
+                              }));
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Posicao Vertical</span>
+                            <span className="text-foreground">
+                              {formData.imagePosition.split(' ')[1]}
+                            </span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={parseInt(formData.imagePosition.split(' ')[1])}
+                            onChange={(e) => {
+                              const x = formData.imagePosition.split(' ')[0];
+                              setFormData((prev) => ({
+                                ...prev,
+                                imagePosition: `${x} ${e.target.value}%`,
+                              }));
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Zoom</span>
+                            <span className="text-foreground">
+                              {formData.imageScale.toFixed(1)}x
+                            </span>
+                          </label>
+                          <input
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.1"
+                            value={formData.imageScale}
+                            onChange={(e) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                imageScale: parseFloat(e.target.value),
+                              }));
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              imagePosition: '50% 50%',
+                              imageScale: 1,
+                            }));
+                          }}
+                          className="mt-2 w-full rounded-md border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:border-foreground/60"
+                        >
+                          Resetar enquadramento
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </AdminField>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+              <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Previa do card
               </p>
-              <div className="mt-3 flex justify-center">
-                <div className="w-full max-w-[360px]">
+              <div className="flex justify-center">
+                <div className="w-full">
                   <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)]">
                     <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
                       {previewImageUrl ? (
@@ -1075,45 +1038,22 @@ export default function LinksPage() {
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
                       )}
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 via-black/12 to-transparent" />
+                      <div
+                        className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1.5 text-[13px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+                        title={previewTitle}
+                      >
+                        {previewTitle}
+                      </div>
                       <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
-                    </div>
-                    <div
-                      className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
-                      style={previewPanelStyle}
-                    >
-                      <div className="space-y-1">
-                        <h3 className="text-base font-semibold text-foreground">
-                          {previewTitle}
-                        </h3>
-                        {previewDescription && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {previewDescription}
-                          </p>
-                        )}
-                      </div>
-                      <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        {previewCategory?.name && (
-                          <span
-                            className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
-                            style={previewCategoryStyle}
-                          >
-                            {previewCategory.name}
-                          </span>
-                        )}
-                        {formData.audience !== 'PUBLIC' && (
-                          <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
-                            Restrito
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
         {formError && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
             {formError}

@@ -52,7 +52,7 @@ export declare class UploadedSchedulesController {
         fileName: string;
         fileSize: number;
     }>;
-    findAll(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
+    findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         sector: {
             id: string;
             name: string;

@@ -47,7 +47,6 @@ model Company {
   links         Link[]
   schedules     UploadedSchedule[]
   notes         Note[]
-  notifications Notification[]
 }
 
 model Unit {
@@ -107,7 +106,6 @@ model User {
   notesCreated    Note[]          @relation("NoteCreator")
   favorites       Favorite[]
   linkVersions    LinkVersion[]   @relation("LinkVersionChanger")
-  notifications   Notification[]  @relation("NotificationRecipient")
   activityLogs    ActivityLog[]   @relation("ActivityLogger")
   auditLogs       AuditLog[]      @relation("AuditLogger")
 }
@@ -196,7 +194,6 @@ model Link {
   sector    Sector?   @relation(fields: [sectorId], references: [id])
   category  Category? @relation(fields: [categoryId], references: [id])
   favorites Favorite[]
-  tags      TagOnLink[]
   versions  LinkVersion[]
 
   @@index([companyId])
@@ -231,7 +228,6 @@ model UploadedSchedule {
   sector    Sector?   @relation(fields: [sectorId], references: [id])
   category  Category? @relation(fields: [categoryId], references: [id])
   favorites Favorite[]
-  tags      TagOnSchedule[]
 
   @@index([companyId])
   @@index([userId])
@@ -270,10 +266,14 @@ model Note {
 }
 
 // ===== FUNCIONALIDADES EXTRAS =====
+// Nota: Models de Tags e Notificações foram removidos intencionalmente
+// Foco nas 8 funcionalidades priorizadas: Favoritos, Busca, Histórico de Versões,
+// Upload Avançado, Auditoria, ActivityLog, SystemConfig e PWA
 
 enum EntityType {
   LINK
   SCHEDULE
+  NOTE
   USER
   SECTOR
   COMPANY
@@ -295,36 +295,6 @@ model Favorite {
   @@index([userId])
 }
 
-model Tag {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique
-  color     String?
-  createdAt DateTime @default(now())
-
-  links     TagOnLink[]
-  schedules TagOnSchedule[]
-}
-
-model TagOnLink {
-  linkId String @db.Uuid
-  tagId  String @db.Uuid
-
-  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([linkId, tagId])
-}
-
-model TagOnSchedule {
-  scheduleId String @db.Uuid
-  tagId      String @db.Uuid
-
-  schedule UploadedSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  tag      Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([scheduleId, tagId])
-}
-
 model LinkVersion {
   id           String   @id @default(uuid()) @db.Uuid
   linkId       String   @db.Uuid
@@ -339,39 +309,6 @@ model LinkVersion {
   changedByUser User @relation("LinkVersionChanger", fields: [changedBy], references: [id])
 
   @@index([linkId])
-}
-
-enum NotificationType {
-  EMAIL
-  IN_APP
-}
-
-enum NotificationStatus {
-  PENDING
-  SENT
-  FAILED
-  READ
-}
-
-model Notification {
-  id        String             @id @default(uuid()) @db.Uuid
-  companyId String             @db.Uuid
-  userId    String?            @db.Uuid
-  type      NotificationType
-  status    NotificationStatus @default(PENDING)
-  title     String
-  message   String
-  data      Json?
-  readAt    DateTime?
-  sentAt    DateTime?
-  createdAt DateTime           @default(now())
-
-  company Company @relation(fields: [companyId], references: [id])
-  user    User?   @relation("NotificationRecipient", fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([companyId])
-  @@index([status])
 }
 
 model ActivityLog {

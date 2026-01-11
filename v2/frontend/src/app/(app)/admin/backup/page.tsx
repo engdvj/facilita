@@ -19,14 +19,6 @@ type BackupEntity =
   | 'tagOnLink'
   | 'tagOnSchedule';
 
-type BackupPayload = {
-  meta?: {
-    createdAt?: string;
-    entities?: BackupEntity[];
-  };
-  data?: Record<string, unknown>;
-};
-
 const backupOptions: {
   key: BackupEntity;
   label: string;
@@ -70,7 +62,6 @@ export default function BackupPage() {
   const [exporting, setExporting] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
-  const [restorePayload, setRestorePayload] = useState<BackupPayload | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,12 +95,6 @@ export default function BackupPage() {
 
   const allSelected = selectedEntities.length === backupOptions.length;
   const hasSelection = selectedEntities.length > 0;
-  const createdAtLabel =
-    restorePayload?.meta?.createdAt &&
-    !Number.isNaN(new Date(restorePayload.meta.createdAt).getTime())
-      ? new Date(restorePayload.meta.createdAt).toLocaleString('pt-BR')
-      : '-';
-
   const toggleAll = (value: boolean) => {
     setSelection((current) => {
       const next = { ...current };
@@ -130,18 +115,17 @@ export default function BackupPage() {
     setError(null);
 
     try {
-      const response = await api.post('/backups/export', {
-        entities: selectedEntities,
-      });
-      const payload = response.data;
-      const blob = new Blob([JSON.stringify(payload, null, 2)], {
-        type: 'application/json',
-      });
+      const response = await api.post(
+        '/backups/export',
+        { entities: selectedEntities },
+        { responseType: 'blob' },
+      );
+      const blob = new Blob([response.data], { type: 'application/zip' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       const date = new Date().toISOString().slice(0, 10);
       anchor.href = url;
-      anchor.download = `facilita-backup-${date}.json`;
+      anchor.download = `facilita-backup-${date}.zip`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -161,22 +145,11 @@ export default function BackupPage() {
   ) => {
     const file = event.target.files?.[0] || null;
     setRestoreFile(file);
-    setRestorePayload(null);
     setRestoreError(null);
-
-    if (!file) return;
-
-    try {
-      const content = await file.text();
-      const parsed = JSON.parse(content) as BackupPayload;
-      setRestorePayload(parsed);
-    } catch (parseError) {
-      setRestoreError('Arquivo invalido. Use um JSON gerado pelo sistema.');
-    }
   };
 
   const handleRestore = async () => {
-    if (!restorePayload) {
+    if (!restoreFile) {
       setRestoreError('Selecione um arquivo valido para restaurar.');
       return;
     }
@@ -190,13 +163,14 @@ export default function BackupPage() {
     setRestoreError(null);
 
     try {
-      await api.post('/backups/restore', {
-        entities: selectedEntities,
-        backup: restorePayload,
-        mode: 'merge',
+      const formData = new FormData();
+      formData.append('file', restoreFile);
+      formData.append('entities', JSON.stringify(selectedEntities));
+      formData.append('mode', 'merge');
+      await api.post('/backups/restore', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setRestoreFile(null);
-      setRestorePayload(null);
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -296,7 +270,7 @@ export default function BackupPage() {
                 Backup
               </p>
               <h2 className="text-lg font-semibold text-foreground">
-                Gere um arquivo JSON com os dados.
+                Gere um arquivo compactado com dados e arquivos.
               </h2>
             </div>
 
@@ -330,7 +304,7 @@ export default function BackupPage() {
                 <input
                   id="backup-file"
                   type="file"
-                  accept="application/json"
+                  accept="application/zip,.zip"
                   className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground"
                   onChange={handleFileChange}
                   disabled={Boolean(error)}
@@ -340,13 +314,10 @@ export default function BackupPage() {
               <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
                 {restoreFile
                   ? `Arquivo selecionado: ${restoreFile.name}`
-                  : 'Selecione um arquivo JSON gerado pelo sistema.'}
+                  : 'Selecione um arquivo ZIP gerado pelo sistema.'}
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                    Data: {createdAtLabel}
-                  </span>
-                  <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                    Itens: {restorePayload?.meta?.entities?.length || 0}
+                    Itens selecionados: {selectedEntities.length}
                   </span>
                 </div>
               </div>
@@ -362,7 +333,7 @@ export default function BackupPage() {
                 className="w-full rounded-lg bg-destructive px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
                 onClick={handleRestore}
                 disabled={
-                  !restorePayload ||
+                  !restoreFile ||
                   !hasSelection ||
                   restoring ||
                   Boolean(error)

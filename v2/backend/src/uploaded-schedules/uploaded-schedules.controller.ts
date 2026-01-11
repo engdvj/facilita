@@ -104,38 +104,40 @@ export class UploadedSchedulesController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
   async findAll(
-    @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
   ) {
+    const normalizedCompanyId = companyId?.trim() || undefined;
     const parsedAudience = parseAudienceParam(audience);
-    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
-    const resolvedCompanyId =
-      companyId?.trim() || (!isSuperAdmin ? req.user?.companyId : undefined);
-
-    if (!resolvedCompanyId && !isSuperAdmin) {
-      throw new ForbiddenException('Empresa obrigatoria.');
-    }
-
     const filters = {
       sectorId,
       categoryId,
-      audience: parsedAudience,
-      isPublic: isPublic ? isPublic === 'true' : undefined,
+      audience:
+        parsedAudience ||
+        (isPublic
+          ? isPublic === 'true'
+            ? ContentAudience.PUBLIC
+            : undefined
+          : undefined) ||
+        (normalizedCompanyId ? undefined : ContentAudience.PUBLIC),
+      isPublic:
+        isPublic && isPublic === 'false'
+          ? false
+          : normalizedCompanyId
+            ? undefined
+            : true,
     };
     console.log(
       'SchedulesController.findAll - companyId:',
-      resolvedCompanyId,
+      normalizedCompanyId,
       'filters:',
       filters,
     );
-    const result = await this.schedulesService.findAll(resolvedCompanyId, filters);
+    const result = await this.schedulesService.findAll(normalizedCompanyId, filters);
     console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
     return result;
   }

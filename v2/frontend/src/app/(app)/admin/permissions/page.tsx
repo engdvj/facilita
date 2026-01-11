@@ -178,7 +178,7 @@ const isPermissionDirty = (
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
-  const [activeRole, setActiveRole] = useState<UserRole>('ADMIN');
+  const [activeRole, setActiveRole] = useState<UserRole>('SUPERADMIN');
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState<RolePermission | null>(null);
   const [loading, setLoading] = useState(true);

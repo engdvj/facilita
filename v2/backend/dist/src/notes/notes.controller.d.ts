@@ -50,7 +50,99 @@ export declare class NotesController {
         deletedAt: Date | null;
         content: string;
     }>;
-    findAll(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
+    findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
+        id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        sectorId: string | null;
+        userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
+        categoryId: string | null;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        isPublic: boolean;
+        deletedAt: Date | null;
+        content: string;
+    })[]>;
+    findAllAdmin(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
+        id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        sectorId: string | null;
+        userId: string | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
+        color: string | null;
+        categoryId: string | null;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        isPublic: boolean;
+        deletedAt: Date | null;
+        content: string;
+    })[]>;
+    findAllAdminAlias(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         sector: {
             id: string;
             name: string;

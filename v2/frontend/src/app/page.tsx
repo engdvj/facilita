@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import api, { serverURL } from '@/lib/api';
 import AppShell from '@/components/app-shell';
+import AdminModal from '@/components/admin/modal';
 import {
   Category,
   ContentAudience,
@@ -51,6 +52,7 @@ export default function Home() {
   >('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const staggerStyle = (index: number) =>
@@ -98,21 +100,9 @@ export default function Home() {
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
   };
 
-  const toRgba = (hex: string, alpha: number) => {
-    const normalized = hex.replace('#', '');
-    const value =
-      normalized.length === 3
-        ? normalized
-            .split('')
-            .map((char) => `${char}${char}`)
-            .join('')
-        : normalized;
-    if (value.length !== 6) return undefined;
-    const r = parseInt(value.slice(0, 2), 16);
-    const g = parseInt(value.slice(2, 4), 16);
-    const b = parseInt(value.slice(4, 6), 16);
-    if ([r, g, b].some((channel) => Number.isNaN(channel))) return undefined;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const getTagTextColor = (hex?: string) => {
+    if (!hex) return undefined;
+    return isLight(hex) ? '#1f2a2e' : '#fdf7ef';
   };
 
   useEffect(() => {
@@ -135,7 +125,6 @@ export default function Home() {
         return;
       }
       try {
-        setError(null);
         const params = new URLSearchParams();
         if (companyId) {
           params.set('companyId', companyId);
@@ -146,36 +135,54 @@ export default function Home() {
         const queryString = params.toString();
         const linksEndpoint =
           isLoggedIn && isSuperAdmin ? '/links/admin/list' : '/links';
-        const linksRequest = api.get(
-          queryString ? `${linksEndpoint}?${queryString}` : linksEndpoint,
-        );
-        const documentsRequest = isLoggedIn
-          ? api.get(
-              queryString ? `/schedules?${queryString}` : '/schedules',
-            )
-          : Promise.resolve({ data: [] });
-        const notesRequest = isLoggedIn
-          ? api.get(queryString ? `/notes?${queryString}` : '/notes')
-          : Promise.resolve({ data: [] });
-        const [linksResponse, documentsResponse, notesResponse] = await Promise.all([
-          linksRequest,
-          documentsRequest,
-          notesRequest,
-        ]);
-        if (!active) return;
-        setLinks(linksResponse.data);
-        setDocuments(documentsResponse.data);
-        setNotes(notesResponse.data);
+        const notesEndpoint =
+          isLoggedIn && isSuperAdmin ? '/notes/admin/list' : '/notes';
+
+        try {
+          const linksResponse = await api.get(
+            queryString ? `${linksEndpoint}?${queryString}` : linksEndpoint,
+          );
+          if (!active) return;
+          setLinks(linksResponse.data);
+        } catch (linkError) {
+          console.error('Error loading links:', linkError);
+          if (!active) return;
+          setLinks([]);
+        }
+
+        try {
+          const documentsResponse = await api.get(
+            queryString ? `/schedules?${queryString}` : '/schedules',
+          );
+          if (!active) return;
+          setDocuments(documentsResponse.data);
+        } catch (docError) {
+          console.error('Error loading documents:', docError);
+          if (!active) return;
+          setDocuments([]);
+        }
+
+        try {
+          const notesResponse = await api.get(
+            queryString ? `${notesEndpoint}?${queryString}` : notesEndpoint,
+          );
+          if (!active) return;
+          setNotes(notesResponse.data);
+        } catch (noteError) {
+          console.error('Error loading notes:', noteError);
+          if (!active) return;
+          setNotes([]);
+        }
+
+        if (active) {
+          setError(null);
+          setLoading(false);
+        }
       } catch (err: any) {
         if (!active) return;
-        const status = err?.response?.status;
-        if (status === 401 || status === 403) {
-          setError('Sessao expirada. Faca login novamente.');
-        } else {
-          setError('Nao foi possivel carregar os links, documentos e notas.');
-        }
-      } finally {
-        if (active) setLoading(false);
+        console.error('Unexpected error:', err);
+        setError('Nao foi possivel carregar o conteudo.');
+        setLoading(false);
       }
     };
 
@@ -578,33 +585,19 @@ export default function Home() {
   ]);
 
   const renderItemCard = (item: ContentItem, index?: number) => {
-    const categoryColor = item.category?.color;
     const motionStyle =
       typeof index === 'number' ? staggerStyle(index) : undefined;
-    const categoryTagStyle = categoryColor
-      ? {
-          backgroundColor: categoryColor,
-          borderColor: categoryColor,
-          color: isLight(categoryColor)
-            ? 'var(--foreground)'
-            : 'var(--primary-foreground)',
-        }
-      : undefined;
-    const accentSoft = item.accentColor
-      ? toRgba(item.accentColor, 0.08)
-      : undefined;
-    const accentStrong = item.accentColor
-      ? toRgba(item.accentColor, 0.22)
-      : undefined;
-    const panelStyle =
-      accentSoft && accentStrong
-        ? {
-            backgroundImage: `linear-gradient(180deg, ${accentSoft} 0%, ${accentStrong} 100%)`,
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
-          }
-        : {
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
-          };
+    const titleBadge = (
+      <div
+        className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1.5 text-[13px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+        title={item.title}
+      >
+        {item.title}
+      </div>
+    );
+    const topFade = (
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 via-black/12 to-transparent" />
+    );
 
     if (item.type === 'note') {
       const imageUrl = item.imageUrl
@@ -612,13 +605,23 @@ export default function Home() {
           ? item.imageUrl
           : `${serverURL}${item.imageUrl}`
         : null;
+      const note = visibleNotes.find((n) => n.id === item.id);
       return (
         <article
           key={`${item.type}-${item.id}`}
-          className="motion-item group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_26px_52px_rgba(16,44,50,0.2)]"
+          role="button"
+          tabIndex={0}
+          onClick={() => note && setSelectedNote(note)}
+          onKeyDown={(e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && note) {
+              e.preventDefault();
+              setSelectedNote(note);
+            }
+          }}
+          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-48"
           style={motionStyle}
         >
-          <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+          <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -634,38 +637,9 @@ export default function Home() {
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
             )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+            {topFade}
+            {titleBadge}
             <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
-          </div>
-          <div
-            className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
-            style={panelStyle}
-          >
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">
-                {item.title}
-              </h3>
-              {item.content && (
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {item.content}
-                </p>
-              )}
-            </div>
-            <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {item.category?.name && (
-                <span
-                  className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
-                  style={categoryTagStyle}
-                >
-                  {item.category.name}
-                </span>
-              )}
-              {item.audience !== 'PUBLIC' && (
-                <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
-                  Restrito
-                </span>
-              )}
-            </div>
           </div>
         </article>
       );
@@ -683,10 +657,10 @@ export default function Home() {
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="motion-item group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_26px_52px_rgba(16,44,50,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-48"
           style={motionStyle}
         >
-          <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+          <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -702,38 +676,9 @@ export default function Home() {
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
             )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+            {topFade}
+            {titleBadge}
             <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
-          </div>
-          <div
-            className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
-            style={panelStyle}
-          >
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">
-                {item.title}
-              </h3>
-              {item.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {item.description}
-                </p>
-              )}
-            </div>
-            <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {item.category?.name && (
-                <span
-                  className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
-                  style={categoryTagStyle}
-                >
-                  {item.category.name}
-                </span>
-              )}
-              {item.audience !== 'PUBLIC' && (
-                <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
-                  Restrito
-                </span>
-              )}
-            </div>
           </div>
         </a>
       );
@@ -755,10 +700,10 @@ export default function Home() {
         href={fileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="motion-item group flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)] transition hover:-translate-y-1 hover:shadow-[0_26px_52px_rgba(16,44,50,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+        className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-48"
         style={motionStyle}
       >
-        <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+        <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -774,33 +719,9 @@ export default function Home() {
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
           )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+          {topFade}
+          {titleBadge}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
-        </div>
-        <div
-          className="flex flex-1 flex-col gap-2 px-4 py-3 bg-card/80"
-          style={panelStyle}
-        >
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-foreground">
-              {item.title}
-            </h3>
-          </div>
-          <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {item.category?.name && (
-              <span
-                className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
-                style={categoryTagStyle}
-              >
-                {item.category.name}
-              </span>
-            )}
-            {item.audience !== 'PUBLIC' && (
-              <span className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
-                Restrito
-              </span>
-            )}
-          </div>
         </div>
       </a>
     );
@@ -831,7 +752,7 @@ export default function Home() {
             placeholder="Buscar link, documento ou nota"
             className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className={user ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Tipo
@@ -852,25 +773,27 @@ export default function Home() {
                 <option value="NOTE">Notas</option>
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Visibilidade
-              </label>
-              <select
-                value={filterVisibility}
-                onChange={(event) => {
-                  setFilterVisibility(
-                    event.target.value as 'ALL' | 'PUBLIC' | 'RESTRICTED',
-                  );
-                  setActiveCategory('all');
-                }}
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-              >
-                <option value="ALL">Todas</option>
-                <option value="PUBLIC">Publicos</option>
-                <option value="RESTRICTED">Restritos</option>
-              </select>
-            </div>
+            {user && (
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Visibilidade
+                </label>
+                <select
+                  value={filterVisibility}
+                  onChange={(event) => {
+                    setFilterVisibility(
+                      event.target.value as 'ALL' | 'PUBLIC' | 'RESTRICTED',
+                    );
+                    setActiveCategory('all');
+                  }}
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                >
+                  <option value="ALL">Todas</option>
+                  <option value="PUBLIC">Publicos</option>
+                  <option value="RESTRICTED">Restritos</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -932,7 +855,7 @@ export default function Home() {
               {favoriteItems.length} itens
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {favoriteItems.map((item, index) =>
               renderItemCard(item, index + 1),
             )}
@@ -949,11 +872,62 @@ export default function Home() {
           Nenhum item encontrado.
         </div>
       ) : (
-        <div className="motion-item grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="motion-item grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredItems.map((item, index) =>
             renderItemCard(item, index + 1),
           )}
         </div>
+      )}
+
+      {selectedNote && (
+        <AdminModal
+          open={Boolean(selectedNote)}
+          title={selectedNote.title}
+          onClose={() => setSelectedNote(null)}
+          panelClassName="max-w-2xl"
+        >
+          {selectedNote.imageUrl && (
+            <div className="mb-4 overflow-hidden rounded-lg">
+              <div className="relative h-64 w-full overflow-hidden bg-secondary/60">
+                <img
+                  src={
+                    selectedNote.imageUrl.startsWith('http')
+                      ? selectedNote.imageUrl
+                      : `${serverURL}${selectedNote.imageUrl}`
+                  }
+                  alt={selectedNote.title}
+                  className="h-full w-full object-cover"
+                  style={{
+                    objectPosition: selectedNote.imagePosition || '50% 50%',
+                    transform: `scale(${selectedNote.imageScale || 1})`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <div className="space-y-4">
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap text-sm text-foreground">
+                {selectedNote.content}
+              </p>
+            </div>
+            {selectedNote.category && (
+              <div className="flex items-center gap-2 pt-4 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">Categoria:</span>
+                <span
+                  className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
+                  style={{
+                    backgroundColor: selectedNote.category.color,
+                    borderColor: selectedNote.category.color,
+                    color: getTagTextColor(selectedNote.category.color),
+                  }}
+                >
+                  {selectedNote.category.name}
+                </span>
+              </div>
+            )}
+          </div>
+        </AdminModal>
       )}
     </AppShell>
   );

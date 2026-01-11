@@ -14,6 +14,26 @@ export default function AppHeader() {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const nextTheme =
+      stored === 'dark' || (stored !== 'light' && prefersDark) ? 'dark' : 'light';
+    setTheme(nextTheme);
+  }, []);
+
+  const applyTheme = (nextTheme: 'light' | 'dark') => {
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+    root.classList.toggle('dark', nextTheme === 'dark');
+    window.setTimeout(() => {
+      root.classList.remove('theme-transition');
+    }, 220);
+  };
 
   useEffect(() => {
     if (!user) {
@@ -61,6 +81,44 @@ export default function AppHeader() {
                   </span>
                   Menu
                 </button>
+                <button
+                  type="button"
+                  onClick={() => applyTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="motion-press rounded-lg border border-border/70 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
+                  aria-pressed={theme === 'dark'}
+                  aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                >
+                  {theme === 'dark' ? (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="4" />
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                    </svg>
+                  )}
+                </button>
                 <span className="hidden max-w-[160px] truncate sm:inline text-foreground">
                   {user.name}
                 </span>
@@ -73,12 +131,52 @@ export default function AppHeader() {
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="motion-press rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
-              >
-                Login
-              </Link>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => applyTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="motion-press rounded-lg border border-border/70 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
+                  aria-pressed={theme === 'dark'}
+                  aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                >
+                  {theme === 'dark' ? (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="4" />
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                    </svg>
+                  )}
+                </button>
+                <Link
+                  href="/login"
+                  className="motion-press rounded-lg border border-border/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-foreground transition hover:border-foreground"
+                >
+                  Login
+                </Link>
+              </div>
             )
           ) : null}
         </div>

@@ -89,21 +89,27 @@ let UploadedSchedulesController = class UploadedSchedulesController {
             isPublic: audience === client_1.ContentAudience.PUBLIC,
         });
     }
-    async findAll(req, companyId, sectorId, categoryId, isPublic, audience) {
+    async findAll(companyId, sectorId, categoryId, isPublic, audience) {
+        const normalizedCompanyId = companyId?.trim() || undefined;
         const parsedAudience = parseAudienceParam(audience);
-        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
-        const resolvedCompanyId = companyId?.trim() || (!isSuperAdmin ? req.user?.companyId : undefined);
-        if (!resolvedCompanyId && !isSuperAdmin) {
-            throw new common_1.ForbiddenException('Empresa obrigatoria.');
-        }
         const filters = {
             sectorId,
             categoryId,
-            audience: parsedAudience,
-            isPublic: isPublic ? isPublic === 'true' : undefined,
+            audience: parsedAudience ||
+                (isPublic
+                    ? isPublic === 'true'
+                        ? client_1.ContentAudience.PUBLIC
+                        : undefined
+                    : undefined) ||
+                (normalizedCompanyId ? undefined : client_1.ContentAudience.PUBLIC),
+            isPublic: isPublic && isPublic === 'false'
+                ? false
+                : normalizedCompanyId
+                    ? undefined
+                    : true,
         };
-        console.log('SchedulesController.findAll - companyId:', resolvedCompanyId, 'filters:', filters);
-        const result = await this.schedulesService.findAll(resolvedCompanyId, filters);
+        console.log('SchedulesController.findAll - companyId:', normalizedCompanyId, 'filters:', filters);
+        const result = await this.schedulesService.findAll(normalizedCompanyId, filters);
         console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
         return result;
     }
@@ -141,16 +147,13 @@ __decorate([
 ], UploadedSchedulesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COLLABORATOR),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('companyId')),
-    __param(2, (0, common_1.Query)('sectorId')),
-    __param(3, (0, common_1.Query)('categoryId')),
-    __param(4, (0, common_1.Query)('isPublic')),
-    __param(5, (0, common_1.Query)('audience')),
+    __param(0, (0, common_1.Query)('companyId')),
+    __param(1, (0, common_1.Query)('sectorId')),
+    __param(2, (0, common_1.Query)('categoryId')),
+    __param(3, (0, common_1.Query)('isPublic')),
+    __param(4, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAll", null);
 __decorate([

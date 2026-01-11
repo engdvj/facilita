@@ -11,21 +11,12 @@ import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Note, Sector } from '@/types';
 
 const pageSize = 8;
-const audienceFilterOptions: ContentAudience[] = [
-  'PUBLIC',
-  'COMPANY',
-  'SECTOR',
-  'ADMIN',
-  'SUPERADMIN',
-  'PRIVATE',
-];
 
 const emptyFormData = {
   title: '',
   content: '',
   categoryId: '',
   sectorId: '',
-  color: '',
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
@@ -45,7 +36,6 @@ export default function NotesPage() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [filterSectorId, setFilterSectorId] = useState('');
-  const [filterAudience, setFilterAudience] = useState('ALL');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Note | null>(null);
@@ -56,7 +46,7 @@ export default function NotesPage() {
   const [formData, setFormData] = useState({ ...emptyFormData });
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
-  const [useCustomColor, setUseCustomColor] = useState(false);
+  const [formTab, setFormTab] = useState<'basic' | 'category' | 'visual'>('basic');
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isCollaborator = user?.role === 'COLLABORATOR';
@@ -163,9 +153,10 @@ export default function NotesPage() {
 
   const loadData = async () => {
     if (!resolvedCompanyId && !isSuperAdmin) return;
+    const notesPath = isAdmin || isSuperAdmin ? '/notes/admin/list' : '/notes';
     const notesQuery = resolvedCompanyId ? `?companyId=${resolvedCompanyId}` : '';
     const [notesRes, catsRes, sectorsRes] = await Promise.all([
-      api.get(`/notes${notesQuery}`),
+      api.get(`${notesPath}${notesQuery}`),
       resolvedCompanyId
         ? api.get(`/categories?companyId=${resolvedCompanyId}`)
         : isSuperAdmin
@@ -234,8 +225,25 @@ export default function NotesPage() {
   }, [companyId, hasHydrated, isSuperAdmin, user?.companyId]);
 
   const visibleNotes = useMemo(() => {
-    return notes.filter((note) => canViewNote(note));
-  }, [canViewNote, notes]);
+    const canView = (note: Note) => {
+      const audience = getAudience(note);
+      if (audience === 'PUBLIC') return true;
+      if (!user) return false;
+      if (isSuperAdmin) return true;
+      if (audience === 'SUPERADMIN') return false;
+      if (audience === 'ADMIN') return isAdmin;
+      if (audience === 'PRIVATE') return note.userId === user.id;
+      if (audience === 'SECTOR') {
+        return isAdmin ? true : note.sectorId === user.sectorId;
+      }
+      if (audience === 'COMPANY') {
+        return isAdmin;
+      }
+      return false;
+    };
+
+    return notes.filter(canView);
+  }, [notes, user, isAdmin, isSuperAdmin]);
 
   const filteredNotes = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -260,20 +268,12 @@ export default function NotesPage() {
       if (filterSectorId && note.sectorId !== filterSectorId) {
         return false;
       }
-      if (
-        filterAudience !== 'ALL' &&
-        getAudience(note) !== filterAudience
-      ) {
-        return false;
-      }
       return true;
     });
   }, [
-    filterAudience,
     filterCategoryId,
     filterSectorId,
     filterStatus,
-    getAudience,
     search,
     visibleNotes,
   ]);
@@ -281,8 +281,7 @@ export default function NotesPage() {
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId)) +
-    Number(filterAudience !== 'ALL');
+    Number(Boolean(filterSectorId));
 
   const totalPages = Math.max(1, Math.ceil(filteredNotes.length / pageSize));
   const paginatedNotes = filteredNotes.slice(
@@ -302,9 +301,9 @@ export default function NotesPage() {
       audience: isCollaborator ? 'PRIVATE' : 'COMPANY',
       sectorId: '',
     });
-    setUseCustomColor(false);
     setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
+    setFormTab('basic');
     setModalOpen(true);
   };
 
@@ -315,15 +314,14 @@ export default function NotesPage() {
       content: note.content,
       categoryId: note.categoryId || '',
       sectorId: note.sectorId || '',
-      color: note.color || '',
       imageUrl: note.imageUrl || '',
       imagePosition: note.imagePosition || '50% 50%',
       imageScale: note.imageScale || 1,
       audience: getAudience(note),
     });
-    setUseCustomColor(Boolean(note.color));
     setFormCompanyId(note.companyId || '');
     setFormError(null);
+    setFormTab('basic');
     setModalOpen(true);
   };
 
@@ -382,12 +380,6 @@ export default function NotesPage() {
         return;
       }
 
-      const resolvedColor = useCustomColor
-        ? formData.color || '#3b82f6'
-        : editing
-          ? null
-          : undefined;
-
       const dataToSend = {
         companyId: formResolvedCompanyId,
         categoryId: formData.categoryId || undefined,
@@ -395,7 +387,6 @@ export default function NotesPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
-        color: resolvedColor,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -451,7 +442,6 @@ export default function NotesPage() {
     setFilterStatus('ALL');
     setFilterCategoryId('');
     setFilterSectorId('');
-    setFilterAudience('ALL');
     setPage(1);
   };
 
@@ -462,6 +452,14 @@ export default function NotesPage() {
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
     }));
   };
+
+  const previewTitle = formData.title.trim() || 'Nome da nota';
+  const previewImageUrl = formData.imageUrl
+    ? formData.imageUrl.startsWith('http')
+      ? formData.imageUrl
+      : `${serverURL}${formData.imageUrl}`
+    : '';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -553,26 +551,6 @@ export default function NotesPage() {
                   {visibleSectors.map((sector) => (
                     <option key={sector.id} value={sector.id}>
                       {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Visibilidade
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterAudience}
-                  onChange={(event) => {
-                    setFilterAudience(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="ALL">Todas</option>
-                  {audienceFilterOptions.map((audience) => (
-                    <option key={audience} value={audience}>
-                      {getAudienceLabel(audience)}
                     </option>
                   ))}
                 </select>
@@ -684,6 +662,7 @@ export default function NotesPage() {
         title={editing ? 'Editar nota' : 'Nova nota'}
         description="Crie notas pessoais ou compartilhadas."
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-5xl"
         footer={
           <>
             {editing && (
@@ -724,284 +703,327 @@ export default function NotesPage() {
           </>
         }
       >
-        <div className="space-y-4">
-          {isSuperAdmin && (
-            <AdminField label="Empresa" htmlFor="note-company">
-              <select
-                id="note-company"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formCompanyId}
-                onChange={(event) => {
-                  const nextCompanyId = event.target.value;
-                  setFormCompanyId(nextCompanyId);
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryId: '',
-                    sectorId: '',
-                  }));
-                }}
-              >
-                <option value="">Selecione uma empresa</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
-          )}
-          <AdminField label="Titulo" htmlFor="note-title">
-            <input
-              id="note-title"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              value={formData.title}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, title: event.target.value }))
-              }
-            />
-          </AdminField>
-          <AdminField label="Conteudo" htmlFor="note-content">
-            <textarea
-              id="note-content"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-              rows={4}
-              value={formData.content}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, content: event.target.value }))
-              }
-            />
-          </AdminField>
-          <AdminField label="Imagem" htmlFor="note-image" hint="Opcional">
-            <input
-              id="note-image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={imageUploading}
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-            />
-            {imageUploading && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Fazendo upload...
-              </p>
-            )}
-            {formData.imageUrl && (
-              <div className="mt-3 space-y-3">
-                <div className="overflow-hidden rounded-lg border border-border/70">
-                  <div className="relative h-32 w-full overflow-hidden bg-secondary/60">
-                    <img
-                      src={`${serverURL}${formData.imageUrl}`}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: formData.imagePosition,
-                        transform: `scale(${formData.imageScale})`,
-                      }}
-                    />
-                  </div>
-                </div>
+        {/* Navegação de abas */}
+        <div className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-border/70 bg-card/60 p-2">
+          <button
+            type="button"
+            onClick={() => setFormTab('basic')}
+            className={`flex-1 min-w-[140px] rounded-xl px-4 py-2 text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
+              formTab === 'basic'
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            }`}
+          >
+            Básico
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormTab('category')}
+            className={`flex-1 min-w-[140px] rounded-xl px-4 py-2 text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
+              formTab === 'category'
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            }`}
+          >
+            Categorização
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormTab('visual')}
+            className={`flex-1 min-w-[140px] rounded-xl px-4 py-2 text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${
+              formTab === 'visual'
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            }`}
+          >
+            Visual
+          </button>
+        </div>
 
-                <div className="space-y-2 rounded-lg border border-border/70 bg-card/50 p-3">
-                  <p className="text-xs font-medium text-foreground">
-                    Ajustar enquadramento
-                  </p>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Posicao Horizontal</span>
-                      <span className="text-foreground">
-                        {formData.imagePosition.split(' ')[0]}
-                      </span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={parseInt(formData.imagePosition.split(' ')[0])}
-                      onChange={(event) => {
-                        const y = formData.imagePosition.split(' ')[1];
-                        setFormData((prev) => ({
-                          ...prev,
-                          imagePosition: `${event.target.value}% ${y}`,
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Posicao Vertical</span>
-                      <span className="text-foreground">
-                        {formData.imagePosition.split(' ')[1]}
-                      </span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={parseInt(formData.imagePosition.split(' ')[1])}
-                      onChange={(event) => {
-                        const x = formData.imagePosition.split(' ')[0];
-                        setFormData((prev) => ({
-                          ...prev,
-                          imagePosition: `${x} ${event.target.value}%`,
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Zoom</span>
-                      <span className="text-foreground">
-                        {formData.imageScale.toFixed(1)}x
-                      </span>
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="0.1"
-                      value={formData.imageScale}
-                      onChange={(event) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          imageScale: parseFloat(event.target.value),
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
+        {/* Aba Básico */}
+        {formTab === 'basic' && (
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+            <div className="space-y-5">
+              {isSuperAdmin && (
+                <AdminField label="Empresa" htmlFor="note-company">
+                  <select
+                    id="note-company"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formCompanyId}
+                    onChange={(event) => {
+                      const nextCompanyId = event.target.value;
+                      setFormCompanyId(nextCompanyId);
                       setFormData((prev) => ({
                         ...prev,
-                        imagePosition: '50% 50%',
-                        imageScale: 1,
+                        categoryId: '',
+                        sectorId: '',
                       }));
                     }}
-                    className="mt-2 w-full rounded-md border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:border-foreground/60"
                   >
-                    Resetar enquadramento
-                  </button>
-                </div>
-              </div>
-            )}
-          </AdminField>
-          <AdminField label="Cor do card" htmlFor="note-color" hint="Opcional">
-            <div className="flex flex-wrap items-center gap-3">
-              <label
-                htmlFor="note-use-color"
-                className="flex items-center gap-2 text-xs text-muted-foreground"
-              >
+                    <option value="">Selecione uma empresa</option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                </AdminField>
+              )}
+              <AdminField label="Titulo" htmlFor="note-title">
                 <input
-                  id="note-use-color"
-                  type="checkbox"
-                  checked={useCustomColor}
-                  onChange={(event) => {
-                    const nextValue = event.target.checked;
-                    setUseCustomColor(nextValue);
+                  id="note-title"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formData.title}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                />
+              </AdminField>
+              <AdminField label="Conteudo" htmlFor="note-content">
+                <textarea
+                  id="note-content"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  rows={5}
+                  value={formData.content}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, content: event.target.value }))
+                  }
+                />
+              </AdminField>
+              <AdminField label="Visibilidade" htmlFor="note-audience">
+                {!isSuperAdmin &&
+                !audienceOptions.some((option) => option.value === formData.audience) ? (
+                  <div className="rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground">
+                    {getAudienceLabel(formData.audience)} (somente superadmin)
+                  </div>
+                ) : (
+                  <select
+                    id="note-audience"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formData.audience}
+                    onChange={(event) =>
+                      updateAudience(event.target.value as ContentAudience)
+                    }
+                    disabled={isCollaborator}
+                  >
+                    {audienceOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </AdminField>
+            </div>
+          </div>
+        )}
+
+        {/* Aba Categorização */}
+        {formTab === 'category' && (
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+            <div className="grid gap-4 md:grid-cols-2">
+              <AdminField label="Categoria" htmlFor="note-category">
+                <select
+                  id="note-category"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formData.categoryId}
+                  onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
-                      color: nextValue ? prev.color || '#3b82f6' : '',
-                    }));
-                  }}
-                  className="rounded border-border/70"
-                />
-                Usar cor personalizada
-              </label>
-              <input
-                id="note-color"
-                type="color"
-                className="h-11 w-16 rounded-lg border border-border/70 bg-white/80 disabled:cursor-not-allowed"
-                value={useCustomColor ? formData.color || '#3b82f6' : '#e2e8f0'}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    color: event.target.value,
-                  }))
-                }
-                disabled={!useCustomColor}
-              />
+                      categoryId: event.target.value,
+                    }))
+                  }
+                  disabled={isSuperAdmin && !formCompanyId}
+                >
+                  <option value="">Sem categoria</option>
+                  {formCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+              <AdminField label="Setor" htmlFor="note-sector">
+                <select
+                  id="note-sector"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={formData.sectorId}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      sectorId: event.target.value,
+                    }))
+                  }
+                  disabled={
+                    formData.audience !== 'SECTOR' ||
+                    (isSuperAdmin && !formCompanyId) ||
+                    isCollaborator
+                  }
+                >
+                  <option value="">Todos os setores</option>
+                  {formSectors.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
             </div>
-          </AdminField>
-          <div className="grid gap-4 md:grid-cols-2">
-            <AdminField label="Categoria" htmlFor="note-category">
-              <select
-                id="note-category"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.categoryId}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    categoryId: event.target.value,
-                  }))
-                }
-                disabled={isSuperAdmin && !formCompanyId}
-              >
-                <option value="">Sem categoria</option>
-                {formCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
-            <AdminField label="Setor" htmlFor="note-sector">
-              <select
-                id="note-sector"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.sectorId}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    sectorId: event.target.value,
-                  }))
-                }
-                disabled={
-                  formData.audience !== 'SECTOR' ||
-                  (isSuperAdmin && !formCompanyId) ||
-                  isCollaborator
-                }
-              >
-                <option value="">Todos os setores</option>
-                {formSectors.map((sector) => (
-                  <option key={sector.id} value={sector.id}>
-                    {sector.name}
-                  </option>
-                ))}
-              </select>
-            </AdminField>
           </div>
-          <AdminField label="Visibilidade" htmlFor="note-audience">
-            {!isSuperAdmin &&
-            !audienceOptions.some((option) => option.value === formData.audience) ? (
-              <div className="rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground">
-                {getAudienceLabel(formData.audience)} (somente superadmin)
+        )}
+
+        {/* Aba Visual */}
+        {formTab === 'visual' && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+              <div className="space-y-5">
+                <AdminField label="Imagem" htmlFor="note-image" hint="Opcional">
+                  <input
+                    id="note-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={imageUploading}
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  />
+                  {imageUploading && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Fazendo upload...
+                    </p>
+                  )}
+                  {formData.imageUrl && (
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-2 rounded-xl border border-border/70 bg-card/50 p-4">
+                        <p className="text-xs font-medium text-foreground">
+                          Ajustar enquadramento
+                        </p>
+
+                        <div className="space-y-2">
+                          <label className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Posicao Horizontal</span>
+                            <span className="text-foreground">
+                              {formData.imagePosition.split(' ')[0]}
+                            </span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={parseInt(formData.imagePosition.split(' ')[0])}
+                            onChange={(event) => {
+                              const y = formData.imagePosition.split(' ')[1];
+                              setFormData((prev) => ({
+                                ...prev,
+                                imagePosition: `${event.target.value}% ${y}`,
+                              }));
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Posicao Vertical</span>
+                            <span className="text-foreground">
+                              {formData.imagePosition.split(' ')[1]}
+                            </span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={parseInt(formData.imagePosition.split(' ')[1])}
+                            onChange={(event) => {
+                              const x = formData.imagePosition.split(' ')[0];
+                              setFormData((prev) => ({
+                                ...prev,
+                                imagePosition: `${x} ${event.target.value}%`,
+                              }));
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Zoom</span>
+                            <span className="text-foreground">
+                              {formData.imageScale.toFixed(1)}x
+                            </span>
+                          </label>
+                          <input
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.1"
+                            value={formData.imageScale}
+                            onChange={(event) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                imageScale: parseFloat(event.target.value),
+                              }));
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              imagePosition: '50% 50%',
+                              imageScale: 1,
+                            }));
+                          }}
+                          className="mt-2 w-full rounded-md border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:border-foreground/60"
+                        >
+                          Resetar enquadramento
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </AdminField>
               </div>
-            ) : (
-              <select
-                id="note-audience"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={formData.audience}
-                onChange={(event) =>
-                  updateAudience(event.target.value as ContentAudience)
-                }
-                disabled={isCollaborator}
-              >
-                {audienceOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </AdminField>
-        </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
+              <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Previa do card
+              </p>
+              <div className="flex justify-center">
+                <div className="w-full">
+                  <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-card/95 ring-1 ring-black/5 shadow-[0_18px_36px_rgba(16,44,50,0.14)]">
+                    <div className="relative h-52 w-full overflow-hidden bg-secondary/60">
+                      {previewImageUrl ? (
+                        <img
+                          src={previewImageUrl}
+                          alt="Preview do card"
+                          className="h-full w-full object-cover"
+                          style={{
+                            objectPosition: formData.imagePosition,
+                            transform: `scale(${formData.imageScale})`,
+                          }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+                      )}
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 via-black/12 to-transparent" />
+                      <div
+                        className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1.5 text-[13px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+                        title={previewTitle}
+                      >
+                        {previewTitle}
+                      </div>
+                      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {formError && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
             {formError}

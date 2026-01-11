@@ -6,8 +6,16 @@ Este plano detalha a **reescrita completa** do projeto FACILITA em **NestJS + Ne
 1. **Portal de Links/Agendas/Arquivos** (FACILITA atual modernizado)
 2. **Arquitetura multi-empresa nativa** (Company → Unit → Sector → User)
 3. **Sistema de Backup/Reset automatizado** (inspirado no CHECK-IN)
-4. **Permissões granulares por role** (SUPERADMIN, ADMIN, COORDINATOR, MANAGER, COLLABORATOR)
-5. **7 funcionalidades extras estratégicas** (favoritos, tags, notificações, upload avançado, busca, real-time, histórico de versões)
+4. **Permissões granulares por role** (SUPERADMIN, ADMIN, COLLABORATOR)
+5. **8 funcionalidades extras priorizadas**:
+   - Sistema de Favoritos (login obrigatório)
+   - Busca Avançada Full-Text
+   - Histórico de Versões
+   - Upload Avançado
+   - Auditoria Completa
+   - ActivityLog/Feed de Atividades (apenas Admin/SuperAdmin)
+   - Configurações do Sistema
+   - PWA (Progressive Web App)
 
 **Stack Tecnológica:**
 - Backend: NestJS 11 + Prisma 5 + PostgreSQL 16 + Redis 7
@@ -187,69 +195,93 @@ backend/
 
 ---
 
-## 3. FUNCIONALIDADES EXTRAS PRIORIZADAS (Top 7)
+## 3. FUNCIONALIDADES EXTRAS PRIORIZADAS (8 Selecionadas)
 
 ### 3.1 Sistema de Favoritos ⭐⭐⭐
 **Valor**: Acesso rápido a links/agendas mais usados
+**Restrição**: Apenas usuários autenticados
 **Funcionalidades**:
 - Favoritar/desfavoritar links e agendas
 - Página dedicada "Meus Favoritos" com filtros
 - Contador de favoritos por item
 - Ordenação por mais favoritados
+- Badge visual em items favoritados
 
-### 3.2 Tags Dinâmicas ⭐⭐⭐
-**Valor**: Categorização flexível além de categorias fixas
+### 3.2 Busca Avançada Full-Text ⭐⭐⭐
+**Valor**: Localização rápida de conteúdo
 **Funcionalidades**:
-- Múltiplas tags por link/agenda
-- Autocomplete de tags existentes
-- Filtros por tags (multi-seleção)
-- Tags visuais (badges coloridos)
-- Gerenciamento de tags (admin)
+- Buscar em títulos, descrições, URLs, conteúdo de notas
+- PostgreSQL tsvector para busca performática
+- Filtros combinados (categoria + setor + data + tipo)
+- Resultados paginados e ordenáveis
+- Destacar termos encontrados (highlight)
+- Busca global (admin) e por setor (usuários)
+- SearchBar global no header
 
-### 3.3 Sistema de Notificações ⭐⭐⭐
-**Valor**: Comunicação proativa com usuários
-**Canais**: Email, In-App
-**Casos de uso**:
-- Novo link publicado no setor
-- Item favorito foi atualizado
-- Backup completado (apenas admins)
-- Alertas de sistema
+### 3.3 Histórico de Versões ⭐⭐⭐
+**Valor**: Rastreabilidade e rollback de alterações
+**Funcionalidades**:
+- Versionar alterações em links (título, URL, descrição)
+- Ver histórico completo de versões
+- Comparação visual (diff) entre versões
+- Restaurar versão anterior com confirmação
+- Registro de quem alterou + quando + motivo
+- Modal dedicado para visualização de histórico
 
 ### 3.4 Upload Avançado de Arquivos ⭐⭐⭐
 **Valor**: UX superior para agendas e imagens de links
 **Funcionalidades**:
 - Drag & drop de múltiplos arquivos
 - Preview antes de enviar (imagens, PDFs)
-- Compressão automática de imagens (Sharp)
-- Validação de tipo e tamanho
-- Barra de progresso
+- Compressão automática de imagens (Sharp no backend)
+- Validação de tipo e tamanho (client + server)
+- Barra de progresso de upload
 - Suporte a múltiplos formatos (PDF, images, Excel, Word)
+- Cropping e ajuste de imagens
 
-### 3.5 Busca Avançada Full-Text ⭐⭐⭐
-**Valor**: Localização rápida de conteúdo
+### 3.5 Auditoria Completa ⭐⭐⭐
+**Valor**: Rastreabilidade e segurança
+**Restrição**: Visualização apenas Admin/SuperAdmin
 **Funcionalidades**:
-- Buscar em títulos, descrições, URLs, tags
-- Filtros combinados (categoria + setor + tags + data)
-- Resultados paginados e ordenáveis
-- Destacar termos encontrados
-- Busca global (admin) e por setor (usuários)
+- Log automático de todas ações CRUD via Interceptor
+- Registro de: ação, tipo de entidade, ID, detalhes, IP, usuário
+- Página de auditoria com filtros avançados
+- Filtrar por: usuário, ação, data, tipo de entidade
+- Export de logs para CSV
+- Timeline view com avatares
 
-### 3.6 Dashboard em Tempo Real com WebSockets ⭐⭐
-**Valor**: Visibilidade instantânea de atualizações
+### 3.6 ActivityLog/Feed de Atividades ⭐⭐
+**Valor**: Visibilidade de atividades recentes
+**Restrição**: Apenas Admin e SuperAdmin
 **Funcionalidades**:
-- Atualização automática quando novo link é criado
-- Feed de atividades ao vivo (últimas ações)
-- Notificações in-app em tempo real
-- Contador de itens por categoria/setor
+- Feed de últimas 50 ações no dashboard
+- "Fulano criou um novo link há 5 min"
+- Ícones e avatares dos usuários
+- Filtrar por tipo de atividade
+- Paginação infinita (scroll)
+- Widget no dashboard administrativo
 
-### 3.7 Histórico de Versões ⭐⭐
-**Valor**: Rastreabilidade e rollback de alterações
+### 3.7 Configurações do Sistema ⭐⭐⭐
+**Valor**: Flexibilidade e manutenibilidade
+**Restrição**: Apenas SuperAdmin
 **Funcionalidades**:
-- Versionar alterações em links (título, URL, descrição)
-- Ver histórico completo de versões
-- Comparação visual (diff) entre versões
-- Restaurar versão anterior
-- Registro de quem alterou + quando + motivo
+- Tabela SystemConfig persistente no banco
+- Configs editáveis: backup_directory, upload_directory, retention_days
+- Configs não editáveis: version, install_date
+- Validação de paths e valores
+- Seeding automático de configs padrão
+- Interface administrativa para edição
+
+### 3.8 PWA (Progressive Web App) ⭐⭐⭐
+**Valor**: Experiência mobile superior
+**Funcionalidades**:
+- Instalável em dispositivos móveis
+- Service Worker para cache offline
+- Manifest.json configurado
+- Ícones PWA (192x192, 512x512)
+- Funcionalidade offline básica (visualização de favoritos)
+- Splash screen customizada
+- Add to Home Screen prompt
 
 ---
 
@@ -312,57 +344,58 @@ backend/
 
 ---
 
-### MILESTONE 3: Funcionalidades Extras (3-4 semanas)
+### MILESTONE 3: Funcionalidades Extras Priorizadas (3-4 semanas)
 **Objetivo**: Recursos diferenciados de alto valor
 
 **Backend:**
-- FavoritesModule: favoritar links/agendas
-- TagsModule: tags dinâmicas
-- NotificationsModule: email + in-app
-- SearchModule: busca full-text (PostgreSQL tsvector)
-- LinkVersionsModule: histórico de versões
-- WebSocketsModule: real-time updates
-- ActivityFeedModule: feed de atividades
+- FavoritesModule: favoritar links/agendas (login obrigatório)
+- SearchModule: busca full-text (PostgreSQL tsvector + índices)
+- LinkVersionsModule: histórico de versões + diff
+- UploadsModule Enhancement: drag-drop, preview, compressão Sharp, progresso
+- AuditLogsModule: auditoria automática via Interceptor
+- ActivityFeedModule: feed de atividades (apenas Admin/SuperAdmin)
+- SystemConfigModule: configurações persistentes
 
 **Frontend:**
 - Favoritos: ícone estrela + página /my/favorites
-- Tags: TagInput component + filtros multi-seleção
-- Notificações: bell icon + centro de notificações
 - Busca: SearchBar global + página /search com filtros avançados
 - Histórico: modal de versões com diff visual
-- WebSocket: hook useWebSocket + real-time feed
-- Dashboard: /dashboard com cards e estatísticas
+- Upload avançado: drag-and-drop, preview, progress bar
+- Auditoria: página /admin/audit-logs com filtros
+- Activity Feed: widget no dashboard admin
+- Configurações: /admin/settings
+- PWA: Service Worker, manifest.json, ícones
 
 **Testes:**
 - Testes de funcionalidades extras
-- Testes de WebSocket
+- Testes de auditoria e logs
 
-**Entregável**: Plataforma completa com todos os extras
+**Entregável**: Plataforma completa com 8 funcionalidades extras
 
 ---
 
-### MILESTONE 4: Backup, Auditoria e Produção (2-3 semanas)
-**Objetivo**: Sistema production-ready com observabilidade
+### MILESTONE 4: Produção e Polimento (2-3 semanas)
+**Objetivo**: Sistema production-ready com observabilidade e UX refinada
 
 **Backend:**
-- BackupModule: backup/restore completo (JSON export/import)
-- BackupSchedulerService: agendamento automático diário
-- ResetModule: reset seletivo do sistema
-- AuditLogsModule: auditoria completa de ações
-- SystemConfigModule: configurações persistentes
+- ✅ BackupModule: backup/restore completo (IMPLEMENTADO)
+- ✅ BackupSchedulerService: agendamento automático diário (IMPLEMENTADO)
+- ✅ ResetModule: reset seletivo do sistema (IMPLEMENTADO)
 - Winston logging estruturado
 - Health checks detalhados (DB, Redis, Disk)
 - Rate limiting e throttling
 - Documentação Swagger completa
+- Otimizações de queries e índices
 
 **Frontend:**
-- Backup: /admin/backup com export/import
-- Auditoria: /admin/auditoria com filtros
-- Configurações: /admin/configuracoes
-- Temas: light/dark mode
+- ✅ Backup: /admin/backup com export/import (IMPLEMENTADO)
+- ✅ Reset: /admin/reset (IMPLEMENTADO)
+- Temas: light/dark mode persistente
 - Responsividade total (mobile-first)
-- PWA (Service Worker, manifest.json)
-- Animações Framer Motion
+- Animações Framer Motion nos modais
+- Loading states consistentes
+- Error boundaries e tratamento de erros
+- Toast notifications (Sonner)
 
 **DevOps:**
 - Nginx otimizado (gzip, cache, SSL)
@@ -370,12 +403,13 @@ backend/
 - CI/CD pipeline (GitHub Actions)
 - Backup automático diário (cron)
 - Monitoramento básico (logs, health)
+- Scripts de deploy automatizado
 
 **Testes:**
-- Testes de backup/restore
-- Testes de auditoria
-- Testes E2E (Playwright)
-- Testes de carga (k6)
+- Testes unitários críticos (services)
+- Testes E2E principais fluxos (Playwright)
+- Testes de carga básicos (k6)
+- Validação de segurança (OWASP)
 
 **Documentação:**
 - README completo
@@ -2026,29 +2060,6 @@ docker compose up --build
 
 ---
 
-## 6. SCHEMA PRISMA CONSOLIDADO (RESUMO)
-
-```prisma
-// Hierarquia Multi-Empresa
-Company → Unit → Sector → User
-
-// Funcionalidades FACILITA
-Link, UploadedSchedule, Category
-
-// Funcionalidades CHECK-IN
-TimeEntry, HourBalance, Device, Schedule
-
-// Funcionalidades Extras
-Favorite, Comment, Tag, Notification, Webhook, ActivityLog
-
-// Sistema
-RolePermission, AuditLog, SystemConfig
-```
-
-**Ver schema completo**: Consultar plano detalhado do agente
-
----
-
 ## 6. SCHEMA PRISMA CONSOLIDADO (SIMPLIFICADO)
 
 ```prisma
@@ -2060,25 +2071,23 @@ Company → Unit → Sector → User
 - Unit (id, companyId, name, cnpj, status)
 - Sector (id, companyId, unitId, name, description, status)
 - User (id, companyId, unitId, sectorId, name, email, cpf, passwordHash, role, status, avatarUrl, theme)
+- RefreshToken (id, userId, tokenHash, expiresAt, revokedAt)
 
 // ===== FUNCIONALIDADES FACILITA =====
-- Link (id, companyId, userId, categoryId, title, url, description, color, imageUrl, isPublic, order)
-- UploadedSchedule (id, companyId, userId, categoryId, title, fileUrl, fileName, fileSize, isPublic)
-- Category (id, companyId, name, color, icon, adminOnly)
+- Link (id, companyId, userId, sectorId, categoryId, title, url, description, color, imageUrl, audience, isPublic, order)
+- UploadedSchedule (id, companyId, userId, sectorId, categoryId, title, fileUrl, fileName, fileSize, isPublic)
+- Note (id, companyId, userId, sectorId, categoryId, title, content, color, imageUrl, audience, isPublic)
+- Category (id, companyId, name, color, icon, adminOnly, status)
 
-// ===== FUNCIONALIDADES EXTRAS =====
-- Favorite (id, userId, entityType, linkId, scheduleId)
-- Tag (id, name, color)
-- TagOnLink (linkId, tagId)
-- TagOnSchedule (scheduleId, tagId)
-- Notification (id, companyId, userId, type, status, title, message, data, readAt, sentAt)
-- LinkVersion (id, linkId, title, url, description, changedBy, changeReason)
-- ActivityLog (id, userId, action, entityType, entityId, metadata, ip)
+// ===== FUNCIONALIDADES EXTRAS (8 Selecionadas) =====
+- Favorite (id, userId, entityType, linkId, scheduleId) ⭐
+- LinkVersion (id, linkId, title, url, description, changedBy, changeReason) ⭐
+- ActivityLog (id, userId, action, entityType, entityId, metadata, ip) ⭐
+- AuditLog (id, userId, action, targetType, targetId, details, ip) ⭐
+- SystemConfig (id, key, value, description, type, isEditable, category) ⭐
 
 // ===== SISTEMA =====
 - RolePermission (id, role, can_*, restrict_to_own_sector)
-- AuditLog (id, userId, action, targetType, targetId, details, ip)
-- SystemConfig (id, key, value, description, type, isEditable, category)
 ```
 
 **Enums:**
@@ -2086,8 +2095,6 @@ Company → Unit → Sector → User
 enum UserRole {
   SUPERADMIN    // Acesso total à plataforma
   ADMIN         // Admin de uma empresa
-  COORDINATOR   // Gestor de unidade
-  MANAGER       // Gestor de setor
   COLLABORATOR  // Usuário final
 }
 
@@ -2096,28 +2103,37 @@ enum UserStatus {
   INACTIVE
 }
 
-enum NotificationType {
-  EMAIL
-  IN_APP
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
 }
 
-enum NotificationStatus {
-  PENDING
-  SENT
-  FAILED
-  READ
+enum ContentAudience {
+  PUBLIC      // Todos podem ver
+  COMPANY     // Apenas empresa
+  SECTOR      // Apenas setor
+  PRIVATE     // Apenas criador
+  ADMIN       // Apenas admins
+  SUPERADMIN  // Apenas superadmin
 }
 
 enum EntityType {
   LINK
   SCHEDULE
+  NOTE
   USER
   SECTOR
   COMPANY
 }
 ```
 
-**Total de Models**: ~15 (vs 25+ com ponto eletrônico)
+**Total de Models**: 17 (enxuto e focado)
+
+**Observações:**
+- ✅ Models de Tags e Notificações removidos do schema (não serão implementados)
+- ✅ Schema focado nas 8 funcionalidades extras priorizadas
+- ✅ Suporte a Notes (recados) adicionado ao schema
+- ✅ ContentAudience para controle granular de visibilidade
 
 ---
 
@@ -2144,16 +2160,17 @@ enum EntityType {
 - Rate limiting
 
 ### Recursos Exclusivos (vs CHECK-IN)
-1. **Portal de Links/Agendas** (core do FACILITA)
+1. **Portal de Links/Agendas/Notas** (core do FACILITA)
 2. **Multi-empresa nativo** (Company → Unit → Sector)
-3. **Sistema de Favoritos**
-4. **Tags Dinâmicas** (além de categorias)
-5. **Busca Full-Text avançada** (PostgreSQL tsvector)
-6. **Histórico de Versões** (rastreamento de mudanças)
-7. **Feed de Atividades** (timeline)
-8. **Dashboard customizado** (estatísticas de links/agendas)
-9. **PWA** (instalável, funciona offline)
-10. **UX/UI moderna** (Shadcn/ui, Framer Motion)
+3. **Sistema de Favoritos** (login obrigatório)
+4. **Busca Full-Text avançada** (PostgreSQL tsvector)
+5. **Histórico de Versões** (rastreamento + rollback)
+6. **Upload Avançado** (drag-drop, preview, compressão)
+7. **Auditoria Completa** (interceptor automático)
+8. **Feed de Atividades** (timeline admin)
+9. **Configurações do Sistema** (persistentes)
+10. **PWA** (instalável, funciona offline)
+11. **UX/UI moderna** (Shadcn/ui, Framer Motion)
 
 ---
 
@@ -2161,19 +2178,19 @@ enum EntityType {
 
 ### NestJS vs Flask
 **Decisão**: NestJS
-**Razão**: TypeScript end-to-end, modularidade, performance, WebSockets nativo
+**Razão**: TypeScript end-to-end, modularidade, performance, arquitetura robusta
 
 ### JWT vs Sessions
 **Decisão**: JWT + Refresh Tokens
-**Razão**: Stateless, escalável, ideal para SPA
+**Razão**: Stateless, escalável, ideal para SPA, suporta múltiplos dispositivos
 
 ### REST vs GraphQL
 **Decisão**: REST
-**Razão**: Simplicidade, Swagger, caching fácil
+**Razão**: Simplicidade, Swagger, caching fácil, menor curva de aprendizado
 
 ### Shadcn/ui vs Material-UI
 **Decisão**: Shadcn/ui
-**Razão**: Componentes copiáveis, Radix UI (acessível), Tailwind
+**Razão**: Componentes copiáveis, Radix UI (acessível), Tailwind, customizável
 
 ---
 
@@ -2181,19 +2198,19 @@ enum EntityType {
 
 ### Complexidade de Migração
 **Risco**: Migrar dados do FACILITA Flask/SQLite
-**Mitigação**: Script de migração dedicado, validação pós-migração, backup completo
+**Mitigação**: Script de migração dedicado, validação pós-migração, backup completo antes de iniciar
 
-### Performance de Dashboard em Tempo Real
-**Risco**: Lentidão com muitos usuários
-**Mitigação**: Cache Redis, WebSocket rooms por setor, índices otimizados
+### Performance de Busca Full-Text
+**Risco**: Lentidão em buscas com grandes volumes de dados
+**Mitigação**: PostgreSQL tsvector com índices GIN, cache Redis de buscas frequentes, paginação
 
 ### Escalabilidade de Upload de Arquivos
-**Risco**: Filesystem local não escala
-**Mitigação**: Fase 1 (local), Fase 2 (S3/MinIO), compressão de imagens
+**Risco**: Filesystem local não escala horizontalmente
+**Mitigação**: Fase 1 (local com compressão Sharp), Fase 2 (S3/MinIO quando necessário)
 
-### Segurança de Webhooks
-**Risco**: Exposição de dados sensíveis
-**Mitigação**: HTTPS obrigatório, HMAC signature, payload sanitizado, rate limiting
+### Auditoria de Alto Volume
+**Risco**: Tabela de auditoria crescendo muito e impactando performance
+**Mitigação**: Particionamento de tabela por data, arquivamento mensal, índices estratégicos
 
 ---
 
@@ -2201,15 +2218,15 @@ enum EntityType {
 
 ### Tempo de Desenvolvimento
 
-| Milestone | Duração | Effort |
-|-----------|---------|--------|
-| M1: Setup Inicial | 2-3 sem | 3 sem |
-| M2: Multi-Empresa + FACILITA | 3-4 sem | 4 sem |
-| M3: Funcionalidades Extras | 3-4 sem | 4 sem |
-| M4: Backup, Auditoria, Produção | 2-3 sem | 3 sem |
-| **TOTAL** | **10-14 sem** | **14 sem** |
+| Milestone | Descrição | Duração | Status |
+|-----------|-----------|---------|--------|
+| M1 | Setup Inicial e Fundação | ✅ CONCLUÍDO | - |
+| M2 | Multi-Empresa + Portal FACILITA | ✅ CONCLUÍDO | - |
+| M3 | 8 Funcionalidades Extras | 3-4 semanas | ⏳ EM ANDAMENTO |
+| M4 | Produção e Polimento | 2-3 semanas | ⏳ PENDENTE |
+| **RESTANTE** | | **5-7 semanas** | |
 
-**Contingência**: +20% (3 semanas) = **17 semanas (~4 meses)**
+**Estimativa de Conclusão**: ~1.5-2 meses a partir de agora
 
 ### Custo de Infraestrutura
 
@@ -2249,7 +2266,9 @@ enum EntityType {
 
 ## 12. ARQUIVOS CRÍTICOS A CRIAR/MODIFICAR
 
-### Backend - Novos Módulos (15)
+### Backend - Status dos Módulos
+
+**✅ IMPLEMENTADOS:**
 1. `backend/src/auth/` - Autenticação JWT
 2. `backend/src/companies/` - Multi-empresa
 3. `backend/src/units/` - Unidades/Filiais
@@ -2258,42 +2277,54 @@ enum EntityType {
 6. `backend/src/links/` - Portal de Links
 7. `backend/src/categories/` - Categorias
 8. `backend/src/uploaded-schedules/` - Agendas/Arquivos
-9. `backend/src/uploads/` - Upload de arquivos
-10. `backend/src/favorites/` - Favoritos ⭐ NOVO
-11. `backend/src/tags/` - Tags ⭐ NOVO
-12. `backend/src/notifications/` - Notificações ⭐ NOVO
-13. `backend/src/search/` - Busca Full-Text ⭐ NOVO
-14. `backend/src/websockets/` - Real-time ⭐ NOVO
-15. `backend/src/link-versions/` - Histórico de Versões ⭐ NOVO
-16. `backend/src/activity-feed/` - Feed de Atividades ⭐ NOVO
-17. `backend/src/backup/` - Backup/Restore
-18. `backend/src/audit-logs/` - Auditoria
-19. `backend/src/system-config/` - Configurações
-20. `backend/src/permissions/` - Permissões
-21. `backend/src/health/` - Health Checks
-22. `backend/src/prisma/` - Prisma ORM
-23. `backend/src/common/` - Utilitários compartilhados
+9. `backend/src/notes/` - Notas/Recados
+10. `backend/src/uploads/` - Upload de arquivos (básico)
+11. `backend/src/backups/` - Backup/Restore
+12. `backend/src/resets/` - Reset do sistema
+13. `backend/src/permissions/` - Permissões
+14. `backend/src/health/` - Health Checks
+15. `backend/src/prisma/` - Prisma ORM
+16. `backend/src/common/` - Utilitários compartilhados
 
-### Frontend - Páginas (12)
+**❌ A IMPLEMENTAR (8 Funcionalidades Extras):**
+1. `backend/src/favorites/` - Sistema de Favoritos
+2. `backend/src/search/` - Busca Full-Text (PostgreSQL tsvector)
+3. `backend/src/link-versions/` - Histórico de Versões
+4. `backend/src/uploads/` - Enhancement: drag-drop, preview, compressão
+5. `backend/src/audit-logs/` - Auditoria Completa (Interceptor)
+6. `backend/src/activity-feed/` - Feed de Atividades
+7. `backend/src/system-config/` - Configurações do Sistema
+8. PWA - Service Worker (frontend)
+
+### Frontend - Status das Páginas
+
+**✅ IMPLEMENTADAS:**
 1. `frontend/src/app/(auth)/login/` - Login
 2. `frontend/src/app/(auth)/register/` - Registro
 3. `frontend/src/app/(auth)/forgot-password/` - Esqueci a senha
-4. `frontend/src/app/(portal)/` - Landing público (grid de links)
-5. `frontend/src/app/(portal)/search/` - Busca pública
-6. `frontend/src/app/(app)/dashboard/` - Dashboard principal
-7. `frontend/src/app/(app)/my/favorites/` - Meus Favoritos ⭐
-8. `frontend/src/app/(app)/my/profile/` - Perfil do usuário
-9. `frontend/src/app/(app)/admin/empresas/` - Gestão de Empresas
-10. `frontend/src/app/(app)/admin/unidades/` - Gestão de Unidades
-11. `frontend/src/app/(app)/admin/setores/` - Gestão de Setores
-12. `frontend/src/app/(app)/admin/usuarios/` - Gestão de Usuários
-13. `frontend/src/app/(app)/admin/links/` - Gestão de Links
-14. `frontend/src/app/(app)/admin/categorias/` - Gestão de Categorias
-15. `frontend/src/app/(app)/admin/agendas/` - Gestão de Agendas
-16. `frontend/src/app/(app)/admin/tags/` - Gestão de Tags ⭐
-17. `frontend/src/app/(app)/admin/backup/` - Backup/Restore
-18. `frontend/src/app/(app)/admin/auditoria/` - Logs de Auditoria
-19. `frontend/src/app/(app)/admin/configuracoes/` - Configurações do Sistema
+4. `frontend/src/app/page.tsx` - Landing público (grid de links)
+5. `frontend/src/app/(app)/dashboard/` - Dashboard principal
+6. `frontend/src/app/(app)/admin/companies/` - Gestão de Empresas
+7. `frontend/src/app/(app)/admin/units/` - Gestão de Unidades
+8. `frontend/src/app/(app)/admin/sectors/` - Gestão de Setores
+9. `frontend/src/app/(app)/admin/users/` - Gestão de Usuários
+10. `frontend/src/app/(app)/admin/links/` - Gestão de Links
+11. `frontend/src/app/(app)/admin/categories/` - Gestão de Categorias
+12. `frontend/src/app/(app)/admin/schedules/` - Gestão de Agendas
+13. `frontend/src/app/(app)/admin/notes/` - Gestão de Notas
+14. `frontend/src/app/(app)/admin/backup/` - Backup/Restore
+15. `frontend/src/app/(app)/admin/reset/` - Reset do Sistema
+16. `frontend/src/app/(app)/admin/permissions/` - Permissões
+
+**❌ A IMPLEMENTAR (8 Funcionalidades Extras):**
+1. `frontend/src/app/(app)/my/favorites/` - Meus Favoritos
+2. `frontend/src/app/(app)/search/` - Busca Avançada
+3. `frontend/src/components/LinkVersionsModal/` - Modal de Histórico
+4. `frontend/src/components/AdvancedUpload/` - Upload avançado
+5. `frontend/src/app/(app)/admin/audit-logs/` - Logs de Auditoria
+6. `frontend/src/components/ActivityFeed/` - Widget de Atividades
+7. `frontend/src/app/(app)/admin/settings/` - Configurações do Sistema
+8. `frontend/public/manifest.json` + Service Worker - PWA
 
 ### Schema Prisma
 - `backend/prisma/schema.prisma` - Schema completo com 20+ models
@@ -2309,10 +2340,18 @@ enum EntityType {
 
 O **FACILITA V2.0** será uma plataforma moderna e escalável que oferece:
 1. **Portal de Links/Agendas/Arquivos** (FACILITA modernizado)
-2. **Multi-empresa nativa** (Company → Unit → Sector)
+2. **Multi-empresa nativa** (Company → Unit → Sector → User)
 3. **Backup/Reset automatizado** (inspirado no CHECK-IN)
-4. **Permissões granulares por role** (5 níveis de acesso)
-5. **7 Funcionalidades Extras Estratégicas** (favoritos, tags, notificações, busca, real-time, histórico, upload avançado)
+4. **Permissões granulares por role** (SUPERADMIN, ADMIN, COLLABORATOR)
+5. **8 Funcionalidades Extras Priorizadas**:
+   - ✅ Sistema de Favoritos (login obrigatório)
+   - ✅ Busca Avançada Full-Text (PostgreSQL tsvector)
+   - ✅ Histórico de Versões (rastreabilidade + rollback)
+   - ✅ Upload Avançado (drag-drop, preview, compressão)
+   - ✅ Auditoria Completa (interceptor automático)
+   - ✅ ActivityLog/Feed de Atividades (Admin/SuperAdmin)
+   - ✅ Configurações do Sistema (persistentes)
+   - ✅ PWA (instalável, offline, notificações)
 
 Com stack moderna (NestJS + Next.js + PostgreSQL + Redis) e arquitetura multi-tenancy, o sistema está preparado para:
 - Suportar múltiplas empresas/unidades/setores
@@ -2320,9 +2359,162 @@ Com stack moderna (NestJS + Next.js + PostgreSQL + Redis) e arquitetura multi-te
 - Oferecer UX superior (Shadcn/ui, Framer Motion, PWA)
 - Facilitar manutenção (modularidade, TypeScript, testes)
 
-**Estimativa**: 4 meses (17 semanas com contingência) de desenvolvimento
+**Status Atual**: Milestone 1 e 2 concluídos (50% do projeto)
+**Restante**: 5-7 semanas (~1.5-2 meses)
 **Investimento**: ~R$50/mês (infraestrutura inicial) | ~R$200/mês (escalado)
-**Complexidade**: Média-Alta
+**Complexidade**: Média
 **Retorno**: Plataforma unificada, moderna e diferenciada
 
-**Próximo passo**: Aprovação do plano e início do Milestone 1 (Setup Inicial)
+---
+
+## CHECKLIST DE IMPLEMENTAÇÃO - 8 FUNCIONALIDADES EXTRAS
+
+### ✅ IMPLEMENTADO (Base)
+- [x] Setup NestJS + Prisma + PostgreSQL
+- [x] Autenticação JWT + Refresh Tokens
+- [x] Multi-empresa (Company → Unit → Sector)
+- [x] Portal FACILITA (Links, Schedules, Notes, Categories)
+- [x] Sistema de permissões granulares
+- [x] Backup/Reset do sistema
+- [x] Upload básico de arquivos
+
+### ❌ A IMPLEMENTAR (8 Funcionalidades Extras)
+
+#### 1. Sistema de Favoritos
+**Backend:**
+- [ ] Criar `src/favorites/favorites.module.ts`
+- [ ] Criar `src/favorites/favorites.service.ts`
+- [ ] Criar `src/favorites/favorites.controller.ts`
+- [ ] Criar DTOs: CreateFavoriteDto, RemoveFavoriteDto
+- [ ] Endpoints: POST /favorites, DELETE /favorites/:id, GET /favorites/me
+- [ ] Guard: apenas usuários autenticados
+
+**Frontend:**
+- [ ] Criar página `app/(app)/my/favorites/page.tsx`
+- [ ] Botão de favoritar em cards de Links/Schedules/Notes
+- [ ] Hook `useFavorites` com mutações
+- [ ] Badge visual em items favoritados
+- [ ] Filtros na página de favoritos
+
+#### 2. Busca Avançada Full-Text
+**Backend:**
+- [ ] Criar `src/search/search.module.ts`
+- [ ] Criar `src/search/search.service.ts`
+- [ ] Criar `src/search/search.controller.ts`
+- [ ] Implementar PostgreSQL tsvector + índices GIN
+- [ ] Endpoint: GET /search?q=termo&filters=...
+- [ ] Buscar em: links, schedules, notes (título, descrição, conteúdo)
+- [ ] Filtros: categoria, setor, data, tipo
+- [ ] Paginação de resultados
+
+**Frontend:**
+- [ ] Criar página `app/(app)/search/page.tsx`
+- [ ] SearchBar global no header
+- [ ] Highlight de termos encontrados
+- [ ] Filtros combinados
+- [ ] Resultados paginados
+
+#### 3. Histórico de Versões
+**Backend:**
+- [ ] Implementar lógica no `LinksService.update()` para criar versão
+- [ ] Endpoint: GET /links/:id/versions
+- [ ] Endpoint: POST /links/:id/restore/:versionId
+- [ ] Registrar: changedBy, changeReason, timestamp
+
+**Frontend:**
+- [ ] Criar `components/LinkVersionsModal.tsx`
+- [ ] Botão "Ver Histórico" nas páginas de edição
+- [ ] Componente de diff visual (comparação)
+- [ ] Botão "Restaurar versão" com confirmação
+
+#### 4. Upload Avançado
+**Backend:**
+- [ ] Integrar Sharp para compressão de imagens
+- [ ] Endpoint de progresso: GET /uploads/progress/:id
+- [ ] Validação de múltiplos formatos
+- [ ] Suporte a múltiplos arquivos simultâneos
+
+**Frontend:**
+- [ ] Criar `components/AdvancedUpload.tsx`
+- [ ] Drag & drop zone
+- [ ] Preview de imagens e PDFs
+- [ ] Barra de progresso
+- [ ] Cropping de imagens (react-easy-crop)
+- [ ] Validação client-side
+
+#### 5. Auditoria Completa
+**Backend:**
+- [ ] Criar `src/audit-logs/audit-logs.module.ts`
+- [ ] Criar `src/audit-logs/audit-logs.service.ts`
+- [ ] Criar `src/audit-logs/audit-logs.controller.ts`
+- [ ] Criar AuditInterceptor para registrar ações CRUD automaticamente
+- [ ] Registrar: ação, tipo, ID, detalhes, IP, usuário
+- [ ] Endpoint: GET /admin/audit-logs com filtros
+- [ ] Export para CSV
+
+**Frontend:**
+- [ ] Criar página `app/(app)/admin/audit-logs/page.tsx`
+- [ ] Filtros: usuário, ação, data, tipo de entidade
+- [ ] Timeline view com avatares
+- [ ] Export para CSV
+- [ ] Guard: apenas Admin/SuperAdmin
+
+#### 6. ActivityLog/Feed de Atividades
+**Backend:**
+- [ ] Criar `src/activity-feed/activity-feed.module.ts`
+- [ ] Criar `src/activity-feed/activity-feed.service.ts`
+- [ ] Criar `src/activity-feed/activity-feed.controller.ts`
+- [ ] Lógica para registrar ações dos usuários
+- [ ] Endpoint: GET /activity-feed (últimas 50 ações)
+- [ ] Guard: apenas Admin/SuperAdmin
+
+**Frontend:**
+- [ ] Criar `components/ActivityFeed.tsx`
+- [ ] Widget no dashboard admin
+- [ ] "Fulano criou um novo link há 5 min"
+- [ ] Ícones e avatares
+- [ ] Filtrar por tipo de atividade
+- [ ] Paginação infinita (scroll)
+
+#### 7. Configurações do Sistema
+**Backend:**
+- [ ] Criar `src/system-config/system-config.module.ts`
+- [ ] Criar `src/system-config/system-config.service.ts`
+- [ ] Criar `src/system-config/system-config.controller.ts`
+- [ ] Endpoints: CRUD de configurações
+- [ ] Seeding de configs padrão (backup_directory, upload_directory, retention_days)
+- [ ] Validação de paths
+- [ ] Guard: apenas SuperAdmin
+
+**Frontend:**
+- [ ] Criar página `app/(app)/admin/settings/page.tsx`
+- [ ] Forms para editar configs editáveis
+- [ ] Mostrar configs não editáveis (read-only)
+- [ ] Validação de paths no client
+- [ ] Guard: apenas SuperAdmin
+
+#### 8. PWA (Progressive Web App)
+**Frontend:**
+- [ ] Criar `public/manifest.json` com metadados do app
+- [ ] Criar ícones PWA (192x192, 512x512)
+- [ ] Implementar Service Worker para cache offline
+- [ ] Configurar Next.js para gerar SW automaticamente
+- [ ] Cache de assets estáticos
+- [ ] Splash screen customizada
+- [ ] Funcionalidade offline básica (visualização de favoritos)
+- [ ] Add to Home Screen prompt
+
+---
+
+## PRÓXIMOS PASSOS IMEDIATOS
+
+1. **Implementar Sistema de Favoritos** (mais rápido, alto valor)
+2. **Implementar Busca Avançada** (alto impacto)
+3. **Implementar Histórico de Versões** (rastreabilidade)
+4. **Melhorar Upload** (UX superior)
+5. **Implementar Auditoria Completa** (observabilidade)
+6. **Implementar ActivityLog** (dashboard admin)
+7. **Implementar Configurações do Sistema** (manutenibilidade)
+8. **Implementar PWA** (experiência mobile)
+
+**Ordem recomendada**: Favoritos → Busca → Histórico → Upload → Auditoria → Activity → Settings → PWA

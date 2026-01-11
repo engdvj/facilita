@@ -6,6 +6,8 @@ import {
   Menu,
   X,
   Palette,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
@@ -21,7 +23,7 @@ interface HeaderProps {
   sticky?: boolean
 }
 
-const defaultTheme = {
+const defaultTheme: Record<string, string> = {
   '--background-main': '#f6efe6',
   '--text-color': '#1c2533',
   '--link-bar-background': '#0f3d3e',
@@ -31,6 +33,52 @@ const defaultTheme = {
   '--card-background': '#0f172a',
   '--accent-color': '#fbbf24',
   '--input-background': '#0b1220',
+  '--page-gradient':
+    'radial-gradient(1200px 600px at 10% -10%, rgba(15, 61, 62, 0.22), transparent 60%), radial-gradient(800px 500px at 90% 0%, rgba(249, 115, 22, 0.18), transparent 55%), radial-gradient(700px 500px at 50% 120%, rgba(251, 191, 36, 0.16), transparent 60%)',
+  '--surface-border': 'rgba(255, 255, 255, 0.08)',
+  '--surface-highlight': 'rgba(255, 255, 255, 0.14)',
+  '--panel-shadow': '0 28px 60px rgba(15, 23, 42, 0.35)',
+  '--card-shadow': '0 18px 36px rgba(15, 23, 42, 0.3)',
+}
+
+const darkTheme: Record<string, string> = {
+  '--background-main': '#0b0f17',
+  '--text-color': '#e2e8f0',
+  '--link-bar-background': '#0b1f2a',
+  '--link-bar-text': '#f8fafc',
+  '--button-primary': '#f97316',
+  '--hover-effect': '#114055',
+  '--card-background': '#0f172a',
+  '--accent-color': '#fbbf24',
+  '--input-background': '#111827',
+  '--page-gradient':
+    'radial-gradient(1200px 600px at 10% -10%, rgba(14, 116, 144, 0.25), transparent 60%), radial-gradient(800px 500px at 90% 0%, rgba(249, 115, 22, 0.22), transparent 55%), radial-gradient(700px 500px at 50% 120%, rgba(251, 191, 36, 0.18), transparent 60%)',
+  '--surface-border': 'rgba(255, 255, 255, 0.06)',
+  '--surface-highlight': 'rgba(255, 255, 255, 0.12)',
+  '--panel-shadow': '0 28px 60px rgba(0, 0, 0, 0.5)',
+  '--card-shadow': '0 18px 36px rgba(0, 0, 0, 0.55)',
+}
+
+const themeModeKey = 'theme-mode'
+const themeLightKey = 'theme-light'
+
+const captureTheme = () => {
+  const styles = getComputedStyle(document.documentElement)
+  const current: Record<string, string> = {}
+  Object.keys(defaultTheme).forEach((key) => {
+    const value = styles.getPropertyValue(key).trim()
+    current[key] = value || defaultTheme[key]
+  })
+  return current
+}
+
+const parseTheme = (value: string | null) => {
+  if (!value) return null
+  try {
+    return JSON.parse(value) as Record<string, string>
+  } catch {
+    return null
+  }
 }
 
 export default function Header({ onMenuClick, sidebarOpen, sticky = false }: HeaderProps) {
@@ -38,6 +86,9 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
   const [user, setUser] = useState<{ username: string; isAdmin: boolean } | null>(null)
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState(defaultTheme)
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(
+    localStorage.getItem(themeModeKey) === 'dark' ? 'dark' : 'light',
+  )
   const [themeName, setThemeName] = useState('')
   const [savedThemes, setSavedThemes] = useState<
     { name: string; vars: Record<string, string> }[]
@@ -64,12 +115,7 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
 
   const openModal = () => {
     /* captura cores atuais do :root */
-    const styles = getComputedStyle(document.documentElement)
-    const current: Record<string, string> = {}
-    Object.keys(defaultTheme).forEach((k) => {
-      current[k] = styles.getPropertyValue(k).trim()
-    })
-    setTheme(current)
+    setTheme(captureTheme())
     const savedName = localStorage.getItem('theme-name')
     setThemeName(savedName || '')
     const stored = localStorage.getItem('saved-themes')
@@ -92,9 +138,36 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
     )
   }
 
+  const persistTheme = (nextTheme: Record<string, string>, mode: 'light' | 'dark') => {
+    applyTheme(nextTheme)
+    localStorage.setItem('theme-custom', JSON.stringify(nextTheme))
+    localStorage.setItem(themeModeKey, mode)
+    setThemeMode(mode)
+    api.post('/theme', { theme: nextTheme }).catch(() => {})
+  }
+
+  const toggleTheme = () => {
+    if (themeMode === 'dark') {
+      const storedLight = parseTheme(localStorage.getItem(themeLightKey))
+      const nextTheme = storedLight || defaultTheme
+      persistTheme(nextTheme, 'light')
+      setTheme(nextTheme)
+      return
+    }
+
+    const currentTheme = captureTheme()
+    localStorage.setItem(themeLightKey, JSON.stringify(currentTheme))
+    persistTheme(darkTheme, 'dark')
+    setTheme(darkTheme)
+  }
+
   const saveTheme = () => {
     applyTheme(theme)
     localStorage.setItem('theme-custom', JSON.stringify(theme))
+    localStorage.setItem(themeModeKey, themeMode)
+    if (themeMode === 'light') {
+      localStorage.setItem(themeLightKey, JSON.stringify(theme))
+    }
     if (themeName) {
       localStorage.setItem('theme-name', themeName)
       const list = [...savedThemes]
@@ -118,6 +191,9 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
     applyTheme(defaultTheme)
     localStorage.removeItem('theme-custom')
     localStorage.removeItem('theme-name')
+    localStorage.setItem(themeModeKey, 'light')
+    localStorage.setItem(themeLightKey, JSON.stringify(defaultTheme))
+    setThemeMode('light')
     setThemeName('')
     setTheme(defaultTheme)
     api.post('/theme', { theme: null }).catch(() => {})
@@ -136,6 +212,9 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
         applyTheme(defaultTheme)
         localStorage.removeItem('theme-custom')
         localStorage.removeItem('theme-name')
+        localStorage.setItem(themeModeKey, 'light')
+        localStorage.setItem(themeLightKey, JSON.stringify(defaultTheme))
+        setThemeMode('light')
       }
     } catch {}
     setLoggedIn(false)
@@ -181,6 +260,17 @@ export default function Header({ onMenuClick, sidebarOpen, sticky = false }: Hea
 
         {/* Navegação */}
         <nav className="space-x-3 flex items-center">
+          <button
+            onClick={toggleTheme}
+            className="nav-pill text-sm font-semibold"
+            aria-label={themeMode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            title={themeMode === 'dark' ? 'Modo claro' : 'Modo escuro'}
+          >
+            {themeMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <span className="hidden sm:inline">
+              {themeMode === 'dark' ? 'Claro' : 'Escuro'}
+            </span>
+          </button>
           {!loggedIn ? (
             <Link
               to="/admin/login"
