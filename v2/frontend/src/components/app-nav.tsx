@@ -37,10 +37,16 @@ export default function AppNav() {
     if (user.role === 'ADMIN') {
       return [
         {
-          label: 'Portal',
+          label: 'Navegacao',
           items: [
             { href: '/', label: 'Inicio' },
+            { href: '/dashboard', label: 'Dashboard' },
             { href: '/favoritos', label: 'Favoritos' },
+          ],
+        },
+        {
+          label: 'Portal',
+          items: [
             { href: '/admin/categories', label: 'Categorias' },
             { href: '/admin/links', label: 'Links' },
             { href: '/admin/schedules', label: 'Documentos' },
@@ -55,6 +61,7 @@ export default function AppNav() {
         label: 'Navegacao',
         items: [
           { href: '/', label: 'Inicio' },
+          { href: '/dashboard', label: 'Dashboard' },
           { href: '/favoritos', label: 'Favoritos' },
         ],
       },

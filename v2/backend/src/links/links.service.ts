@@ -40,11 +40,11 @@ export class LinksService {
       categoryId?: string;
       isPublic?: boolean;
       audience?: ContentAudience;
+      includeInactive?: boolean;
     },
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
     const where = {
-      status: EntityStatus.ACTIVE,
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
       ...(filters?.sectorId && { sectorId: filters.sectorId }),

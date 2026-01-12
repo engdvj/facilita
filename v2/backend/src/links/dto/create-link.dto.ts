@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsBoolean, IsUUID, IsInt, IsUrl, IsEnum, IsNumber } from 'class-validator';
-import { ContentAudience } from '@prisma/client';
+import { ContentAudience, EntityStatus } from '@prisma/client';
 
 export class CreateLinkDto {
   @IsUUID()
@@ -54,4 +54,8 @@ export class CreateLinkDto {
   @IsInt()
   @IsOptional()
   order?: number;
+
+  @IsEnum(EntityStatus)
+  @IsOptional()
+  status?: EntityStatus;
 }

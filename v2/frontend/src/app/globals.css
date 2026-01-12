@@ -109,35 +109,35 @@
 .dark {
   --background: #0f1416;
   --foreground: #f6f1e8;
-  --card: #151b1d;
+  --card: #1a2225;
   --card-foreground: #f6f1e8;
-  --popover: #151b1d;
+  --popover: #1a2225;
   --popover-foreground: #f6f1e8;
   --primary: #f4b26b;
   --primary-foreground: #1b1209;
-  --secondary: #222a2c;
+  --secondary: #2a3438;
   --secondary-foreground: #f6f1e8;
-  --muted: #1b2224;
-  --muted-foreground: #9bb3aa;
+  --muted: #232c2f;
+  --muted-foreground: #adbfb8;
   --accent: #2f4858;
   --accent-foreground: #f6f1e8;
   --destructive: #d24b4b;
-  --border: #263033;
-  --input: #263033;
-  --ring: #6d7d76;
-  --sidebar: #12181a;
+  --border: #2e3a3d;
+  --input: #2e3a3d;
+  --ring: #7d8e87;
+  --sidebar: #14191c;
   --sidebar-foreground: #f6f1e8;
   --sidebar-primary: #f4b26b;
   --sidebar-primary-foreground: #1b1209;
-  --sidebar-accent: #1b2224;
+  --sidebar-accent: #232c2f;
   --sidebar-accent-foreground: #f6f1e8;
-  --sidebar-border: #263033;
-  --sidebar-ring: #6d7d76;
+  --sidebar-border: #2e3a3d;
+  --sidebar-ring: #7d8e87;
   --app-grid: linear-gradient(
-      rgba(246, 241, 232, 0.03) 1px,
+      rgba(246, 241, 232, 0.04) 1px,
       transparent 1px
     ),
-    linear-gradient(90deg, rgba(246, 241, 232, 0.03) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(246, 241, 232, 0.04) 1px, transparent 1px);
 }
 
 @layer base {
@@ -180,6 +180,130 @@
 
   .dark .bg-white\/80 {
     background-color: color-mix(in srgb, var(--card) 90%, transparent);
+  }
+
+  .dark .bg-white\/85 {
+    background-color: color-mix(in srgb, var(--card) 95%, transparent);
+  }
+
+  .dark .bg-white\/90 {
+    background-color: color-mix(in srgb, var(--card) 98%, transparent);
+  }
+
+  .dark .bg-white\/95 {
+    background-color: var(--card);
+  }
+
+  .dark .shadow-\[0_12px_24px_rgba\(16\,44\,50\,0\.08\)\] {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .dark .shadow-\[0_12px_24px_rgba\(16\,44\,50\,0\.12\)\] {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .dark .shadow-\[0_18px_36px_rgba\(16\,44\,50\,0\.18\)\] {
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.6);
+  }
+
+  .dark .bg-foreground\/80 {
+    background-color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  }
+
+  .dark .bg-foreground\/55 {
+    background-color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  }
+
+  .dark .bg-foreground\/35 {
+    background-color: color-mix(in srgb, var(--foreground) 35%, transparent);
+  }
+
+  .dark .bg-foreground\/70 {
+    background-color: color-mix(in srgb, var(--foreground) 70%, transparent);
+  }
+
+  .dark .bg-border\/60 {
+    background-color: color-mix(in srgb, var(--border) 60%, transparent);
+  }
+
+  .dark .bg-card\/70 {
+    background-color: color-mix(in srgb, var(--card) 85%, transparent);
+  }
+
+  .dark .bg-card\/95 {
+    background-color: var(--card);
+  }
+
+  .dark .bg-secondary\/60 {
+    background-color: color-mix(in srgb, var(--secondary) 70%, transparent);
+  }
+
+  .dark .border-border\/70 {
+    border-color: color-mix(in srgb, var(--border) 85%, transparent);
+  }
+
+  .dark .ring-black\/5 {
+    --tw-ring-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+
+  .dark .border-black\/5 {
+    border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+
+  .dark .bg-white\/90 {
+    background-color: color-mix(in srgb, var(--card) 98%, transparent);
+  }
+
+  .dark .text-\[\#111\] {
+    color: var(--card-foreground);
+  }
+
+  .dark .from-black\/30 {
+    --tw-gradient-from: rgb(0 0 0 / 0.5);
+  }
+
+  .dark .from-black\/12 {
+    --tw-gradient-from: rgb(0 0 0 / 0.25);
+  }
+
+  .dark .to-black\/30 {
+    --tw-gradient-to: rgb(0 0 0 / 0.5);
+  }
+
+  .dark .via-black\/12 {
+    --tw-gradient-via: rgb(0 0 0 / 0.25);
+  }
+
+  .dark .from-secondary\/80 {
+    --tw-gradient-from: color-mix(in srgb, var(--secondary) 85%, transparent);
+  }
+
+  .dark .to-secondary\/40 {
+    --tw-gradient-to: color-mix(in srgb, var(--secondary) 50%, transparent);
+  }
+
+  .dark .ring-white\/25 {
+    --tw-ring-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+  }
+
+  .dark .shadow-\[0_2px_8px_rgba\(0\,0\,0\,0\.15\)\] {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .dark .border-red-400 {
+    border-color: #ef4444;
+  }
+
+  .dark .bg-red-500 {
+    background-color: #dc2626;
+  }
+
+  .dark .border-green-400 {
+    border-color: #4ade80;
+  }
+
+  .dark .bg-green-500 {
+    background-color: #22c55e;
   }
 
   .surface {

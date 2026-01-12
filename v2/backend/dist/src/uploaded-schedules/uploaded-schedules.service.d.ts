@@ -63,6 +63,7 @@ export declare class UploadedSchedulesService {
         categoryId?: string;
         isPublic?: boolean;
         audience?: ContentAudience;
+        includeInactive?: boolean;
     }): Promise<({
         sector: {
             id: string;

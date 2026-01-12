@@ -7,7 +7,7 @@ import {
   IsEnum,
   IsNumber,
 } from 'class-validator';
-import { ContentAudience } from '@prisma/client';
+import { ContentAudience, EntityStatus } from '@prisma/client';
 
 export class CreateScheduleDto {
   @IsUUID()
@@ -60,4 +60,8 @@ export class CreateScheduleDto {
   @IsBoolean()
   @IsOptional()
   isPublic?: boolean;
+
+  @IsEnum(EntityStatus)
+  @IsOptional()
+  status?: EntityStatus;
 }

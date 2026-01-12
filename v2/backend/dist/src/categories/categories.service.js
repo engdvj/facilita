@@ -31,9 +31,24 @@ let CategoriesService = class CategoriesService {
             include: {
                 _count: {
                     select: {
-                        links: true,
-                        schedules: true,
-                        notes: true,
+                        links: {
+                            where: {
+                                status: client_1.EntityStatus.ACTIVE,
+                                deletedAt: null,
+                            },
+                        },
+                        schedules: {
+                            where: {
+                                status: client_1.EntityStatus.ACTIVE,
+                                deletedAt: null,
+                            },
+                        },
+                        notes: {
+                            where: {
+                                status: client_1.EntityStatus.ACTIVE,
+                                deletedAt: null,
+                            },
+                        },
                     },
                 },
             },
@@ -48,9 +63,24 @@ let CategoriesService = class CategoriesService {
             include: {
                 _count: {
                     select: {
-                        links: true,
-                        schedules: true,
-                        notes: true,
+                        links: {
+                            where: {
+                                status: client_1.EntityStatus.ACTIVE,
+                                deletedAt: null,
+                            },
+                        },
+                        schedules: {
+                            where: {
+                                status: client_1.EntityStatus.ACTIVE,
+                                deletedAt: null,
+                            },
+                        },
+                        notes: {
+                            where: {
+                                status: client_1.EntityStatus.ACTIVE,
+                                deletedAt: null,
+                            },
+                        },
                     },
                 },
             },

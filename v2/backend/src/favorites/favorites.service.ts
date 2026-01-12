@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
-import { EntityType } from '@prisma/client';
+import { EntityType, EntityStatus } from '@prisma/client';
 
 @Injectable()
 export class FavoritesService {
@@ -127,6 +127,9 @@ export class FavoritesService {
       where: { userId },
       include: {
         link: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             category: true,
             sector: true,
@@ -141,6 +144,9 @@ export class FavoritesService {
           },
         },
         schedule: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             category: true,
             sector: true,
@@ -155,6 +161,9 @@ export class FavoritesService {
           },
         },
         note: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             category: true,
             sector: true,
@@ -186,18 +195,27 @@ export class FavoritesService {
       },
       include: {
         link: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             category: true,
             sector: true,
           },
         },
         schedule: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             category: true,
             sector: true,
           },
         },
         note: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             category: true,
             sector: true,

@@ -23,9 +23,24 @@ export class CategoriesService {
       include: {
         _count: {
           select: {
-            links: true,
-            schedules: true,
-            notes: true,
+            links: {
+              where: {
+                status: EntityStatus.ACTIVE,
+                deletedAt: null,
+              },
+            },
+            schedules: {
+              where: {
+                status: EntityStatus.ACTIVE,
+                deletedAt: null,
+              },
+            },
+            notes: {
+              where: {
+                status: EntityStatus.ACTIVE,
+                deletedAt: null,
+              },
+            },
           },
         },
       },
@@ -41,9 +56,24 @@ export class CategoriesService {
       include: {
         _count: {
           select: {
-            links: true,
-            schedules: true,
-            notes: true,
+            links: {
+              where: {
+                status: EntityStatus.ACTIVE,
+                deletedAt: null,
+              },
+            },
+            schedules: {
+              where: {
+                status: EntityStatus.ACTIVE,
+                deletedAt: null,
+              },
+            },
+            notes: {
+              where: {
+                status: EntityStatus.ACTIVE,
+                deletedAt: null,
+              },
+            },
           },
         },
       },

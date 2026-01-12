@@ -63,6 +63,7 @@ export declare class LinksService {
         categoryId?: string;
         isPublic?: boolean;
         audience?: ContentAudience;
+        includeInactive?: boolean;
     }): Promise<({
         sector: {
             id: string;

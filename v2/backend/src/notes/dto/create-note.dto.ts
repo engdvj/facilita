@@ -6,7 +6,7 @@ import {
   IsEnum,
   IsNumber,
 } from 'class-validator';
-import { ContentAudience } from '@prisma/client';
+import { ContentAudience, EntityStatus } from '@prisma/client';
 
 export class CreateNoteDto {
   @IsUUID()
@@ -53,4 +53,8 @@ export class CreateNoteDto {
   @IsBoolean()
   @IsOptional()
   isPublic?: boolean;
+
+  @IsEnum(EntityStatus)
+  @IsOptional()
+  status?: EntityStatus;
 }

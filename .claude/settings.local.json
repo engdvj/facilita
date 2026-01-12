@@ -28,7 +28,11 @@
       "Bash(curl:*)",
       "Bash(node check-notes.js:*)",
       "Bash(cd:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)"
     ]
   }
 }

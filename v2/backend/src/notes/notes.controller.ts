@@ -158,6 +158,7 @@ export class NotesController {
       categoryId,
       audience: parsedAudience,
       isPublic: isPublic ? isPublic === 'true' : undefined,
+      includeInactive: true,
     };
 
     return this.notesService.findAll(resolvedCompanyId, filters);

@@ -1,4 +1,4 @@
-import { ContentAudience } from '@prisma/client';
+import { ContentAudience, EntityStatus } from '@prisma/client';
 export declare class CreateLinkDto {
     companyId: string;
     userId?: string;
@@ -14,4 +14,5 @@ export declare class CreateLinkDto {
     audience?: ContentAudience;
     isPublic?: boolean;
     order?: number;
+    status?: EntityStatus;
 }

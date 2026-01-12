@@ -72,4 +72,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], CreateNoteDto.prototype, "isPublic", void 0);
+__decorate([
+    (0, class_validator_1.IsEnum)(client_1.EntityStatus),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateNoteDto.prototype, "status", void 0);
 //# sourceMappingURL=create-note.dto.js.map

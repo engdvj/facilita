@@ -33,6 +33,7 @@ type ContentItem = {
   fileSize?: number;
   accentColor?: string | null;
   favoritesCount: number;
+  status?: string;
 };
 
 const publicCompanyId = process.env.NEXT_PUBLIC_COMPANY_ID || '';
@@ -402,6 +403,7 @@ export default function Home() {
         imageScale: link.imageScale,
         accentColor: link.color || category?.color || null,
         favoritesCount: link._count?.favorites ?? 0,
+        status: link.status,
       });
     });
 
@@ -441,6 +443,7 @@ export default function Home() {
         imageScale: document.imageScale,
         accentColor: document.color || category?.color || null,
         favoritesCount: document._count?.favorites ?? 0,
+        status: document.status,
       });
     });
 
@@ -478,6 +481,7 @@ export default function Home() {
         imageScale: note.imageScale,
         accentColor: note.color || category?.color || null,
         favoritesCount: 0,
+        status: note.status,
       });
     });
 
@@ -598,6 +602,7 @@ export default function Home() {
   const renderItemCard = (item: ContentItem, index?: number) => {
     const motionStyle =
       typeof index === 'number' ? staggerStyle(index) : undefined;
+    const isInactive = item.status?.toUpperCase() !== 'ACTIVE';
     const titleBadge = (
       <div
         className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1 text-[11px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)] sm:py-1.5 sm:text-[13px]"
@@ -619,6 +624,25 @@ export default function Home() {
         {typeLabel}
       </div>
     );
+    const statusBadge = (
+      <div
+        className={`absolute bottom-3 left-3 z-10 flex items-center justify-center rounded-full border-2 p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.15)] sm:p-2 ${
+          isInactive
+            ? 'border-red-400 bg-red-500 text-white'
+            : 'border-green-400 bg-green-500 text-white'
+        }`}
+      >
+        {isInactive ? (
+          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        ) : (
+          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        )}
+      </div>
+    );
 
     if (item.type === 'note') {
       const imageUrl = item.imageUrl
@@ -631,15 +655,15 @@ export default function Home() {
         <article
           key={`${item.type}-${item.id}`}
           role="button"
-          tabIndex={0}
-          onClick={() => note && setSelectedNote(note)}
-          onKeyDown={(e) => {
+          tabIndex={isInactive ? -1 : 0}
+          onClick={isInactive ? undefined : () => note && setSelectedNote(note)}
+          onKeyDown={isInactive ? undefined : (e) => {
             if ((e.key === 'Enter' || e.key === ' ') && note) {
               e.preventDefault();
               setSelectedNote(note);
             }
           }}
-          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
+          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -649,7 +673,7 @@ export default function Home() {
                 alt={item.title}
                 loading="lazy"
                 decoding="async"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+                className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110 ${isInactive ? 'grayscale opacity-60' : ''}`}
                 style={{
                   objectPosition: normalizeImagePosition(item.imagePosition),
                   transform: `scale(${item.imageScale || 1})`,
@@ -657,11 +681,12 @@ export default function Home() {
                 }}
               />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+              <div className={`absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40 ${isInactive ? 'grayscale opacity-60' : ''}`} />
             )}
             {topFade}
             {bottomFade}
             {titleBadge}
+            {statusBadge}
             {typeBadge}
             {user && (
               <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -686,10 +711,11 @@ export default function Home() {
       return (
         <a
           key={`${item.type}-${item.id}`}
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
+          href={isInactive ? undefined : item.url}
+          target={isInactive ? undefined : "_blank"}
+          rel={isInactive ? undefined : "noopener noreferrer"}
+          onClick={isInactive ? (e) => e.preventDefault() : undefined}
+          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''}`}
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -699,7 +725,7 @@ export default function Home() {
                 alt={item.title}
                 loading="lazy"
                 decoding="async"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+                className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110 ${isInactive ? 'grayscale opacity-60' : ''}`}
                 style={{
                   objectPosition: normalizeImagePosition(item.imagePosition),
                   transform: `scale(${item.imageScale || 1})`,
@@ -707,11 +733,12 @@ export default function Home() {
                 }}
               />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+              <div className={`absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40 ${isInactive ? 'grayscale opacity-60' : ''}`} />
             )}
             {topFade}
             {bottomFade}
             {titleBadge}
+            {statusBadge}
             {typeBadge}
             {user && (
               <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -740,10 +767,11 @@ export default function Home() {
     return (
       <a
         key={`${item.type}-${item.id}`}
-        href={fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
+        href={isInactive ? undefined : fileUrl}
+        target={isInactive ? undefined : "_blank"}
+        rel={isInactive ? undefined : "noopener noreferrer"}
+        onClick={isInactive ? (e) => e.preventDefault() : undefined}
+        className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''}`}
         style={motionStyle}
       >
         <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -753,7 +781,7 @@ export default function Home() {
               alt={item.title}
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+              className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110 ${isInactive ? 'grayscale opacity-60' : ''}`}
               style={{
                 objectPosition: normalizeImagePosition(item.imagePosition),
                 transform: `scale(${item.imageScale || 1})`,
@@ -761,11 +789,12 @@ export default function Home() {
               }}
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+            <div className={`absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40 ${isInactive ? 'grayscale opacity-60' : ''}`} />
           )}
           {topFade}
           {bottomFade}
           {titleBadge}
+          {statusBadge}
           {typeBadge}
           {user && (
             <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -891,11 +920,6 @@ export default function Home() {
         })}
       </div>
 
-      {user && (
-        <div className="motion-item" style={staggerStyle(3)}>
-  
-        </div>
-      )}
 
       {loading ? (
         <div className="motion-fade rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">

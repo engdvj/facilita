@@ -134,8 +134,8 @@ export default function SchedulesPage() {
     if (!resolvedCompanyId && !isSuperAdmin) return;
     const [schedulesRes, catsRes, sectorsRes] = await Promise.all([
       resolvedCompanyId
-        ? api.get(`/schedules?companyId=${resolvedCompanyId}`)
-        : api.get('/schedules'),
+        ? api.get(`/schedules/admin/list?companyId=${resolvedCompanyId}`)
+        : api.get('/schedules/admin/list'),
       resolvedCompanyId
         ? api.get(`/categories?companyId=${resolvedCompanyId}`)
         : isSuperAdmin

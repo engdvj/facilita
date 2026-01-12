@@ -102,6 +102,9 @@ let FavoritesService = class FavoritesService {
             where: { userId },
             include: {
                 link: {
+                    where: {
+                        deletedAt: null,
+                    },
                     include: {
                         category: true,
                         sector: true,
@@ -116,6 +119,9 @@ let FavoritesService = class FavoritesService {
                     },
                 },
                 schedule: {
+                    where: {
+                        deletedAt: null,
+                    },
                     include: {
                         category: true,
                         sector: true,
@@ -130,6 +136,9 @@ let FavoritesService = class FavoritesService {
                     },
                 },
                 note: {
+                    where: {
+                        deletedAt: null,
+                    },
                     include: {
                         category: true,
                         sector: true,
@@ -157,18 +166,27 @@ let FavoritesService = class FavoritesService {
             },
             include: {
                 link: {
+                    where: {
+                        deletedAt: null,
+                    },
                     include: {
                         category: true,
                         sector: true,
                     },
                 },
                 schedule: {
+                    where: {
+                        deletedAt: null,
+                    },
                     include: {
                         category: true,
                         sector: true,
                     },
                 },
                 note: {
+                    where: {
+                        deletedAt: null,
+                    },
                     include: {
                         category: true,
                         sector: true,

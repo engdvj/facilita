@@ -36,7 +36,6 @@ let NotesService = class NotesService {
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
         const where = {
-            status: client_1.EntityStatus.ACTIVE,
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
             ...(filters?.sectorId && { sectorId: filters.sectorId }),

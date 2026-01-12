@@ -1,4 +1,4 @@
-import { ContentAudience } from '@prisma/client';
+import { ContentAudience, EntityStatus } from '@prisma/client';
 export declare class CreateScheduleDto {
     companyId: string;
     userId?: string;
@@ -14,4 +14,5 @@ export declare class CreateScheduleDto {
     imageScale?: number;
     audience?: ContentAudience;
     isPublic?: boolean;
+    status?: EntityStatus;
 }

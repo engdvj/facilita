@@ -61,6 +61,7 @@ export declare class NotesService {
         categoryId?: string;
         isPublic?: boolean;
         audience?: ContentAudience;
+        includeInactive?: boolean;
     }): Promise<({
         sector: {
             id: string;

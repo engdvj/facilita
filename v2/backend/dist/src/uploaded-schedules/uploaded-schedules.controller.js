@@ -113,6 +113,28 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
         return result;
     }
+    async findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience) {
+        const normalizedCompanyId = companyId?.trim() || undefined;
+        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
+        const resolvedCompanyId = normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
+        if (!resolvedCompanyId && !isSuperAdmin) {
+            throw new common_1.ForbiddenException('Empresa obrigatoria.');
+        }
+        const parsedAudience = parseAudienceParam(audience);
+        const filters = {
+            sectorId,
+            categoryId,
+            audience: parsedAudience,
+            isPublic: isPublic ? isPublic === 'true' : undefined,
+            includeInactive: true,
+        };
+        const result = await this.schedulesService.findAll(resolvedCompanyId, filters);
+        console.log('SchedulesController.findAllAdmin - resultado:', result.length, 'schedules');
+        return result;
+    }
+    async findAllAdminAlias(req, companyId, sectorId, categoryId, isPublic, audience) {
+        return this.findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience);
+    }
     findOne(id) {
         return this.schedulesService.findOne(id);
     }
@@ -156,6 +178,34 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('admin/list'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('companyId')),
+    __param(2, (0, common_1.Query)('sectorId')),
+    __param(3, (0, common_1.Query)('categoryId')),
+    __param(4, (0, common_1.Query)('isPublic')),
+    __param(5, (0, common_1.Query)('audience')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], UploadedSchedulesController.prototype, "findAllAdmin", null);
+__decorate([
+    (0, common_1.Get)('admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('companyId')),
+    __param(2, (0, common_1.Query)('sectorId')),
+    __param(3, (0, common_1.Query)('categoryId')),
+    __param(4, (0, common_1.Query)('isPublic')),
+    __param(5, (0, common_1.Query)('audience')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], UploadedSchedulesController.prototype, "findAllAdminAlias", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

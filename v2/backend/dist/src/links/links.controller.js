@@ -131,6 +131,7 @@ let LinksController = class LinksController {
             categoryId,
             audience: parsedAudience,
             isPublic: isPublic ? isPublic === 'true' : undefined,
+            includeInactive: true,
         };
         const result = await this.linksService.findAll(resolvedCompanyId, filters);
         console.log('LinksController.findAllAdmin - resultado:', result.length, 'links');

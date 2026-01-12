@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import AdminModal from '@/components/admin/modal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { serverURL } from '@/lib/api';
@@ -32,12 +32,13 @@ type ContentItem = {
   fileName?: string;
   fileSize?: number;
   accentColor?: string | null;
+  status?: string;
 };
 
 export default function FavoritosPage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
-  const { favorites, loading } = useFavorites();
+  const { favorites, loading, fetchFavorites } = useFavorites();
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [filterType, setFilterType] = useState<
@@ -50,6 +51,19 @@ export default function FavoritosPage() {
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && hasHydrated && user) {
+        fetchFavorites();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchFavorites, hasHydrated, user]);
 
   const favoriteLinks = useMemo(
     () =>
@@ -230,6 +244,7 @@ export default function FavoritosPage() {
         imagePosition: link.imagePosition,
         imageScale: link.imageScale,
         accentColor: link.color || category?.color || null,
+        status: link.status,
       });
     });
 
@@ -269,6 +284,7 @@ export default function FavoritosPage() {
         imagePosition: document.imagePosition,
         imageScale: document.imageScale,
         accentColor: document.color || category?.color || null,
+        status: document.status,
       });
     });
 
@@ -306,6 +322,7 @@ export default function FavoritosPage() {
         imagePosition: note.imagePosition,
         imageScale: note.imageScale,
         accentColor: note.color || category?.color || null,
+        status: note.status,
       });
     });
 
@@ -422,6 +439,7 @@ export default function FavoritosPage() {
   const renderItemCard = (item: ContentItem, index?: number) => {
     const motionStyle =
       typeof index === 'number' ? staggerStyle(index) : undefined;
+    const isInactive = item.status?.toUpperCase() !== 'ACTIVE';
     const titleBadge = (
       <div
         className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1 text-[11px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)] sm:py-1.5 sm:text-[13px]"
@@ -443,6 +461,26 @@ export default function FavoritosPage() {
         {typeLabel}
       </div>
     );
+    const statusBadge = (
+      <div
+        className={`absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[10px] border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] shadow-[0_2px_5px_rgba(0,0,0,0.06)] sm:py-1.5 sm:text-[11px] ${
+          isInactive
+            ? 'border-red-200 bg-red-50/90 text-red-700'
+            : 'border-green-200 bg-green-50/90 text-green-700'
+        }`}
+      >
+        {isInactive ? (
+          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+        )}
+        {isInactive ? 'INATIVO' : 'ATIVO'}
+      </div>
+    );
 
     if (item.type === 'note') {
       const imageUrl = item.imageUrl
@@ -455,15 +493,15 @@ export default function FavoritosPage() {
         <article
           key={`${item.type}-${item.id}`}
           role="button"
-          tabIndex={0}
-          onClick={() => note && setSelectedNote(note)}
-          onKeyDown={(e) => {
+          tabIndex={isInactive ? -1 : 0}
+          onClick={isInactive ? undefined : () => note && setSelectedNote(note)}
+          onKeyDown={isInactive ? undefined : (e) => {
             if ((e.key === 'Enter' || e.key === ' ') && note) {
               e.preventDefault();
               setSelectedNote(note);
             }
           }}
-          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
+          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -473,7 +511,7 @@ export default function FavoritosPage() {
                 alt={item.title}
                 loading="lazy"
                 decoding="async"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+                className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110 ${isInactive ? 'grayscale opacity-60' : ''}`}
                 style={{
                   objectPosition: normalizeImagePosition(item.imagePosition),
                   transform: `scale(${item.imageScale || 1})`,
@@ -481,11 +519,12 @@ export default function FavoritosPage() {
                 }}
               />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+              <div className={`absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40 ${isInactive ? 'grayscale opacity-60' : ''}`} />
             )}
             {topFade}
             {bottomFade}
             {titleBadge}
+            {statusBadge}
             {typeBadge}
             {user && (
               <div
@@ -510,10 +549,11 @@ export default function FavoritosPage() {
       return (
         <a
           key={`${item.type}-${item.id}`}
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
+          href={isInactive ? undefined : item.url}
+          target={isInactive ? undefined : "_blank"}
+          rel={isInactive ? undefined : "noopener noreferrer"}
+          onClick={isInactive ? (e) => e.preventDefault() : undefined}
+          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''}`}
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -523,7 +563,7 @@ export default function FavoritosPage() {
                 alt={item.title}
                 loading="lazy"
                 decoding="async"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+                className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110 ${isInactive ? 'grayscale opacity-60' : ''}`}
                 style={{
                   objectPosition: normalizeImagePosition(item.imagePosition),
                   transform: `scale(${item.imageScale || 1})`,
@@ -531,11 +571,12 @@ export default function FavoritosPage() {
                 }}
               />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+              <div className={`absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40 ${isInactive ? 'grayscale opacity-60' : ''}`} />
             )}
             {topFade}
             {bottomFade}
             {titleBadge}
+            {statusBadge}
             {typeBadge}
             {user && (
               <div
@@ -564,10 +605,11 @@ export default function FavoritosPage() {
     return (
       <a
         key={`${item.type}-${item.id}`}
-        href={fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
+        href={isInactive ? undefined : fileUrl}
+        target={isInactive ? undefined : "_blank"}
+        rel={isInactive ? undefined : "noopener noreferrer"}
+        onClick={isInactive ? (e) => e.preventDefault() : undefined}
+        className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''}`}
         style={motionStyle}
       >
         <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -577,7 +619,7 @@ export default function FavoritosPage() {
               alt={item.title}
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110"
+              className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125 contrast-110 saturate-110 ${isInactive ? 'grayscale opacity-60' : ''}`}
               style={{
                 objectPosition: normalizeImagePosition(item.imagePosition),
                 transform: `scale(${item.imageScale || 1})`,
@@ -585,11 +627,12 @@ export default function FavoritosPage() {
               }}
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40" />
+            <div className={`absolute inset-0 bg-gradient-to-br from-secondary/80 to-secondary/40 ${isInactive ? 'grayscale opacity-60' : ''}`} />
           )}
           {topFade}
           {bottomFade}
           {titleBadge}
+          {statusBadge}
           {typeBadge}
           {user && (
             <div

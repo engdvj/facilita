@@ -176,6 +176,7 @@ export class LinksController {
       categoryId,
       audience: parsedAudience,
       isPublic: isPublic ? isPublic === 'true' : undefined,
+      includeInactive: true,
     };
 
     const result = await this.linksService.findAll(resolvedCompanyId, filters);

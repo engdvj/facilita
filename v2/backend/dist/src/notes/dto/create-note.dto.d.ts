@@ -1,4 +1,4 @@
-import { ContentAudience } from '@prisma/client';
+import { ContentAudience, EntityStatus } from '@prisma/client';
 export declare class CreateNoteDto {
     companyId: string;
     userId?: string;
@@ -12,4 +12,5 @@ export declare class CreateNoteDto {
     imageScale?: number;
     audience?: ContentAudience;
     isPublic?: boolean;
+    status?: EntityStatus;
 }
