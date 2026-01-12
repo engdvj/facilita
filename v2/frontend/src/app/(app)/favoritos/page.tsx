@@ -53,6 +53,11 @@ export default function FavoritosPage() {
     ({ '--stagger-index': index } as CSSProperties);
 
   useEffect(() => {
+    if (!hasHydrated || !user) return;
+    fetchFavorites().catch(() => undefined);
+  }, [fetchFavorites, hasHydrated, user?.id]);
+
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && hasHydrated && user) {
         fetchFavorites();
