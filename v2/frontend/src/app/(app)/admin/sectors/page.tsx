@@ -6,7 +6,6 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
-import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -43,6 +42,7 @@ export default function SectorsPage() {
   const [editing, setEditing] = useState<Sector | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -214,6 +214,41 @@ export default function SectorsPage() {
     }
   };
 
+  const toggleSectorStatus = async (sector: Sector) => {
+    const normalizedStatus = (sector.status || 'INACTIVE').toUpperCase();
+    const nextStatus = normalizedStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    setStatusUpdatingId(sector.id);
+    setError(null);
+
+    // Atualização otimista
+    setSectors((prev) =>
+      prev.map((s) =>
+        s.id === sector.id ? { ...s, status: nextStatus as any } : s
+      )
+    );
+
+    try {
+      await api.patch(`/sectors/${sector.id}`, {
+        status: nextStatus,
+      });
+      await loadSectors();
+    } catch (err: any) {
+      // Reverte a mudança otimista em caso de erro
+      setSectors((prev) =>
+        prev.map((s) =>
+          s.id === sector.id ? { ...s, status: normalizedStatus as any } : s
+        )
+      );
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel atualizar o status do setor.';
+      setError(typeof message === 'string' ? message : 'Erro ao atualizar status.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setFormLoading(true);
@@ -348,37 +383,67 @@ export default function SectorsPage() {
             {loading ? 'Carregando...' : `${filteredSectors.length} registros`}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {paginatedSectors.map((sector) => (
-            <article
-              key={sector.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openEdit(sector)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  openEdit(sector);
-                }
-              }}
-              className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Setor
-                </p>
-                <StatusBadge status={sector.status} />
-              </div>
-              <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-                {sector.name}
-              </h3>
-              {(sector.unit?.name || sector.company?.name) && (
-                <span className="text-[10px] text-muted-foreground">
-                  {sector.unit?.name || sector.company?.name}
-                </span>
-              )}
-            </article>
-          ))}
+        <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {paginatedSectors.map((sector) => {
+            const normalizedStatus = (sector.status || 'INACTIVE').toUpperCase();
+            const isActive = normalizedStatus === 'ACTIVE';
+            return (
+              <article
+                key={sector.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(sector)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openEdit(sector);
+                  }
+                }}
+                className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                      {sector.name}
+                    </h3>
+                    {(sector.unit?.name || sector.company?.name) && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {sector.unit?.name || sector.company?.name}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={`Setor ${isActive ? 'ativo' : 'inativo'}`}
+                    title={isActive ? 'Ativo' : 'Inativo'}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleSectorStatus(sector);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.stopPropagation();
+                      }
+                    }}
+                    disabled={statusUpdatingId === sector.id}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                      isActive
+                        ? 'border-emerald-500/70 bg-emerald-500/80'
+                        : 'border-border/70 bg-muted/60'
+                    } ${statusUpdatingId === sector.id ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${
+                        isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
           {!loading && paginatedSectors.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhum setor encontrado.

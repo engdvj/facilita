@@ -341,11 +341,14 @@
   }
 
   .mobile-nav-panel[data-state='open'] {
-    max-height: 60vh;
+    max-height: calc(100vh - 72px);
+    max-height: calc(100dvh - 72px);
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
     border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .dropdown-panel {

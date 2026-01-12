@@ -150,6 +150,7 @@ export class BackupsService {
     const results: Record<string, number> = {};
 
     await this.prisma.$transaction(async (tx) => {
+      await this.reconcileUniqueIds(tx, payload);
       for (const entity of restoreTargets) {
         const raw = payload.data?.[entity];
         const items = Array.isArray(raw) ? raw : [];
@@ -395,6 +396,211 @@ export class BackupsService {
     addFrom('notes', ['imageUrl']);
 
     return paths;
+  }
+
+  private async reconcileUniqueIds(
+    tx: Prisma.TransactionClient,
+    payload: BackupPayload,
+  ) {
+    const data = payload.data;
+    if (!data) {
+      return;
+    }
+
+    const companyItems = Array.isArray(data.companies) ? data.companies : [];
+    const unitItems = Array.isArray(data.units) ? data.units : [];
+    const userItems = Array.isArray(data.users) ? data.users : [];
+
+    const companyIdMap = await this.buildCompanyIdMap(tx, companyItems);
+    const unitIdMap = await this.buildUnitIdMap(tx, unitItems);
+    const userIdMap = await this.buildUserIdMap(tx, userItems);
+
+    this.applyIdMap(companyItems, 'id', companyIdMap);
+    this.applyIdMap(unitItems, 'id', unitIdMap);
+    this.applyIdMap(userItems, 'id', userIdMap);
+
+    this.applyIdMap(data.units, 'companyId', companyIdMap);
+    this.applyIdMap(data.sectors, 'companyId', companyIdMap);
+    this.applyIdMap(data.users, 'companyId', companyIdMap);
+    this.applyIdMap(data.categories, 'companyId', companyIdMap);
+    this.applyIdMap(data.links, 'companyId', companyIdMap);
+    this.applyIdMap(data.uploadedSchedules, 'companyId', companyIdMap);
+    this.applyIdMap(data.notes, 'companyId', companyIdMap);
+
+    this.applyIdMap(data.sectors, 'unitId', unitIdMap);
+    this.applyIdMap(data.users, 'unitId', unitIdMap);
+
+    this.applyIdMap(data.links, 'userId', userIdMap);
+    this.applyIdMap(data.uploadedSchedules, 'userId', userIdMap);
+    this.applyIdMap(data.notes, 'userId', userIdMap);
+  }
+
+  private async buildCompanyIdMap(
+    tx: Prisma.TransactionClient,
+    items: unknown[],
+  ) {
+    const cnpjs = this.collectStrings(items, 'cnpj');
+    if (!cnpjs.length) {
+      return new Map<string, string>();
+    }
+
+    const existing = await tx.company.findMany({
+      where: { cnpj: { in: cnpjs } },
+      select: { id: true, cnpj: true },
+    });
+    const byCnpj = new Map(
+      existing
+        .filter((item) => item.cnpj)
+        .map((item) => [item.cnpj as string, item.id]),
+    );
+
+    return this.buildIdMap(items, 'cnpj', byCnpj);
+  }
+
+  private async buildUnitIdMap(
+    tx: Prisma.TransactionClient,
+    items: unknown[],
+  ) {
+    const cnpjs = this.collectStrings(items, 'cnpj');
+    if (!cnpjs.length) {
+      return new Map<string, string>();
+    }
+
+    const existing = await tx.unit.findMany({
+      where: { cnpj: { in: cnpjs } },
+      select: { id: true, cnpj: true },
+    });
+    const byCnpj = new Map(
+      existing
+        .filter((item) => item.cnpj)
+        .map((item) => [item.cnpj as string, item.id]),
+    );
+
+    return this.buildIdMap(items, 'cnpj', byCnpj);
+  }
+
+  private async buildUserIdMap(
+    tx: Prisma.TransactionClient,
+    items: unknown[],
+  ) {
+    const emails = this.collectStrings(items, 'email');
+    const cpfs = this.collectStrings(items, 'cpf');
+    if (!emails.length && !cpfs.length) {
+      return new Map<string, string>();
+    }
+
+    const existing = await tx.user.findMany({
+      where: {
+        OR: [
+          emails.length ? { email: { in: emails } } : undefined,
+          cpfs.length ? { cpf: { in: cpfs } } : undefined,
+        ].filter(Boolean) as Prisma.UserWhereInput[],
+      },
+      select: { id: true, email: true, cpf: true },
+    });
+
+    const byEmail = new Map(
+      existing
+        .filter((item) => item.email)
+        .map((item) => [item.email as string, item.id]),
+    );
+    const byCpf = new Map(
+      existing
+        .filter((item) => item.cpf)
+        .map((item) => [item.cpf as string, item.id]),
+    );
+
+    const map = new Map<string, string>();
+
+    for (const item of items) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+      const record = item as Record<string, unknown>;
+      const id = typeof record.id === 'string' ? record.id : null;
+      if (!id) {
+        continue;
+      }
+      const email =
+        typeof record.email === 'string' ? record.email.trim() : '';
+      const cpf = typeof record.cpf === 'string' ? record.cpf.trim() : '';
+      const existingId = (email && byEmail.get(email)) || (cpf && byCpf.get(cpf));
+      if (existingId && existingId !== id) {
+        map.set(id, existingId);
+      }
+    }
+
+    return map;
+  }
+
+  private buildIdMap(
+    items: unknown[],
+    key: string,
+    byKey: Map<string, string>,
+  ) {
+    const map = new Map<string, string>();
+
+    for (const item of items) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+      const record = item as Record<string, unknown>;
+      const id = typeof record.id === 'string' ? record.id : null;
+      const rawValue =
+        typeof record[key] === 'string' ? record[key].trim() : '';
+      if (!id || !rawValue) {
+        continue;
+      }
+      const existingId = byKey.get(rawValue);
+      if (existingId && existingId !== id) {
+        map.set(id, existingId);
+      }
+    }
+
+    return map;
+  }
+
+  private collectStrings(items: unknown[], key: string) {
+    const values = new Set<string>();
+    for (const item of items) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+      const record = item as Record<string, unknown>;
+      const rawValue = record[key];
+      if (typeof rawValue !== 'string') {
+        continue;
+      }
+      const trimmed = rawValue.trim();
+      if (trimmed) {
+        values.add(trimmed);
+      }
+    }
+    return Array.from(values);
+  }
+
+  private applyIdMap(
+    items: unknown,
+    key: string,
+    map: Map<string, string>,
+  ) {
+    if (!map.size || !Array.isArray(items)) {
+      return;
+    }
+    for (const item of items) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+      const record = item as Record<string, unknown>;
+      const rawValue = record[key];
+      if (typeof rawValue !== 'string') {
+        continue;
+      }
+      const mapped = map.get(rawValue);
+      if (mapped) {
+        record[key] = mapped;
+      }
+    }
   }
 
   private extractUploadRelativePath(value: string) {

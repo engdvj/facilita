@@ -6,7 +6,6 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
-import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
@@ -29,12 +28,14 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#3b82f6');
   const [adminOnly, setAdminOnly] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
+  const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const resolvedCompanyId = isSuperAdmin ? companyId || undefined : user?.companyId;
 
@@ -43,9 +44,15 @@ export default function CategoriesPage() {
 
   const loadCategories = async () => {
     if (!resolvedCompanyId && !isSuperAdmin) return;
-    const url = resolvedCompanyId
-      ? `/categories?companyId=${resolvedCompanyId}`
-      : '/categories';
+    const params = new URLSearchParams();
+    if (resolvedCompanyId) {
+      params.set('companyId', resolvedCompanyId);
+    }
+    if (isAdmin || isSuperAdmin) {
+      params.set('includeInactive', 'true');
+    }
+    const queryString = params.toString();
+    const url = queryString ? `/categories?${queryString}` : '/categories';
     const response = await api.get(url);
     setCategories(response.data);
   };
@@ -118,11 +125,14 @@ export default function CategoriesPage() {
       if (filterAdminOnly === 'PUBLIC' && category.adminOnly) {
         return false;
       }
-      const linksCount = category._count?.links ?? 0;
-      if (filterUsage === 'WITH' && linksCount === 0) {
+      const totalItems =
+        (category._count?.links ?? 0) +
+        (category._count?.schedules ?? 0) +
+        (category._count?.notes ?? 0);
+      if (filterUsage === 'WITH' && totalItems === 0) {
         return false;
       }
-      if (filterUsage === 'WITHOUT' && linksCount > 0) {
+      if (filterUsage === 'WITHOUT' && totalItems > 0) {
         return false;
       }
       return true;
@@ -200,6 +210,42 @@ export default function CategoriesPage() {
       );
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const toggleCategoryStatus = async (category: Category) => {
+    const normalizedStatus = (category.status || 'INACTIVE').toUpperCase();
+    const nextStatus = normalizedStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    setStatusUpdatingId(category.id);
+    setError(null);
+
+    // Atualização otimista do status apenas
+    setCategories((prev) =>
+      prev.map((cat) =>
+        cat.id === category.id ? { ...cat, status: nextStatus as any } : cat
+      )
+    );
+
+    try {
+      await api.patch(`/categories/${category.id}`, {
+        status: nextStatus,
+      });
+      // Recarrega para atualizar as contagens (_count)
+      await loadCategories();
+    } catch (err: any) {
+      // Reverte a mudança otimista em caso de erro
+      setCategories((prev) =>
+        prev.map((cat) =>
+          cat.id === category.id ? { ...cat, status: normalizedStatus as any } : cat
+        )
+      );
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel atualizar o status da categoria.';
+      setError(typeof message === 'string' ? message : 'Erro ao atualizar status.');
+    } finally {
+      setStatusUpdatingId(null);
     }
   };
 
@@ -314,8 +360,8 @@ export default function CategoriesPage() {
                   }}
                 >
                   <option value="ALL">Todos</option>
-                  <option value="WITH">Com links</option>
-                  <option value="WITHOUT">Sem links</option>
+                  <option value="WITH">Com itens</option>
+                  <option value="WITHOUT">Sem itens</option>
                 </select>
               </div>
               <button
@@ -347,40 +393,80 @@ export default function CategoriesPage() {
             {loading ? 'Carregando...' : `${filteredCategories.length} registros`}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {paginatedCategories.map((category) => (
-            <article
-              key={category.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openEdit(category)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  openEdit(category);
-                }
-              }}
-              className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              <div className="flex items-center justify-between gap-2 mb-2">
-              <StatusBadge status={category.status} />
-            </div>
-              <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-                {category.name}
-              </h3>
-              {category.color && (
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-3 w-3 rounded-full border border-border/70"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span className="text-[10px] text-muted-foreground">
-                    {category._count?.links || 0} links
-                  </span>
+        <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {paginatedCategories.map((category) => {
+            const linksCount = category._count?.links || 0;
+            const schedulesCount = category._count?.schedules || 0;
+            const notesCount = category._count?.notes || 0;
+            const totalCount = linksCount + schedulesCount + notesCount;
+            const normalizedStatus = (category.status || 'INACTIVE').toUpperCase();
+            const isActive = normalizedStatus === 'ACTIVE';
+            const accessLabel = category.adminOnly ? 'Admins' : 'Equipe';
+            const accessClass = category.adminOnly
+              ? 'text-amber-700'
+              : 'text-muted-foreground';
+            const accentColor = category.color || '#94a3b8';
+            return (
+              <article
+                key={category.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(category)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openEdit(category);
+                  }
+                }}
+                className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                    <span
+                      className="mt-1 h-3 w-3 shrink-0 rounded-full border border-border/70"
+                      style={{ backgroundColor: accentColor }}
+                    />
+                    <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                      {category.name}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={`Categoria ${isActive ? 'ativa' : 'inativa'}`}
+                    title={isActive ? 'Ativa' : 'Inativa'}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleCategoryStatus(category);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.stopPropagation();
+                      }
+                    }}
+                    disabled={statusUpdatingId === category.id}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                      isActive
+                        ? 'border-emerald-500/70 bg-emerald-500/80'
+                        : 'border-border/70 bg-muted/60'
+                    } ${statusUpdatingId === category.id ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${
+                        isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
-              )}
-            </article>
-          ))}
+                <div className="mt-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className={accessClass}>{accessLabel}</span>
+                  <span className="h-1 w-1 rounded-full bg-border/70" />
+                  <span>{totalCount} {totalCount === 1 ? 'item' : 'itens'}</span>
+                </div>
+              </article>
+            );
+          })}
           {!loading && paginatedCategories.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhuma categoria encontrada.
@@ -431,57 +517,68 @@ export default function CategoriesPage() {
           </>
         }
       >
-        <div className="grid gap-4 md:grid-cols-3">
-          {isSuperAdmin && (
-            <div className="md:col-span-2">
-              <AdminField label="Empresa" htmlFor="category-company">
-                <select
-                  id="category-company"
-                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                  value={formCompanyId}
-                  onChange={(event) => setFormCompanyId(event.target.value)}
-                >
-                  <option value="">Selecione uma empresa</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.name}
-                    </option>
-                  ))}
-                </select>
-              </AdminField>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-5">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Detalhes
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {isSuperAdmin && (
+                <div className="md:col-span-2">
+                  <AdminField label="Empresa" htmlFor="category-company">
+                    <select
+                      id="category-company"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                      value={formCompanyId}
+                      onChange={(event) => setFormCompanyId(event.target.value)}
+                    >
+                      <option value="">Selecione uma empresa</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </AdminField>
+                </div>
+              )}
+              <div>
+                <AdminField label="Nome" htmlFor="category-name">
+                  <input
+                    id="category-name"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                </AdminField>
+              </div>
+              <div>
+                <AdminField label="Cor" htmlFor="category-color">
+                  <input
+                    id="category-color"
+                    type="color"
+                    className="h-11 w-full rounded-lg border border-border/70 bg-white/80"
+                    value={color}
+                    onChange={(event) => setColor(event.target.value)}
+                  />
+                </AdminField>
+              </div>
             </div>
-          )}
-          <div className="md:col-span-2">
-            <AdminField label="Nome" htmlFor="category-name">
-              <input
-                id="category-name"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </AdminField>
           </div>
-          <div className="md:col-span-1">
-            <AdminField label="Cor" htmlFor="category-color">
-              <input
-                id="category-color"
-                type="color"
-                className="h-11 w-full rounded-lg border border-border/70 bg-white/80"
-                value={color}
-                onChange={(event) => setColor(event.target.value)}
-              />
-            </AdminField>
-          </div>
-          <div className="md:col-span-3 rounded-lg border border-border/70 bg-card/60 px-3 py-2 text-sm text-foreground">
-            <label className="flex items-center gap-2">
+
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-5">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Permissoes
+            </p>
+            <label className="mt-4 flex items-start gap-3 text-sm text-foreground">
               <input
                 type="checkbox"
                 id="category-admin-only"
                 checked={adminOnly}
                 onChange={(event) => setAdminOnly(event.target.checked)}
-                className="rounded border-border/70"
+                className="mt-1 rounded border-border/70"
               />
-              Apenas administradores podem criar nesta categoria
+              <span>Apenas administradores podem criar nesta categoria</span>
             </label>
           </div>
         </div>

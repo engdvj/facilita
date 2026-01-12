@@ -43,10 +43,10 @@ export default function LoginPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Facilita admin
         </p>
-        <h1 className="font-display text-3xl text-foreground">
+        <h1 className="font-display text-2xl sm:text-3xl text-foreground">
           Acesso ao painel
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[13px] sm:text-sm text-muted-foreground">
           Use seu usuario para acessar o painel e seguir a operacao.
         </p>
       </div>
@@ -63,7 +63,7 @@ export default function LoginPage() {
           <input
             id="username"
             type="text"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2.5 text-[13px] text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 sm:px-4 sm:py-3 sm:text-sm"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
@@ -77,7 +77,7 @@ export default function LoginPage() {
           <input
             id="password"
             type="password"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2.5 text-[13px] text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 sm:px-4 sm:py-3 sm:text-sm"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -86,7 +86,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="motion-press w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_10px_20px_rgba(16,44,50,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_26px_rgba(16,44,50,0.25)] disabled:opacity-60"
+          className="motion-press w-full rounded-lg bg-primary px-3 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-[0_10px_20px_rgba(16,44,50,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_26px_rgba(16,44,50,0.25)] disabled:opacity-60 sm:px-4 sm:py-3 sm:text-sm"
           disabled={loading}
         >
           {loading ? 'Entrando...' : 'Entrar'}

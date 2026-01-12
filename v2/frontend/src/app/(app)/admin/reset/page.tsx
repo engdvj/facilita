@@ -14,10 +14,7 @@ type ResetEntity =
   | 'categories'
   | 'links'
   | 'uploadedSchedules'
-  | 'notes'
-  | 'tags'
-  | 'tagOnLink'
-  | 'tagOnSchedule';
+  | 'notes';
 
 const resetOptions: {
   key: ResetEntity;
@@ -53,7 +50,6 @@ const resetOptions: {
     label: 'Notas',
     hint: 'Remove notas pessoais e compartilhadas.',
   },
-  { key: 'tags', label: 'Tags', hint: 'Remove tags e relacionamentos.' },
 ];
 
 const buildInitialSelection = () =>
@@ -91,9 +87,6 @@ export default function ResetPage() {
     const base = resetOptions
       .filter((option) => selection[option.key])
       .map((option) => option.key);
-    if (selection.tags) {
-      base.push('tagOnLink', 'tagOnSchedule');
-    }
     return Array.from(new Set(base));
   }, [selection]);
 

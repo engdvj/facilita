@@ -72,7 +72,7 @@ export function FavoritesSection() {
         className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/90 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
       >
         {/* Tag com nome do item no topo esquerdo */}
-        <div className="absolute left-3 top-3 z-20 max-w-[calc(100%-80px)] truncate rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm">
+        <div className="absolute left-3 top-3 z-20 max-w-[calc(100%-80px)] truncate rounded-xl border border-slate-200/80 bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-slate-900 shadow-sm sm:px-3 sm:py-1.5 sm:text-xs">
           {item.title}
         </div>
 
@@ -82,14 +82,14 @@ export function FavoritesSection() {
             e.stopPropagation();
             handleRemove(favorite.id);
           }}
-          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-yellow-900 shadow-sm transition hover:bg-yellow-500"
+          className="absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400 text-yellow-900 shadow-sm transition hover:bg-yellow-500 sm:h-8 sm:w-8"
           title="Remover dos favoritos"
         >
           <Star className="h-4 w-4 fill-current" />
         </button>
 
         {/* Imagem ou fundo */}
-        <div className="relative h-48 w-full overflow-hidden bg-secondary/60">
+        <div className="relative h-40 w-full overflow-hidden bg-secondary/60 sm:h-48">
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -107,7 +107,7 @@ export function FavoritesSection() {
         </div>
 
         {/* Tag de tipo no canto inferior direito */}
-        <div className="absolute bottom-3 right-3 z-20 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-900 shadow-sm">
+        <div className="absolute bottom-3 right-3 z-20 rounded-xl border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-slate-900 shadow-sm sm:px-3 sm:py-1.5 sm:text-[10px]">
           {typeLabel}
         </div>
       </article>

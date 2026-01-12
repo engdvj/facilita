@@ -114,7 +114,12 @@ export function FavoritesProvider({
           payload.noteId = entityId;
         }
 
-        const response = await api.post("/favorites", payload);
+        const response = await api.post(
+          "/favorites",
+          payload,
+          // @ts-expect-error - skipNotify is a custom property
+          { skipNotify: true }
+        );
 
         setFavorites((prev) => [response.data, ...prev]);
         setFavoritedItems((prev) => new Set(prev).add(entityId));
@@ -140,7 +145,11 @@ export function FavoritesProvider({
 
   const removeFavorite = useCallback(async (favoriteId: string) => {
     try {
-      await api.delete(`/favorites/${favoriteId}`);
+      await api.delete(
+        `/favorites/${favoriteId}`,
+        // @ts-expect-error - skipNotify is a custom property
+        { skipNotify: true }
+      );
 
       setFavorites((prev) => {
         const removed = prev.find((f) => f.id === favoriteId);
@@ -169,7 +178,11 @@ export function FavoritesProvider({
   const removeFavoriteByEntity = useCallback(
     async (entityType: EntityType, entityId: string) => {
       try {
-        await api.delete(`/favorites/entity/${entityType}/${entityId}`);
+        await api.delete(
+          `/favorites/entity/${entityType}/${entityId}`,
+          // @ts-expect-error - skipNotify is a custom property
+          { skipNotify: true }
+        );
 
         setFavorites((prev) =>
           prev.filter((f) => {

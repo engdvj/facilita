@@ -6,7 +6,6 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
-import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Link, Sector } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
@@ -45,6 +44,7 @@ export default function LinksPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Link | null>(null);
   const [formData, setFormData] = useState({ ...emptyFormData });
   const [companyId, setCompanyId] = useState('');
@@ -419,6 +419,40 @@ export default function LinksPage() {
     }
   };
 
+  const toggleLinkStatus = async (link: Link) => {
+    const normalizedStatus = (link.status || 'INACTIVE').toUpperCase();
+    const nextStatus = normalizedStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    setStatusUpdatingId(link.id);
+    setError(null);
+
+    // Atualização otimista
+    setLinks((prev) =>
+      prev.map((l) =>
+        l.id === link.id ? { ...l, status: nextStatus as any } : l
+      )
+    );
+
+    try {
+      await api.patch(`/links/${link.id}`, {
+        status: nextStatus,
+      });
+    } catch (err: any) {
+      // Reverte a mudança otimista em caso de erro
+      setLinks((prev) =>
+        prev.map((l) =>
+          l.id === link.id ? { ...l, status: normalizedStatus as any } : l
+        )
+      );
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel atualizar o status do link.';
+      setError(typeof message === 'string' ? message : 'Erro ao atualizar status.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setFormLoading(true);
@@ -595,12 +629,14 @@ export default function LinksPage() {
             {loading ? 'Carregando...' : `${filteredLinks.length} registros`}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {paginatedLinks.map((link) => {
             const canEdit =
               user?.role === 'ADMIN' ||
               user?.role === 'SUPERADMIN' ||
               link.userId === user?.id;
+            const normalizedStatus = (link.status || 'INACTIVE').toUpperCase();
+            const isActive = normalizedStatus === 'ACTIVE';
             return (
               <article
               key={link.id}
@@ -639,16 +675,45 @@ export default function LinksPage() {
               )}
               <div className="flex flex-col gap-2 p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground line-clamp-2">
-                    {link.title}
-                  </h3>
-                  <StatusBadge status={link.status} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h3 className="min-w-0 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                      {link.title}
+                    </h3>
+                    {link.category?.name && (
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {link.category.name}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={`Link ${isActive ? 'ativo' : 'inativo'}`}
+                    title={isActive ? 'Ativo' : 'Inativo'}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleLinkStatus(link);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.stopPropagation();
+                      }
+                    }}
+                    disabled={statusUpdatingId === link.id}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                      isActive
+                        ? 'border-emerald-500/70 bg-emerald-500/80'
+                        : 'border-border/70 bg-muted/60'
+                    } ${statusUpdatingId === link.id ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${
+                        isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
-                {link.category?.name && (
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {link.category.name}
-                  </span>
-                )}
               </div>
             </article>
             );

@@ -6,7 +6,6 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
-import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -32,6 +31,7 @@ export default function CompaniesPage() {
   const [editing, setEditing] = useState<Company | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [status, setStatus] = useState('ACTIVE');
@@ -170,6 +170,41 @@ export default function CompaniesPage() {
     }
   };
 
+  const toggleCompanyStatus = async (company: Company) => {
+    const normalizedStatus = (company.status || 'INACTIVE').toUpperCase();
+    const nextStatus = normalizedStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    setStatusUpdatingId(company.id);
+    setError(null);
+
+    // Atualização otimista
+    setCompanies((prev) =>
+      prev.map((c) =>
+        c.id === company.id ? { ...c, status: nextStatus as any } : c
+      )
+    );
+
+    try {
+      await api.patch(`/companies/${company.id}`, {
+        status: nextStatus,
+      });
+      await loadCompanies();
+    } catch (err: any) {
+      // Reverte a mudança otimista em caso de erro
+      setCompanies((prev) =>
+        prev.map((c) =>
+          c.id === company.id ? { ...c, status: normalizedStatus as any } : c
+        )
+      );
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel atualizar o status da empresa.';
+      setError(typeof message === 'string' ? message : 'Erro ao atualizar status.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setFormLoading(true);
@@ -279,37 +314,67 @@ export default function CompaniesPage() {
             {loading ? 'Carregando...' : `${filteredCompanies.length} registros`}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {paginatedCompanies.map((company) => (
-            <article
-              key={company.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openEdit(company)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  openEdit(company);
-                }
-              }}
-              className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Empresa
-                </p>
-                <StatusBadge status={company.status} />
-              </div>
-              <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-                {company.name}
-              </h3>
-              {company.cnpj && (
-                <span className="text-[10px] text-muted-foreground">
-                  {company.cnpj}
-                </span>
-              )}
-            </article>
-          ))}
+        <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {paginatedCompanies.map((company) => {
+            const normalizedStatus = (company.status || 'INACTIVE').toUpperCase();
+            const isActive = normalizedStatus === 'ACTIVE';
+            return (
+              <article
+                key={company.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(company)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openEdit(company);
+                  }
+                }}
+                className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                      {company.name}
+                    </h3>
+                    {company.cnpj && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {company.cnpj}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={`Empresa ${isActive ? 'ativa' : 'inativa'}`}
+                    title={isActive ? 'Ativa' : 'Inativa'}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleCompanyStatus(company);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.stopPropagation();
+                      }
+                    }}
+                    disabled={statusUpdatingId === company.id}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                      isActive
+                        ? 'border-emerald-500/70 bg-emerald-500/80'
+                        : 'border-border/70 bg-muted/60'
+                    } ${statusUpdatingId === company.id ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${
+                        isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
           {!loading && paginatedCompanies.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhuma empresa encontrada.

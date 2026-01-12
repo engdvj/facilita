@@ -31,7 +31,7 @@ export default function AdminModal({
 
   const modalMarkup = (
     <div
-      className="modal-root fixed inset-0 z-50 flex items-center justify-center px-4 py-8"
+      className="modal-root fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:py-8"
       data-state={modalState}
       aria-hidden={!open}
     >
@@ -43,7 +43,7 @@ export default function AdminModal({
         aria-label="Fechar modal"
       />
       <div
-        className={`modal-panel surface-strong relative flex w-full max-w-lg flex-col overflow-hidden p-6 max-h-[90vh] ${panelClassName ?? ''}`}
+        className={`modal-panel surface-strong relative flex w-full max-w-lg flex-col overflow-hidden p-4 sm:p-6 max-h-[85vh] sm:max-h-[90vh] ${panelClassName ?? ''}`}
         data-state={modalState}
         role="dialog"
         aria-modal="true"

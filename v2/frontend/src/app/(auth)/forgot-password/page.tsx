@@ -9,10 +9,10 @@ export default function ForgotPasswordPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Recuperacao
         </p>
-        <h1 className="font-display text-3xl text-foreground">
+        <h1 className="font-display text-2xl sm:text-3xl text-foreground">
           Recuperar senha
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[13px] sm:text-sm text-muted-foreground">
           O fluxo de recuperacao sera habilitado no proximo milestone.
         </p>
       </div>

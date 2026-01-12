@@ -31,12 +31,19 @@ export class CategoriesController {
   }
 
   @Get()
-  findAll(@Query('companyId') companyId: string | undefined, @Request() req: any) {
+  findAll(
+    @Query('companyId') companyId: string | undefined,
+    @Query('includeInactive') includeInactive: string | undefined,
+    @Request() req: any,
+  ) {
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    const isAdmin = req.user?.role === UserRole.ADMIN;
     if (!companyId && !isSuperAdmin) {
       throw new ForbiddenException('Empresa obrigatoria.');
     }
-    return this.categoriesService.findAll(companyId);
+    const canViewInactive =
+      includeInactive === 'true' && (isAdmin || isSuperAdmin);
+    return this.categoriesService.findAll(companyId, canViewInactive);
   }
 
   @Get(':id')

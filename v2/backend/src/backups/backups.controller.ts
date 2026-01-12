@@ -2,6 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
+  InternalServerErrorException,
+  NotFoundException,
+  Param,
   Post,
   Res,
   StreamableFile,
@@ -12,12 +16,15 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserRole } from '@prisma/client';
 import { Response } from 'express';
-import { mkdirSync } from 'fs';
+import { execFile } from 'child_process';
+import { createReadStream, mkdirSync } from 'fs';
+import { mkdir, readdir, stat } from 'fs/promises';
 import { diskStorage } from 'multer';
-import { join } from 'path';
+import { join, resolve, sep } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { BackupsService } from './backups.service';
 import { ExportBackupDto } from './dto/export-backup.dto';
 import { BackupEntity, BackupPayload, backupEntities } from './backups.types';
@@ -38,7 +45,112 @@ const backupStorage = diskStorage({
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPERADMIN)
 export class BackupsController {
-  constructor(private readonly backupsService: BackupsService) {}
+  constructor(
+    private readonly backupsService: BackupsService,
+    private readonly systemConfigService: SystemConfigService,
+  ) {}
+
+  @Get('auto')
+  async listAutoBackups() {
+    const directory = this.resolveAutoBackupDir();
+
+    try {
+      const entries = await readdir(directory);
+      const files = await Promise.all(
+        entries.map(async (name) => {
+          try {
+            const filePath = join(directory, name);
+            const info = await stat(filePath);
+            if (!info.isFile()) return null;
+            return {
+              name,
+              size: info.size,
+              updatedAt: info.mtime.toISOString(),
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      return {
+        directory,
+        files: files
+          .filter((file): file is NonNullable<typeof file> => Boolean(file))
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      };
+    } catch {
+      return { directory, files: [] };
+    }
+  }
+
+  @Post('auto/open')
+  async openAutoBackups() {
+    const directory = this.resolveAutoBackupDir();
+    await mkdir(directory, { recursive: true });
+
+    const platform = process.platform;
+    const command =
+      platform === 'win32'
+        ? 'explorer.exe'
+        : platform === 'darwin'
+        ? 'open'
+        : 'xdg-open';
+
+    try {
+      await new Promise<void>((resolvePromise, reject) => {
+        const child = execFile(command, [directory], (error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolvePromise();
+        });
+        child.on('error', reject);
+      });
+    } catch {
+      throw new InternalServerErrorException(
+        'Nao foi possivel abrir o diretorio no servidor.',
+      );
+    }
+
+    return { opened: true, directory };
+  }
+
+  @Get('auto/files/:name')
+  async downloadAutoBackup(
+    @Param('name') name: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+      throw new BadRequestException('Arquivo invalido.');
+    }
+
+    const directory = this.resolveAutoBackupDir();
+    const resolvedDir = resolve(directory);
+    const filePath = resolve(directory, name);
+
+    if (!filePath.startsWith(resolvedDir + sep)) {
+      throw new BadRequestException('Arquivo invalido.');
+    }
+
+    let info;
+    try {
+      info = await stat(filePath);
+    } catch {
+      throw new NotFoundException('Arquivo nao encontrado.');
+    }
+
+    if (!info.isFile()) {
+      throw new NotFoundException('Arquivo nao encontrado.');
+    }
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${name}"`,
+    });
+    return new StreamableFile(createReadStream(filePath));
+  }
 
   @Post('export')
   async export(
@@ -129,5 +241,12 @@ export class BackupsController {
     }
 
     throw new BadRequestException('Backup invalido.');
+  }
+
+  private resolveAutoBackupDir() {
+    return this.systemConfigService.resolvePath(
+      'backup_directory',
+      'backups/auto',
+    );
   }
 }

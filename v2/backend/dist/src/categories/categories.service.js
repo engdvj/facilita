@@ -22,10 +22,10 @@ let CategoriesService = class CategoriesService {
             data: createCategoryDto,
         });
     }
-    async findAll(companyId) {
+    async findAll(companyId, includeInactive = false) {
         return this.prisma.category.findMany({
             where: {
-                status: client_1.EntityStatus.ACTIVE,
+                ...(includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
                 ...(companyId ? { companyId } : {}),
             },
             include: {
@@ -33,6 +33,7 @@ let CategoriesService = class CategoriesService {
                     select: {
                         links: true,
                         schedules: true,
+                        notes: true,
                     },
                 },
             },
@@ -49,6 +50,7 @@ let CategoriesService = class CategoriesService {
                     select: {
                         links: true,
                         schedules: true,
+                        notes: true,
                     },
                 },
             },
@@ -59,18 +61,57 @@ let CategoriesService = class CategoriesService {
         return category;
     }
     async update(id, updateCategoryDto) {
-        await this.findOne(id);
+        const category = await this.findOne(id);
+        if (updateCategoryDto.status === client_1.EntityStatus.INACTIVE) {
+            console.log(`Inativando categoria ${category.name} (${id}) - desassociando itens...`);
+            const [linksUpdated, schedulesUpdated, notesUpdated] = await this.prisma.$transaction([
+                this.prisma.link.updateMany({
+                    where: { categoryId: id },
+                    data: { categoryId: null },
+                }),
+                this.prisma.uploadedSchedule.updateMany({
+                    where: { categoryId: id },
+                    data: { categoryId: null },
+                }),
+                this.prisma.note.updateMany({
+                    where: { categoryId: id },
+                    data: { categoryId: null },
+                }),
+            ]);
+            console.log(`Desassociados: ${linksUpdated.count} links, ${schedulesUpdated.count} documentos, ${notesUpdated.count} notas`);
+            await this.prisma.category.update({
+                where: { id },
+                data: updateCategoryDto,
+            });
+            return this.findOne(id);
+        }
         return this.prisma.category.update({
             where: { id },
             data: updateCategoryDto,
         });
     }
     async remove(id) {
-        await this.findOne(id);
-        return this.prisma.category.update({
-            where: { id },
-            data: { status: client_1.EntityStatus.INACTIVE },
-        });
+        const category = await this.findOne(id);
+        console.log(`Removendo categoria ${category.name} (${id}) - desassociando e excluindo...`);
+        await this.prisma.$transaction([
+            this.prisma.link.updateMany({
+                where: { categoryId: id },
+                data: { categoryId: null },
+            }),
+            this.prisma.uploadedSchedule.updateMany({
+                where: { categoryId: id },
+                data: { categoryId: null },
+            }),
+            this.prisma.note.updateMany({
+                where: { categoryId: id },
+                data: { categoryId: null },
+            }),
+            this.prisma.category.delete({
+                where: { id },
+            }),
+        ]);
+        console.log(`Categoria ${category.name} removida com sucesso`);
+        return category;
     }
 };
 exports.CategoriesService = CategoriesService;

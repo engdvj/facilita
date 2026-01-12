@@ -126,6 +126,7 @@ let BackupsService = class BackupsService {
         const restoreTargets = restoreOrder.filter((entity) => selectedEntities.includes(entity));
         const results = {};
         await this.prisma.$transaction(async (tx) => {
+            await this.reconcileUniqueIds(tx, payload);
             for (const entity of restoreTargets) {
                 const raw = payload.data?.[entity];
                 const items = Array.isArray(raw) ? raw : [];
@@ -296,6 +297,157 @@ let BackupsService = class BackupsService {
         addFrom('uploadedSchedules', ['fileUrl', 'imageUrl']);
         addFrom('notes', ['imageUrl']);
         return paths;
+    }
+    async reconcileUniqueIds(tx, payload) {
+        const data = payload.data;
+        if (!data) {
+            return;
+        }
+        const companyItems = Array.isArray(data.companies) ? data.companies : [];
+        const unitItems = Array.isArray(data.units) ? data.units : [];
+        const userItems = Array.isArray(data.users) ? data.users : [];
+        const companyIdMap = await this.buildCompanyIdMap(tx, companyItems);
+        const unitIdMap = await this.buildUnitIdMap(tx, unitItems);
+        const userIdMap = await this.buildUserIdMap(tx, userItems);
+        this.applyIdMap(companyItems, 'id', companyIdMap);
+        this.applyIdMap(unitItems, 'id', unitIdMap);
+        this.applyIdMap(userItems, 'id', userIdMap);
+        this.applyIdMap(data.units, 'companyId', companyIdMap);
+        this.applyIdMap(data.sectors, 'companyId', companyIdMap);
+        this.applyIdMap(data.users, 'companyId', companyIdMap);
+        this.applyIdMap(data.categories, 'companyId', companyIdMap);
+        this.applyIdMap(data.links, 'companyId', companyIdMap);
+        this.applyIdMap(data.uploadedSchedules, 'companyId', companyIdMap);
+        this.applyIdMap(data.notes, 'companyId', companyIdMap);
+        this.applyIdMap(data.sectors, 'unitId', unitIdMap);
+        this.applyIdMap(data.users, 'unitId', unitIdMap);
+        this.applyIdMap(data.links, 'userId', userIdMap);
+        this.applyIdMap(data.uploadedSchedules, 'userId', userIdMap);
+        this.applyIdMap(data.notes, 'userId', userIdMap);
+    }
+    async buildCompanyIdMap(tx, items) {
+        const cnpjs = this.collectStrings(items, 'cnpj');
+        if (!cnpjs.length) {
+            return new Map();
+        }
+        const existing = await tx.company.findMany({
+            where: { cnpj: { in: cnpjs } },
+            select: { id: true, cnpj: true },
+        });
+        const byCnpj = new Map(existing
+            .filter((item) => item.cnpj)
+            .map((item) => [item.cnpj, item.id]));
+        return this.buildIdMap(items, 'cnpj', byCnpj);
+    }
+    async buildUnitIdMap(tx, items) {
+        const cnpjs = this.collectStrings(items, 'cnpj');
+        if (!cnpjs.length) {
+            return new Map();
+        }
+        const existing = await tx.unit.findMany({
+            where: { cnpj: { in: cnpjs } },
+            select: { id: true, cnpj: true },
+        });
+        const byCnpj = new Map(existing
+            .filter((item) => item.cnpj)
+            .map((item) => [item.cnpj, item.id]));
+        return this.buildIdMap(items, 'cnpj', byCnpj);
+    }
+    async buildUserIdMap(tx, items) {
+        const emails = this.collectStrings(items, 'email');
+        const cpfs = this.collectStrings(items, 'cpf');
+        if (!emails.length && !cpfs.length) {
+            return new Map();
+        }
+        const existing = await tx.user.findMany({
+            where: {
+                OR: [
+                    emails.length ? { email: { in: emails } } : undefined,
+                    cpfs.length ? { cpf: { in: cpfs } } : undefined,
+                ].filter(Boolean),
+            },
+            select: { id: true, email: true, cpf: true },
+        });
+        const byEmail = new Map(existing
+            .filter((item) => item.email)
+            .map((item) => [item.email, item.id]));
+        const byCpf = new Map(existing
+            .filter((item) => item.cpf)
+            .map((item) => [item.cpf, item.id]));
+        const map = new Map();
+        for (const item of items) {
+            if (!item || typeof item !== 'object') {
+                continue;
+            }
+            const record = item;
+            const id = typeof record.id === 'string' ? record.id : null;
+            if (!id) {
+                continue;
+            }
+            const email = typeof record.email === 'string' ? record.email.trim() : '';
+            const cpf = typeof record.cpf === 'string' ? record.cpf.trim() : '';
+            const existingId = (email && byEmail.get(email)) || (cpf && byCpf.get(cpf));
+            if (existingId && existingId !== id) {
+                map.set(id, existingId);
+            }
+        }
+        return map;
+    }
+    buildIdMap(items, key, byKey) {
+        const map = new Map();
+        for (const item of items) {
+            if (!item || typeof item !== 'object') {
+                continue;
+            }
+            const record = item;
+            const id = typeof record.id === 'string' ? record.id : null;
+            const rawValue = typeof record[key] === 'string' ? record[key].trim() : '';
+            if (!id || !rawValue) {
+                continue;
+            }
+            const existingId = byKey.get(rawValue);
+            if (existingId && existingId !== id) {
+                map.set(id, existingId);
+            }
+        }
+        return map;
+    }
+    collectStrings(items, key) {
+        const values = new Set();
+        for (const item of items) {
+            if (!item || typeof item !== 'object') {
+                continue;
+            }
+            const record = item;
+            const rawValue = record[key];
+            if (typeof rawValue !== 'string') {
+                continue;
+            }
+            const trimmed = rawValue.trim();
+            if (trimmed) {
+                values.add(trimmed);
+            }
+        }
+        return Array.from(values);
+    }
+    applyIdMap(items, key, map) {
+        if (!map.size || !Array.isArray(items)) {
+            return;
+        }
+        for (const item of items) {
+            if (!item || typeof item !== 'object') {
+                continue;
+            }
+            const record = item;
+            const rawValue = record[key];
+            if (typeof rawValue !== 'string') {
+                continue;
+            }
+            const mapped = map.get(rawValue);
+            if (mapped) {
+                record[key] = mapped;
+            }
+        }
     }
     extractUploadRelativePath(value) {
         const trimmed = value.trim();

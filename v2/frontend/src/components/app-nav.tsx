@@ -28,7 +28,7 @@ export default function AppNav() {
             { href: '/', label: 'Inicio' },
             { href: '/favoritos', label: 'Favoritos' },
             { href: '/admin/links', label: 'Meus links' },
-            { href: '/admin/notes', label: 'Notas' },
+            { href: '/admin/notes', label: 'Minhas notas' },
           ],
         },
       ];
@@ -90,14 +90,14 @@ export default function AppNav() {
   }, [user]);
 
   return (
-    <div className="space-y-5 motion-stagger lg:rounded-3xl lg:border lg:border-border/70 lg:bg-card/80 lg:p-4 lg:shadow-[0_18px_40px_rgba(16,32,36,0.12)] lg:backdrop-blur-sm">
+    <div className="space-y-4 sm:space-y-5 motion-stagger lg:rounded-3xl lg:border lg:border-border/70 lg:bg-card/80 lg:p-4 lg:shadow-[0_18px_40px_rgba(16,32,36,0.12)] lg:backdrop-blur-sm">
       {sections.map((section, sectionIndex) => (
         <div
           key={section.label}
           className="motion-item space-y-2"
           style={staggerStyle(sectionIndex + 1)}
         >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground/80 font-display">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] sm:tracking-[0.32em] text-muted-foreground/80 font-display">
             {section.label}
           </p>
           <nav className="space-y-3">
@@ -117,7 +117,7 @@ export default function AppNav() {
                       event.preventDefault();
                     }
                   }}
-                  className={`motion-item motion-press nav-card flex items-center gap-2 pl-5 pr-4 py-2.5 text-[13px] font-medium tracking-[0.02em] ${
+                  className={`motion-item motion-press nav-card flex items-center gap-2 px-4 py-2 text-[12px] font-medium tracking-[0.02em] sm:pl-5 sm:pr-4 sm:py-2.5 sm:text-[13px] ${
                     active
                       ? 'text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground'

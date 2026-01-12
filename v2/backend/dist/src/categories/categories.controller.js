@@ -28,12 +28,14 @@ let CategoriesController = class CategoriesController {
     create(createCategoryDto) {
         return this.categoriesService.create(createCategoryDto);
     }
-    findAll(companyId, req) {
+    findAll(companyId, includeInactive, req) {
         const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
+        const isAdmin = req.user?.role === client_1.UserRole.ADMIN;
         if (!companyId && !isSuperAdmin) {
             throw new common_1.ForbiddenException('Empresa obrigatoria.');
         }
-        return this.categoriesService.findAll(companyId);
+        const canViewInactive = includeInactive === 'true' && (isAdmin || isSuperAdmin);
+        return this.categoriesService.findAll(companyId, canViewInactive);
     }
     findOne(id) {
         return this.categoriesService.findOne(id);
@@ -57,9 +59,10 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('companyId')),
-    __param(1, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('includeInactive')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", void 0)
 ], CategoriesController.prototype, "findAll", null);
 __decorate([

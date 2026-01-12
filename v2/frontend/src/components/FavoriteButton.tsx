@@ -50,7 +50,7 @@ export function FavoriteButton({
     <button
       onClick={handleToggle}
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-full shadow-sm transition-all",
+        "flex h-7 w-7 items-center justify-center rounded-full shadow-sm transition-all sm:h-8 sm:w-8",
         isAnimating && "scale-110",
         favorited
           ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-500"
@@ -61,7 +61,7 @@ export function FavoriteButton({
     >
       <Star
         className={cn(
-          "h-4 w-4 transition-all duration-300",
+          "h-3.5 w-3.5 transition-all duration-300 sm:h-4 sm:w-4",
           favorited && "fill-current"
         )}
       />

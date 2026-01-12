@@ -16,12 +16,15 @@ exports.BackupsController = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
 const client_1 = require("@prisma/client");
+const child_process_1 = require("child_process");
 const fs_1 = require("fs");
+const promises_1 = require("fs/promises");
 const multer_1 = require("multer");
 const path_1 = require("path");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const roles_guard_1 = require("../common/guards/roles.guard");
+const system_config_service_1 = require("../system-config/system-config.service");
 const backups_service_1 = require("./backups.service");
 const export_backup_dto_1 = require("./dto/export-backup.dto");
 const backups_types_1 = require("./backups.types");
@@ -37,8 +40,92 @@ const backupStorage = (0, multer_1.diskStorage)({
     },
 });
 let BackupsController = class BackupsController {
-    constructor(backupsService) {
+    constructor(backupsService, systemConfigService) {
         this.backupsService = backupsService;
+        this.systemConfigService = systemConfigService;
+    }
+    async listAutoBackups() {
+        const directory = this.resolveAutoBackupDir();
+        try {
+            const entries = await (0, promises_1.readdir)(directory);
+            const files = await Promise.all(entries.map(async (name) => {
+                try {
+                    const filePath = (0, path_1.join)(directory, name);
+                    const info = await (0, promises_1.stat)(filePath);
+                    if (!info.isFile())
+                        return null;
+                    return {
+                        name,
+                        size: info.size,
+                        updatedAt: info.mtime.toISOString(),
+                    };
+                }
+                catch {
+                    return null;
+                }
+            }));
+            return {
+                directory,
+                files: files
+                    .filter((file) => Boolean(file))
+                    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+            };
+        }
+        catch {
+            return { directory, files: [] };
+        }
+    }
+    async openAutoBackups() {
+        const directory = this.resolveAutoBackupDir();
+        await (0, promises_1.mkdir)(directory, { recursive: true });
+        const platform = process.platform;
+        const command = platform === 'win32'
+            ? 'explorer.exe'
+            : platform === 'darwin'
+                ? 'open'
+                : 'xdg-open';
+        try {
+            await new Promise((resolvePromise, reject) => {
+                const child = (0, child_process_1.execFile)(command, [directory], (error) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    resolvePromise();
+                });
+                child.on('error', reject);
+            });
+        }
+        catch {
+            throw new common_1.InternalServerErrorException('Nao foi possivel abrir o diretorio no servidor.');
+        }
+        return { opened: true, directory };
+    }
+    async downloadAutoBackup(name, res) {
+        if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+            throw new common_1.BadRequestException('Arquivo invalido.');
+        }
+        const directory = this.resolveAutoBackupDir();
+        const resolvedDir = (0, path_1.resolve)(directory);
+        const filePath = (0, path_1.resolve)(directory, name);
+        if (!filePath.startsWith(resolvedDir + path_1.sep)) {
+            throw new common_1.BadRequestException('Arquivo invalido.');
+        }
+        let info;
+        try {
+            info = await (0, promises_1.stat)(filePath);
+        }
+        catch {
+            throw new common_1.NotFoundException('Arquivo nao encontrado.');
+        }
+        if (!info.isFile()) {
+            throw new common_1.NotFoundException('Arquivo nao encontrado.');
+        }
+        res.set({
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename="${name}"`,
+        });
+        return new common_1.StreamableFile((0, fs_1.createReadStream)(filePath));
     }
     async export(data, res) {
         const archive = await this.backupsService.exportArchive(data.entities);
@@ -100,8 +187,31 @@ let BackupsController = class BackupsController {
         }
         throw new common_1.BadRequestException('Backup invalido.');
     }
+    resolveAutoBackupDir() {
+        return this.systemConfigService.resolvePath('backup_directory', 'backups/auto');
+    }
 };
 exports.BackupsController = BackupsController;
+__decorate([
+    (0, common_1.Get)('auto'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], BackupsController.prototype, "listAutoBackups", null);
+__decorate([
+    (0, common_1.Post)('auto/open'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], BackupsController.prototype, "openAutoBackups", null);
+__decorate([
+    (0, common_1.Get)('auto/files/:name'),
+    __param(0, (0, common_1.Param)('name')),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], BackupsController.prototype, "downloadAutoBackup", null);
 __decorate([
     (0, common_1.Post)('export'),
     __param(0, (0, common_1.Body)()),
@@ -126,6 +236,7 @@ exports.BackupsController = BackupsController = __decorate([
     (0, common_1.Controller)('backups'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.UserRole.SUPERADMIN),
-    __metadata("design:paramtypes", [backups_service_1.BackupsService])
+    __metadata("design:paramtypes", [backups_service_1.BackupsService,
+        system_config_service_1.SystemConfigService])
 ], BackupsController);
 //# sourceMappingURL=backups.controller.js.map

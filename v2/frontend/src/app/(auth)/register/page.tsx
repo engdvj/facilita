@@ -9,10 +9,10 @@ export default function RegisterPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Controle de acesso
         </p>
-        <h1 className="font-display text-3xl text-foreground">
+        <h1 className="font-display text-2xl sm:text-3xl text-foreground">
           Criar usuario
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[13px] sm:text-sm text-muted-foreground">
           O cadastro publico sera habilitado no proximo milestone.
         </p>
       </div>

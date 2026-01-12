@@ -7,7 +7,6 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
-import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Sector, UploadedSchedule } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
@@ -47,6 +46,7 @@ export default function SchedulesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UploadedSchedule | null>(null);
   const [formData, setFormData] = useState({ ...emptyFormData });
   const [companyId, setCompanyId] = useState('');
@@ -427,6 +427,40 @@ export default function SchedulesPage() {
     }
   };
 
+  const toggleScheduleStatus = async (schedule: UploadedSchedule) => {
+    const normalizedStatus = (schedule.status || 'INACTIVE').toUpperCase();
+    const nextStatus = normalizedStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    setStatusUpdatingId(schedule.id);
+    setError(null);
+
+    // Atualização otimista
+    setSchedules((prev) =>
+      prev.map((s) =>
+        s.id === schedule.id ? { ...s, status: nextStatus as any } : s
+      )
+    );
+
+    try {
+      await api.patch(`/schedules/${schedule.id}`, {
+        status: nextStatus,
+      });
+    } catch (err: any) {
+      // Reverte a mudança otimista em caso de erro
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.id === schedule.id ? { ...s, status: normalizedStatus as any } : s
+        )
+      );
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel atualizar o status do documento.';
+      setError(typeof message === 'string' ? message : 'Erro ao atualizar status.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setFormLoading(true);
@@ -473,6 +507,7 @@ export default function SchedulesPage() {
     : '';
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
+  const shouldShowSectorField = formData.audience === 'SECTOR';
 
   return (
     <div className="space-y-6">
@@ -600,8 +635,11 @@ export default function SchedulesPage() {
             {loading ? 'Carregando...' : `${filteredSchedules.length} registros`}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {paginatedSchedules.map((schedule) => (
+        <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {paginatedSchedules.map((schedule) => {
+            const normalizedStatus = (schedule.status || 'INACTIVE').toUpperCase();
+            const isActive = normalizedStatus === 'ACTIVE';
+            return (
             <article
               key={schedule.id}
               role="button"
@@ -633,19 +671,49 @@ export default function SchedulesPage() {
               )}
               <div className="flex flex-col gap-2 p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground line-clamp-2">
-                    {schedule.title}
-                  </h3>
-                  <StatusBadge status={schedule.status} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h3 className="min-w-0 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                      {schedule.title}
+                    </h3>
+                    {schedule.category?.name && (
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {schedule.category.name}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={`Documento ${isActive ? 'ativo' : 'inativo'}`}
+                    title={isActive ? 'Ativo' : 'Inativo'}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleScheduleStatus(schedule);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.stopPropagation();
+                      }
+                    }}
+                    disabled={statusUpdatingId === schedule.id}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                      isActive
+                        ? 'border-emerald-500/70 bg-emerald-500/80'
+                        : 'border-border/70 bg-muted/60'
+                    } ${statusUpdatingId === schedule.id ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${
+                        isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
-                {schedule.category?.name && (
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {schedule.category.name}
-                  </span>
-                )}
               </div>
             </article>
-          ))}
+            );
+          })}
           {!loading && paginatedSchedules.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhum documento encontrado.
@@ -834,7 +902,11 @@ export default function SchedulesPage() {
         {/* Aba Categorização */}
         {formTab === 'category' && (
           <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div
+              className={`grid gap-4 ${
+                shouldShowSectorField ? 'md:grid-cols-2' : 'md:grid-cols-1'
+              }`}
+            >
               <AdminField label="Categoria" htmlFor="schedule-category">
                 <select
                   id="schedule-category"
@@ -856,30 +928,29 @@ export default function SchedulesPage() {
                   ))}
                 </select>
               </AdminField>
-              <AdminField label="Setor" htmlFor="schedule-sector">
-                <select
-                  id="schedule-sector"
-                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                  value={formData.sectorId}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      sectorId: event.target.value,
-                    }))
-                  }
-                  disabled={
-                    formData.audience !== 'SECTOR' ||
-                    (isSuperAdmin && !formCompanyId)
-                  }
-                >
-                  <option value="">Todos os setores</option>
-                  {formSectors.map((sector) => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </AdminField>
+              {shouldShowSectorField && (
+                <AdminField label="Setor" htmlFor="schedule-sector">
+                  <select
+                    id="schedule-sector"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formData.sectorId}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        sectorId: event.target.value,
+                      }))
+                    }
+                    disabled={isSuperAdmin && !formCompanyId}
+                  >
+                    <option value="">Todos os setores</option>
+                    {formSectors.map((sector) => (
+                      <option key={sector.id} value={sector.id}>
+                        {sector.name}
+                      </option>
+                    ))}
+                  </select>
+                </AdminField>
+              )}
             </div>
           </div>
         )}

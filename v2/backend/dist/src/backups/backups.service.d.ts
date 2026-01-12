@@ -39,6 +39,13 @@ export declare class BackupsService {
     cleanupOldBackups(directory: string, retentionDays: number): Promise<number>;
     private resolveSelectedEntities;
     private collectUploadRelativePaths;
+    private reconcileUniqueIds;
+    private buildCompanyIdMap;
+    private buildUnitIdMap;
+    private buildUserIdMap;
+    private buildIdMap;
+    private collectStrings;
+    private applyIdMap;
     private extractUploadRelativePath;
     private sanitizeUploadRelativePath;
     private resolveExistingUploadEntries;

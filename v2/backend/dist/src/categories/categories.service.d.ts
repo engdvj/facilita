@@ -15,10 +15,11 @@ export declare class CategoriesService {
         icon: string | null;
         adminOnly: boolean;
     }>;
-    findAll(companyId?: string): Promise<({
+    findAll(companyId?: string, includeInactive?: boolean): Promise<({
         _count: {
             links: number;
             schedules: number;
+            notes: number;
         };
     } & {
         id: string;
@@ -35,6 +36,7 @@ export declare class CategoriesService {
         _count: {
             links: number;
             schedules: number;
+            notes: number;
         };
     } & {
         id: string;
@@ -59,6 +61,12 @@ export declare class CategoriesService {
         adminOnly: boolean;
     }>;
     remove(id: string): Promise<{
+        _count: {
+            links: number;
+            schedules: number;
+            notes: number;
+        };
+    } & {
         id: string;
         name: string;
         status: import(".prisma/client").$Enums.EntityStatus;

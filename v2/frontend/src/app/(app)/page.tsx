@@ -600,22 +600,22 @@ export default function Home() {
       typeof index === 'number' ? staggerStyle(index) : undefined;
     const titleBadge = (
       <div
-        className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1.5 text-[13px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+        className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1 text-[11px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)] sm:py-1.5 sm:text-[13px]"
         title={item.title}
       >
         {item.title}
       </div>
     );
     const topFade = (
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 via-black/12 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/30 via-black/12 to-transparent sm:h-16" />
     );
     const bottomFade = (
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 via-black/12 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 via-black/12 to-transparent sm:h-16" />
     );
     const typeLabel =
       item.type === 'link' ? 'LINK' : item.type === 'document' ? 'DOC' : 'NOTA';
     const typeBadge = (
-      <div className="absolute bottom-3 right-3 z-10 rounded-[10px] border border-black/5 bg-white/90 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#111] shadow-[0_2px_5px_rgba(0,0,0,0.06)] sm:text-[12px]">
+      <div className="absolute bottom-3 right-3 z-10 rounded-[10px] border border-black/5 bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#111] shadow-[0_2px_5px_rgba(0,0,0,0.06)] sm:py-1.5 sm:text-[12px]">
         {typeLabel}
       </div>
     );
@@ -639,7 +639,7 @@ export default function Home() {
               setSelectedNote(note);
             }
           }}
-          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-48"
+          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -689,7 +689,7 @@ export default function Home() {
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-48"
+          className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -743,7 +743,7 @@ export default function Home() {
         href={fileUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-48"
+        className="motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48"
         style={motionStyle}
       >
         <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -791,11 +791,11 @@ export default function Home() {
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Inicio
           </p>
-          <h1 className="font-display text-3xl text-foreground">
+          <h1 className="font-display text-2xl sm:text-3xl text-foreground">
             Links, documentos e notas do portal
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Encontre rapidamente documentos, sistemas, atalhos e notas da equipe.
+          <p className="text-[13px] sm:text-sm text-muted-foreground">
+            Encontre rapidamente documentos, sistemas, atalhos e notas.
           </p>
         </div>
 
@@ -804,9 +804,9 @@ export default function Home() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar link, documento ou nota"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+            className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[13px] text-foreground sm:px-4 sm:text-sm"
           />
-          <div className={user ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
+          <div className={user ? 'grid gap-2 sm:grid-cols-2' : 'grid gap-2'}>
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Tipo
@@ -819,7 +819,7 @@ export default function Home() {
                   );
                   setActiveCategory('all');
                 }}
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[11px] text-foreground sm:text-xs"
               >
                 <option value="ALL">Todos</option>
                 <option value="LINK">Links</option>
@@ -840,7 +840,7 @@ export default function Home() {
                     );
                     setActiveCategory('all');
                   }}
-                  className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[11px] text-foreground sm:text-xs"
                 >
                   <option value="ALL">Todas</option>
                   <option value="PUBLIC">Publicos</option>
@@ -856,7 +856,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => setActiveCategory('all')}
-          className={`motion-press rounded-full border px-4 py-1.5 text-xs uppercase tracking-[0.22em] transition ${
+          className={`motion-press rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] transition sm:px-4 sm:py-1.5 sm:text-xs sm:tracking-[0.22em] ${
             activeCategory === 'all'
               ? 'border-transparent bg-foreground text-background'
               : 'border-border/70 bg-card/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground'
@@ -878,7 +878,7 @@ export default function Home() {
               key={category.id}
               type="button"
               onClick={() => setActiveCategory(category.id)}
-              className={`motion-press rounded-full border px-4 py-1.5 text-xs uppercase tracking-[0.22em] transition ${
+              className={`motion-press rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] transition sm:px-4 sm:py-1.5 sm:text-xs sm:tracking-[0.22em] ${
                 active
                   ? 'border-transparent bg-foreground text-background'
                   : 'border-border/70 bg-card/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground'
@@ -922,7 +922,7 @@ export default function Home() {
         >
           {selectedNote.imageUrl && (
             <div className="mb-4 overflow-hidden rounded-lg">
-              <div className="relative h-64 w-full overflow-hidden bg-secondary/60">
+              <div className="relative h-48 w-full overflow-hidden bg-secondary/60 sm:h-64">
                 <img
                   src={
                     selectedNote.imageUrl.startsWith('http')

@@ -6,7 +6,6 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
-import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -48,6 +47,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -255,6 +255,41 @@ export default function UsersPage() {
     }
   };
 
+  const toggleUserStatus = async (user: User) => {
+    const normalizedStatus = (user.status || 'INACTIVE').toUpperCase();
+    const nextStatus = normalizedStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    setStatusUpdatingId(user.id);
+    setError(null);
+
+    // Atualização otimista
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id ? { ...u, status: nextStatus as any } : u
+      )
+    );
+
+    try {
+      await api.patch(`/users/${user.id}`, {
+        status: nextStatus,
+      });
+      await loadUsers();
+    } catch (err: any) {
+      // Reverte a mudança otimista em caso de erro
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, status: normalizedStatus as any } : u
+        )
+      );
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel atualizar o status do usuario.';
+      setError(typeof message === 'string' ? message : 'Erro ao atualizar status.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setFormLoading(true);
@@ -431,37 +466,67 @@ export default function UsersPage() {
             {loading ? 'Carregando...' : `${filteredUsers.length} registros`}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {paginatedUsers.map((user) => (
-            <article
-              key={user.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openEdit(user)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  openEdit(user);
-                }
-              }}
-              className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Usuario
-                </p>
-                <StatusBadge status={user.status} />
-              </div>
-              <h3 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-                {user.name}
-              </h3>
-              {user.email && (
-                <span className="block text-[10px] text-muted-foreground truncate">
-                  {user.email}
-                </span>
-              )}
-            </article>
-          ))}
+        <div className="grid gap-4 p-4 sm:p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {paginatedUsers.map((user) => {
+            const normalizedStatus = (user.status || 'INACTIVE').toUpperCase();
+            const isActive = normalizedStatus === 'ACTIVE';
+            return (
+              <article
+                key={user.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(user)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openEdit(user);
+                  }
+                }}
+                className="group flex cursor-pointer flex-col rounded-xl border border-border/70 bg-card/90 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-foreground/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                      {user.name}
+                    </h3>
+                    {user.email && (
+                      <span className="block text-[11px] text-muted-foreground truncate">
+                        {user.email}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={`Usuario ${isActive ? 'ativo' : 'inativo'}`}
+                    title={isActive ? 'Ativo' : 'Inativo'}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleUserStatus(user);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.stopPropagation();
+                      }
+                    }}
+                    disabled={statusUpdatingId === user.id}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                      isActive
+                        ? 'border-emerald-500/70 bg-emerald-500/80'
+                        : 'border-border/70 bg-muted/60'
+                    } ${statusUpdatingId === user.id ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition ${
+                        isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
           {!loading && paginatedUsers.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhum usuario encontrado.
@@ -517,150 +582,142 @@ export default function UsersPage() {
           </>
         }
       >
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Identidade
-              </p>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                <AdminField label="Nome" htmlFor="user-name">
-                  <input
-                    id="user-name"
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                </AdminField>
-                <AdminField label="Usuario" htmlFor="user-username">
-                  <input
-                    id="user-username"
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                  />
-                </AdminField>
-                <div className="md:col-span-2">
-                  <AdminField
-                    label="Senha"
-                    htmlFor="user-password"
-                    hint={editing ? 'Deixe em branco para manter.' : undefined}
-                  >
-                    <input
-                      id="user-password"
-                      type="password"
-                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                    />
-                  </AdminField>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Vinculos
-              </p>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                <AdminField label="Empresa" htmlFor="user-company" hint="Opcional">
-                  <select
-                    id="user-company"
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                    value={companyId}
-                    onChange={(event) => {
-                      setCompanyId(event.target.value);
-                      setUnitId('');
-                      setSectorId('');
-                    }}
-                  >
-                    <option value="">Sem vinculo</option>
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name}
-                      </option>
-                    ))}
-                  </select>
-                </AdminField>
-                <AdminField
-                  label="Unidade"
-                  htmlFor="user-unit"
-                  hint={!companyId ? 'Selecione uma empresa primeiro.' : 'Opcional'}
-                >
-                  <select
-                    id="user-unit"
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-                    value={unitId}
-                    onChange={(event) => {
-                      setUnitId(event.target.value);
-                      setSectorId('');
-                    }}
-                    disabled={!companyId}
-                  >
-                    <option value="">Sem vinculo</option>
-                    {filteredUnits.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </option>
-                    ))}
-                  </select>
-                </AdminField>
-                <div className="md:col-span-2">
-                  <AdminField
-                    label="Setor"
-                    htmlFor="user-sector"
-                    hint={!unitId ? 'Selecione uma unidade primeiro.' : 'Opcional'}
-                  >
-                    <select
-                      id="user-sector"
-                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-                      value={sectorId}
-                      onChange={(event) => setSectorId(event.target.value)}
-                      disabled={!unitId}
-                    >
-                      <option value="">Sem vinculo</option>
-                      {filteredSectors.map((sector) => (
-                        <option key={sector.id} value={sector.id}>
-                          {sector.name}
-                        </option>
-                      ))}
-                    </select>
-                  </AdminField>
-                </div>
-              </div>
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Identidade
+            </p>
+            <div className="mt-3 grid gap-4">
+              <AdminField label="Nome" htmlFor="user-name">
+                <input
+                  id="user-name"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </AdminField>
+              <AdminField label="Usuario" htmlFor="user-username">
+                <input
+                  id="user-username"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                />
+              </AdminField>
+              <AdminField
+                label="Senha"
+                htmlFor="user-password"
+                hint={editing ? 'Deixe em branco para manter.' : undefined}
+              >
+                <input
+                  id="user-password"
+                  type="password"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </AdminField>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Acesso
-              </p>
-              <div className="mt-3 grid gap-4">
-                <AdminField label="Role" htmlFor="user-role">
-                  <select
-                    id="user-role"
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                    value={role}
-                    onChange={(event) => setRole(event.target.value)}
-                  >
-                    <option value="SUPERADMIN">SUPERADMIN</option>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="COLLABORATOR">COLLABORATOR</option>
-                  </select>
-                </AdminField>
-                <AdminField label="Status" htmlFor="user-status">
-                  <select
-                    id="user-status"
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value)}
-                  >
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="INACTIVE">INACTIVE</option>
-                  </select>
-                </AdminField>
-              </div>
+          <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Vinculos
+            </p>
+            <div className="mt-3 grid gap-4">
+              <AdminField label="Empresa" htmlFor="user-company" hint="Opcional">
+                <select
+                  id="user-company"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={companyId}
+                  onChange={(event) => {
+                    setCompanyId(event.target.value);
+                    setUnitId('');
+                    setSectorId('');
+                  }}
+                >
+                  <option value="">Sem vinculo</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+              <AdminField
+                label="Unidade"
+                htmlFor="user-unit"
+                hint={!companyId ? 'Selecione uma empresa primeiro.' : 'Opcional'}
+              >
+                <select
+                  id="user-unit"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                  value={unitId}
+                  onChange={(event) => {
+                    setUnitId(event.target.value);
+                    setSectorId('');
+                  }}
+                  disabled={!companyId}
+                >
+                  <option value="">Sem vinculo</option>
+                  {filteredUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+              <AdminField
+                label="Setor"
+                htmlFor="user-sector"
+                hint={!unitId ? 'Selecione uma unidade primeiro.' : 'Opcional'}
+              >
+                <select
+                  id="user-sector"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                  value={sectorId}
+                  onChange={(event) => setSectorId(event.target.value)}
+                  disabled={!unitId}
+                >
+                  <option value="">Sem vinculo</option>
+                  {filteredSectors.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </AdminField>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Acesso
+            </p>
+            <div className="mt-3 grid gap-4">
+              <AdminField label="Role" htmlFor="user-role">
+                <select
+                  id="user-role"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={role}
+                  onChange={(event) => setRole(event.target.value)}
+                >
+                  <option value="SUPERADMIN">SUPERADMIN</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="COLLABORATOR">COLLABORATOR</option>
+                </select>
+              </AdminField>
+              <AdminField label="Status" htmlFor="user-status">
+                <select
+                  id="user-status"
+                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </AdminField>
             </div>
           </div>
         </div>

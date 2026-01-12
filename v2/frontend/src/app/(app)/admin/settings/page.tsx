@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import AdminField from '@/components/admin/field';
+import AdminModal from '@/components/admin/modal';
 import { useAuthStore } from '@/stores/auth-store';
 import type { SystemConfig } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
@@ -10,6 +11,11 @@ import { notify } from '@/lib/notify';
 import { backupOptions } from '@/lib/backup';
 
 type DraftValue = string | number | boolean;
+type AutoBackupFile = {
+  name: string;
+  size: number;
+  updatedAt: string;
+};
 
 const categoryLabels: Record<string, string> = {
   backup: 'Backup automatico',
@@ -88,6 +94,13 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [exportingAll, setExportingAll] = useState(false);
+  const [autoBackupOpening, setAutoBackupOpening] = useState(false);
+  const [autoBackupOpen, setAutoBackupOpen] = useState(false);
+  const [autoBackupLoading, setAutoBackupLoading] = useState(false);
+  const [autoBackupFiles, setAutoBackupFiles] = useState<AutoBackupFile[]>([]);
+  const [autoBackupDirectory, setAutoBackupDirectory] = useState('');
+  const [autoBackupError, setAutoBackupError] = useState<string | null>(null);
+  const [autoBackupDownloading, setAutoBackupDownloading] = useState('');
 
   useNotifyOnChange(error);
 
@@ -132,14 +145,6 @@ export default function SettingsPage() {
 
     loadConfigs();
   }, [hasHydrated, user]);
-
-  const backupDirectory = useMemo(() => {
-    const config = configs.find((item) => item.key === 'backup_directory');
-    if (!config) return '';
-    const hasDraft = Object.prototype.hasOwnProperty.call(drafts, config.key);
-    const rawValue = hasDraft ? drafts[config.key] : config.value;
-    return String(rawValue ?? '').trim();
-  }, [configs, drafts]);
 
   const groupedConfigs = useMemo(() => {
     const groups = new Map<string, SystemConfig[]>();
@@ -208,44 +213,6 @@ export default function SettingsPage() {
     }
   };
 
-  const resolveDirectoryUrl = (directory: string) => {
-    if (!directory) return null;
-    if (/^[a-zA-Z]:[\\/]/.test(directory)) {
-      return `file:///${directory.replace(/\\/g, '/')}`;
-    }
-    if (directory.startsWith('/')) {
-      return `file://${directory}`;
-    }
-    return null;
-  };
-
-  const copyBackupDirectory = async () => {
-    try {
-      await navigator.clipboard.writeText(backupDirectory);
-      notify.info('Caminho copiado para a area de transferencia.');
-    } catch {
-      notify.error('Nao foi possivel copiar o caminho do backup.');
-    }
-  };
-
-  const handleOpenBackupDirectory = async () => {
-    if (!backupDirectory) {
-      notify.error('Diretorio de backup nao configurado.');
-      return;
-    }
-
-    const url = resolveDirectoryUrl(backupDirectory);
-    if (!url) {
-      await copyBackupDirectory();
-      return;
-    }
-
-    const opened = window.open(url, '_blank');
-    if (!opened) {
-      await copyBackupDirectory();
-    }
-  };
-
   const handleExportAll = async () => {
     setExportingAll(true);
     setError(null);
@@ -276,6 +243,101 @@ export default function SettingsPage() {
       );
     } finally {
       setExportingAll(false);
+    }
+  };
+
+  const formatBytes = (value: number) => {
+    if (!Number.isFinite(value)) return '-';
+    if (value < 1024) return `${value} B`;
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let size = value;
+    let unitIndex = -1;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    return `${size.toFixed(size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
+  };
+
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+  };
+
+  const loadAutoBackups = async () => {
+    setAutoBackupLoading(true);
+    setAutoBackupError(null);
+
+    try {
+      const response = await api.get('/backups/auto');
+      const data = response.data as {
+        directory?: string;
+        files?: AutoBackupFile[];
+      };
+      setAutoBackupDirectory(data.directory ?? '');
+      setAutoBackupFiles(Array.isArray(data.files) ? data.files : []);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel carregar os backups automaticos.';
+      setAutoBackupError(
+        typeof message === 'string' ? message : 'Erro ao carregar.',
+      );
+    } finally {
+      setAutoBackupLoading(false);
+    }
+  };
+
+  const handleOpenAutoBackups = async () => {
+    setAutoBackupOpening(true);
+    setAutoBackupError(null);
+
+    try {
+      await api.post('/backups/auto/open');
+      notify.success('Diretorio aberto.');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel abrir o diretorio no servidor.';
+      notify.error(
+        typeof message === 'string' ? message : 'Erro ao abrir diretorio.',
+      );
+      setAutoBackupOpen(true);
+      void loadAutoBackups();
+    } finally {
+      setAutoBackupOpening(false);
+    }
+  };
+
+  const handleDownloadAutoBackup = async (name: string) => {
+    if (!name) return;
+    setAutoBackupDownloading(name);
+
+    try {
+      const response = await api.get(`/backups/auto/files/${encodeURIComponent(name)}`, {
+        // @ts-expect-error - skipNotify is a custom property
+        responseType: 'blob',
+        skipNotify: true,
+      });
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = name;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        'Nao foi possivel baixar o backup.';
+      notify.error(
+        typeof message === 'string' ? message : 'Erro ao baixar backup.',
+      );
+    } finally {
+      setAutoBackupDownloading('');
     }
   };
 
@@ -324,10 +386,12 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     className="rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
-                    onClick={handleOpenBackupDirectory}
-                    disabled={!backupDirectory || Boolean(error)}
+                    onClick={handleOpenAutoBackups}
+                    disabled={autoBackupOpening || Boolean(error)}
                   >
-                    Abrir diretorio de backup
+                    {autoBackupOpening
+                      ? 'Abrindo...'
+                      : 'Abrir diretorio de backups'}
                   </button>
                   <button
                     type="button"
@@ -447,10 +511,7 @@ export default function SettingsPage() {
                     </div>
 
                     {config.isEditable && (
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-muted-foreground">
-                          Tipo: {config.type}
-                        </span>
+                      <div className="mt-3 flex items-center justify-end gap-2">
                         <button
                           type="button"
                           className="rounded-lg bg-primary px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] disabled:opacity-60"
@@ -468,6 +529,70 @@ export default function SettingsPage() {
           </section>
         ))}
       </div>
+
+      <AdminModal
+        open={autoBackupOpen}
+        title="Backups automaticos"
+        description="Arquivos gerados pelo agendamento."
+        onClose={() => setAutoBackupOpen(false)}
+        panelClassName="max-w-2xl"
+        footer={
+          <button
+            type="button"
+            className="rounded-lg border border-border/70 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-foreground disabled:opacity-60"
+            onClick={loadAutoBackups}
+            disabled={autoBackupLoading}
+          >
+            {autoBackupLoading ? 'Atualizando...' : 'Atualizar lista'}
+          </button>
+        }
+      >
+        {autoBackupDirectory && (
+          <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
+            Diretorio: <span className="text-foreground">{autoBackupDirectory}</span>
+          </div>
+        )}
+
+        {autoBackupLoading ? (
+          <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-3 text-xs text-muted-foreground">
+            Carregando backups automaticos...
+          </div>
+        ) : autoBackupError ? (
+          <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-3 text-xs text-muted-foreground">
+            {autoBackupError}
+          </div>
+        ) : autoBackupFiles.length === 0 ? (
+          <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-3 text-xs text-muted-foreground">
+            Nenhum backup automatico encontrado.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {autoBackupFiles.map((file) => (
+              <div
+                key={file.name}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-3"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatBytes(file.size)} • {formatDate(file.updatedAt)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
+                  onClick={() => handleDownloadAutoBackup(file.name)}
+                  disabled={autoBackupDownloading === file.name}
+                >
+                  {autoBackupDownloading === file.name ? 'Baixando...' : 'Baixar'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </AdminModal>
     </div>
   );
 }
