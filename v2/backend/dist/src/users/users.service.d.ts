@@ -133,12 +133,10 @@ export declare class UsersService {
         updatedAt: Date;
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
-        cpf: string | null;
         companyId: string | null;
         unitId: string | null;
         sectorId: string | null;
-        passwordHash: string;
         avatarUrl: string | null;
-        theme: Prisma.JsonValue | null;
+        theme: Prisma.JsonValue;
     }>;
 }

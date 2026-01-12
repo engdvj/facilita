@@ -97,10 +97,10 @@
       transparent 58%
     );
   --app-grid: linear-gradient(
-      rgba(31, 42, 46, 0.03) 1px,
+      rgba(166, 137, 96, 0.12) 1px,
       transparent 1px
     ),
-    linear-gradient(90deg, rgba(31, 42, 46, 0.03) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(166, 137, 96, 0.12) 1px, transparent 1px);
   --shadow-soft: 0 12px 30px rgba(16, 32, 36, 0.12);
   --shadow-glow: 0 0 0 1px rgba(244, 178, 107, 0.22),
     0 14px 28px rgba(244, 178, 107, 0.16);
@@ -133,6 +133,11 @@
   --sidebar-accent-foreground: #f6f1e8;
   --sidebar-border: #263033;
   --sidebar-ring: #6d7d76;
+  --app-grid: linear-gradient(
+      rgba(246, 241, 232, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(246, 241, 232, 0.03) 1px, transparent 1px);
 }
 
 @layer base {
@@ -151,7 +156,7 @@
     @apply text-foreground;
     background-color: var(--background);
     background-image: var(--app-gradient), var(--app-grid);
-    background-size: auto, 120px 120px;
+    background-size: auto, auto, 120px 120px, 120px 120px;
     background-attachment: fixed;
     font-family: var(--font-sans);
     min-height: 100%;

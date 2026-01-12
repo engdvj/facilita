@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 type ResetEntity =
   | 'companies'
@@ -67,6 +68,8 @@ export default function ResetPage() {
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState(buildInitialSelection);
   const [resetting, setResetting] = useState(false);
+
+  useNotifyOnChange(error);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -159,12 +162,6 @@ export default function ResetPage() {
           </p>
         </div>
       </div>
-
-      {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-          {error}
-        </div>
-      )}
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">

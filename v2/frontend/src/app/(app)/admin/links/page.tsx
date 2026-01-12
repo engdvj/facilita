@@ -9,6 +9,7 @@ import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Link, Sector } from '@/types';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 const pageSize = 8;
 
@@ -55,6 +56,8 @@ export default function LinksPage() {
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin ? formCompanyId : user?.companyId;
+  useNotifyOnChange(error);
+  useNotifyOnChange(formError);
   const visibleSectors = useMemo(() => {
     let scopedSectors = sectors;
     if (resolvedCompanyId) {
@@ -466,6 +469,7 @@ export default function LinksPage() {
     : '';
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
+  const shouldShowSectorField = formData.audience === 'SECTOR';
 
   return (
     <div className="space-y-6">
@@ -581,12 +585,6 @@ export default function LinksPage() {
           </button>
         </div>
       </div>
-
-      {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
-          {error}
-        </div>
-      )}
 
       <div className="surface animate-in fade-in slide-in-from-bottom-2">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 px-4 py-4 sm:px-6">
@@ -856,7 +854,11 @@ export default function LinksPage() {
         {/* Aba Categorização */}
         {formTab === 'category' && (
           <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div
+              className={`grid gap-4 ${
+                shouldShowSectorField ? 'md:grid-cols-2' : 'md:grid-cols-1'
+              }`}
+            >
               <AdminField label="Categoria" htmlFor="link-category">
                 <select
                   id="link-category"
@@ -878,30 +880,29 @@ export default function LinksPage() {
                   ))}
                 </select>
               </AdminField>
-              <AdminField label="Setor" htmlFor="link-sector">
-                <select
-                  id="link-sector"
-                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                  value={formData.sectorId}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      sectorId: event.target.value,
-                    }))
-                  }
-                  disabled={
-                    formData.audience !== 'SECTOR' ||
-                    (isSuperAdmin && !formCompanyId)
-                  }
-                >
-                  <option value="">Todos os setores</option>
-                  {formSectors.map((sector) => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </AdminField>
+              {shouldShowSectorField && (
+                <AdminField label="Setor" htmlFor="link-sector">
+                  <select
+                    id="link-sector"
+                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                    value={formData.sectorId}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        sectorId: event.target.value,
+                      }))
+                    }
+                    disabled={isSuperAdmin && !formCompanyId}
+                  >
+                    <option value="">Todos os setores</option>
+                    {formSectors.map((sector) => (
+                      <option key={sector.id} value={sector.id}>
+                        {sector.name}
+                      </option>
+                    ))}
+                  </select>
+                </AdminField>
+              )}
             </div>
           </div>
         )}
@@ -1059,11 +1060,6 @@ export default function LinksPage() {
           </div>
         )}
 
-        {formError && (
-          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {formError}
-          </div>
-        )}
       </AdminModal>
 
       <AdminModal
@@ -1096,11 +1092,6 @@ export default function LinksPage() {
           Confirme a exclusao de{' '}
           <span className="text-foreground">{deleteTarget?.title}</span>.
         </p>
-        {formError && (
-          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {formError}
-          </div>
-        )}
       </AdminModal>
     </div>
   );

@@ -109,8 +109,14 @@ export default function AppNav() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
+                  aria-disabled={active ? 'true' : undefined}
                   data-active={active ? 'true' : 'false'}
                   style={staggerStyle(staggerIndex)}
+                  onClick={(event) => {
+                    if (active) {
+                      event.preventDefault();
+                    }
+                  }}
                   className={`motion-item motion-press nav-card flex items-center gap-2 pl-5 pr-4 py-2.5 text-[13px] font-medium tracking-[0.02em] ${
                     active
                       ? 'text-foreground font-semibold'

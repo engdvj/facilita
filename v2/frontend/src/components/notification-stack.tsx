@@ -7,16 +7,22 @@ const variantStyles = {
   success: {
     accent: 'bg-emerald-500',
     ring: 'ring-emerald-200/60',
+    glow: 'bg-emerald-400/20',
+    badge: 'border-emerald-200/70 bg-emerald-50 text-emerald-800',
     label: 'Sucesso',
   },
   error: {
     accent: 'bg-destructive',
     ring: 'ring-destructive/30',
+    glow: 'bg-destructive/15',
+    badge: 'border-destructive/30 bg-destructive/10 text-destructive',
     label: 'Erro',
   },
   info: {
     accent: 'bg-foreground/40',
     ring: 'ring-border/70',
+    glow: 'bg-foreground/10',
+    badge: 'border-border/60 bg-muted/70 text-muted-foreground',
     label: 'Aviso',
   },
 };
@@ -62,31 +68,37 @@ export default function NotificationStack() {
         return (
         <div
           key={toast.id}
-          className={`pointer-events-auto relative overflow-hidden rounded-2xl border border-border/70 bg-card/95 px-4 py-3 shadow-[0_12px_30px_rgba(16,32,36,0.12)] backdrop-blur ring-1 animate-in fade-in slide-in-from-top-2 ${variant.ring}`}
+          className={`pointer-events-auto relative overflow-hidden rounded-2xl border border-border/60 bg-card/90 px-4 py-3 shadow-[0_18px_38px_rgba(16,44,50,0.16)] backdrop-blur ring-1 animate-in fade-in slide-in-from-top-2 ${variant.ring}`}
         >
           <span
-            className={`absolute left-0 top-0 h-full w-1 ${variant.accent}`}
+            className={`absolute left-0 top-0 h-full w-[3px] ${variant.accent}`}
             aria-hidden="true"
           />
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <span
-                className={`mt-1.5 h-2.5 w-2.5 rounded-full ${variant.accent}`}
-                aria-hidden="true"
-              />
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          <span
+            className={`pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full blur-2xl ${variant.glow}`}
+            aria-hidden="true"
+          />
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${variant.accent}`}
+                  aria-hidden="true"
+                />
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.22em] ${variant.badge}`}
+                >
                   {title}
-                </p>
-                <p className="text-sm font-medium text-foreground">
-                  {toast.message}
-                </p>
+                </span>
               </div>
+              <p className="text-sm font-medium text-foreground">
+                {toast.message}
+              </p>
             </div>
             <button
               type="button"
               onClick={() => remove(toast.id)}
-              className="motion-press rounded-full border border-border/70 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:text-foreground"
+              className="motion-press rounded-full border border-border/60 bg-card/70 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-card hover:text-foreground"
               aria-label="Fechar notificacao"
             >
               X

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import api, { serverURL } from '@/lib/api';
-import AppShell from '@/components/app-shell';
 import AdminModal from '@/components/admin/modal';
 import {
   Category,
@@ -783,7 +782,7 @@ export default function Home() {
   };
 
   return (
-    <AppShell>
+    <>
       <div
         className="motion-item flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
         style={staggerStyle(1)}
@@ -965,6 +964,6 @@ export default function Home() {
           </div>
         </AdminModal>
       )}
-    </AppShell>
+    </>
   );
 }

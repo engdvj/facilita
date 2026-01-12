@@ -8,6 +8,7 @@ import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 type Company = {
   id: string;
@@ -37,6 +38,9 @@ export default function CompaniesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
+  useNotifyOnChange(error);
+  useNotifyOnChange(formError);
 
   const loadCompanies = async () => {
     const response = await api.get('/companies');
@@ -266,12 +270,6 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
       <div className="surface animate-in fade-in slide-in-from-bottom-2">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 px-4 py-4 sm:px-6">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -397,11 +395,6 @@ export default function CompaniesPage() {
             </AdminField>
           </div>
         </div>
-        {formError && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {formError}
-          </div>
-        )}
       </AdminModal>
 
       <AdminModal
@@ -434,11 +427,6 @@ export default function CompaniesPage() {
           Confirme a exclusao de{' '}
           <span className="text-foreground">{deleteTarget?.name}</span>.
         </p>
-        {formError && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {formError}
-          </div>
-        )}
       </AdminModal>
     </div>
   );

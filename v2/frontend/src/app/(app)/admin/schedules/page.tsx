@@ -10,6 +10,7 @@ import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Sector, UploadedSchedule } from '@/types';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 const pageSize = 8;
 
@@ -56,6 +57,8 @@ export default function SchedulesPage() {
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin ? formCompanyId : user?.companyId;
+  useNotifyOnChange(error);
+  useNotifyOnChange(formError);
 
   const getAudience = (schedule: UploadedSchedule): ContentAudience => {
     if (schedule.isPublic) return 'PUBLIC';
@@ -588,12 +591,6 @@ export default function SchedulesPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
       <div className="surface animate-in fade-in slide-in-from-bottom-2">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 px-4 py-4 sm:px-6">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -1040,11 +1037,6 @@ export default function SchedulesPage() {
           </div>
         )}
 
-        {formError && (
-          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {formError}
-          </div>
-        )}
       </AdminModal>
 
       <AdminModal
@@ -1077,11 +1069,6 @@ export default function SchedulesPage() {
           Confirme a exclusao de{' '}
           <span className="text-foreground">{deleteTarget?.title}</span>.
         </p>
-        {formError && (
-          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-            {formError}
-          </div>
-        )}
       </AdminModal>
     </div>
   );

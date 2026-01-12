@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
 import AppHeader from '@/components/app-header';
 import AppNav from '@/components/app-nav';
 import MaxWidth from '@/components/max-width';
@@ -15,7 +14,6 @@ type AppShellProps = {
 export default function AppShell({ children }: AppShellProps) {
   const user = useAuthStore((state) => state.user);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const pathname = usePathname();
 
   return (
     <div className="min-h-screen text-foreground flex flex-col">
@@ -38,10 +36,7 @@ export default function AppShell({ children }: AppShellProps) {
               </aside>
             ) : null}
 
-            <main
-              key={pathname}
-              className="motion-page motion-stagger space-y-6 min-w-0"
-            >
+            <main className="motion-page motion-stagger space-y-6 min-w-0">
               {children}
             </main>
           </div>

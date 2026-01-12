@@ -116,6 +116,32 @@ export class UsersService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.user.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.link.updateMany({
+        data: { userId: null },
+        where: { userId: id },
+      });
+      await tx.uploadedSchedule.updateMany({
+        data: { userId: null },
+        where: { userId: id },
+      });
+      await tx.note.updateMany({
+        data: { userId: null },
+        where: { userId: id },
+      });
+      await tx.activityLog.updateMany({
+        data: { userId: null },
+        where: { userId: id },
+      });
+      await tx.auditLog.updateMany({
+        data: { userId: null },
+        where: { userId: id },
+      });
+      await tx.refreshToken.deleteMany({ where: { userId: id } });
+      await tx.favorite.deleteMany({ where: { userId: id } });
+      await tx.linkVersion.deleteMany({ where: { changedBy: id } });
+
+      return tx.user.delete({ where: { id }, select: userSelect });
+    });
   }
 }

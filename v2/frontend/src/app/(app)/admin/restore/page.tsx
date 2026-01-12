@@ -10,6 +10,7 @@ import {
   getSelectedEntities,
 } from '@/lib/backup';
 import { useAuthStore } from '@/stores/auth-store';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 export default function RestorePage() {
   const user = useAuthStore((state) => state.user);
@@ -19,6 +20,9 @@ export default function RestorePage() {
   const [restoring, setRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  useNotifyOnChange(error);
+  useNotifyOnChange(restoreError);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -102,12 +106,6 @@ export default function RestorePage() {
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <BackupSelectionPanel
           title="Itens da restauracao"
@@ -148,12 +146,6 @@ export default function RestorePage() {
                 </span>
               </div>
             </div>
-
-            {restoreError && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                {restoreError}
-              </div>
-            )}
 
             <button
               type="button"

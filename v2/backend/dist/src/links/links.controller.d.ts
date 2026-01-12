@@ -40,17 +40,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     }>;
     findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         sector: {
@@ -88,17 +88,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     })[]>;
     findAllAdmin(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         sector: {
@@ -136,17 +136,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     })[]>;
     findAllAdminAlias(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         sector: {
@@ -184,17 +184,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     })[]>;
     findOne(id: string): Promise<{
         sector: {
@@ -235,9 +235,9 @@ export declare class LinksController {
             createdAt: Date;
             description: string | null;
             title: string;
+            changedBy: string;
             changeReason: string | null;
             linkId: string;
-            changedBy: string;
         })[];
     } & {
         url: string;
@@ -248,17 +248,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     }>;
     update(id: string, updateLinkDto: UpdateLinkDto, req: any): Promise<{
         sector: {
@@ -296,17 +296,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     }>;
     remove(id: string, req: any): Promise<{
         url: string;
@@ -317,17 +317,17 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     }>;
     restore(id: string): Promise<{
         url: string;
@@ -338,16 +338,16 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
     }>;
 }

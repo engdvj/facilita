@@ -38,16 +38,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     }>;
     findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
@@ -84,16 +84,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     })[]>;
     findAllAdmin(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
@@ -130,16 +130,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     })[]>;
     findAllAdminAlias(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
@@ -176,16 +176,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     })[]>;
     findOne(id: string): Promise<{
@@ -222,16 +222,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     }>;
     update(id: string, updateNoteDto: UpdateNoteDto, req: any): Promise<{
@@ -268,16 +268,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     }>;
     remove(id: string, req: any): Promise<{
@@ -287,16 +287,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     }>;
     restore(id: string): Promise<{
@@ -306,16 +306,16 @@ export declare class NotesController {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
-        userId: string | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        color: string | null;
-        categoryId: string | null;
         title: string;
+        color: string | null;
         imageUrl: string | null;
         imagePosition: string | null;
         imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        userId: string | null;
+        categoryId: string | null;
         content: string;
     }>;
 }

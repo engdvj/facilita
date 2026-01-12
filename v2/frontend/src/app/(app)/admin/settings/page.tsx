@@ -5,6 +5,9 @@ import api from '@/lib/api';
 import AdminField from '@/components/admin/field';
 import { useAuthStore } from '@/stores/auth-store';
 import type { SystemConfig } from '@/types';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { notify } from '@/lib/notify';
+import { backupOptions } from '@/lib/backup';
 
 type DraftValue = string | number | boolean;
 
@@ -84,9 +87,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [saveErrors, setSaveErrors] = useState<Record<string, string | null>>(
-    {},
-  );
+  const [exportingAll, setExportingAll] = useState(false);
+
+  useNotifyOnChange(error);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -130,6 +133,14 @@ export default function SettingsPage() {
     loadConfigs();
   }, [hasHydrated, user]);
 
+  const backupDirectory = useMemo(() => {
+    const config = configs.find((item) => item.key === 'backup_directory');
+    if (!config) return '';
+    const hasDraft = Object.prototype.hasOwnProperty.call(drafts, config.key);
+    const rawValue = hasDraft ? drafts[config.key] : config.value;
+    return String(rawValue ?? '').trim();
+  }, [configs, drafts]);
+
   const groupedConfigs = useMemo(() => {
     const groups = new Map<string, SystemConfig[]>();
     configs.forEach((config) => {
@@ -139,19 +150,24 @@ export default function SettingsPage() {
       groups.set(category, current);
     });
 
-    const order = ['backup', 'storage', 'system', 'other'];
+    const hiddenCategories = new Set(['storage', 'system']);
+    const order = ['backup', 'other'];
     const orderedKeys = [
       ...order.filter((category) => groups.has(category)),
-      ...Array.from(groups.keys()).filter((key) => !order.includes(key)),
+      ...Array.from(groups.keys()).filter(
+        (key) => !order.includes(key) && !hiddenCategories.has(key),
+      ),
     ];
 
-    return orderedKeys.map((category) => ({
-        key: category,
-        label: categoryLabels[category] || 'Outras configuracoes',
-        items: (groups.get(category) || []).sort((a, b) =>
-          a.key.localeCompare(b.key),
-        ),
-      }));
+    return orderedKeys
+      .filter((category) => !hiddenCategories.has(category))
+      .map((category) => ({
+          key: category,
+          label: categoryLabels[category] || 'Outras configuracoes',
+          items: (groups.get(category) || []).sort((a, b) =>
+            a.key.localeCompare(b.key),
+          ),
+        }));
   }, [configs]);
 
   const handleDraftChange = (key: string, value: DraftValue) => {
@@ -161,15 +177,11 @@ export default function SettingsPage() {
   const handleSave = async (config: SystemConfig) => {
     const value = drafts[config.key];
     if (!isValidValue(config, value)) {
-      setSaveErrors((current) => ({
-        ...current,
-        [config.key]: 'Valor invalido para esta configuracao.',
-      }));
+      notify.error('Valor invalido para esta configuracao.');
       return;
     }
 
     setSaving((current) => ({ ...current, [config.key]: true }));
-    setSaveErrors((current) => ({ ...current, [config.key]: null }));
 
     try {
       const response = await api.patch<SystemConfig>(
@@ -190,13 +202,80 @@ export default function SettingsPage() {
       const message =
         err?.response?.data?.message ||
         'Nao foi possivel salvar a configuracao.';
-      setSaveErrors((current) => ({
-        ...current,
-        [config.key]:
-          typeof message === 'string' ? message : 'Erro ao salvar.',
-      }));
+      notify.error(typeof message === 'string' ? message : 'Erro ao salvar.');
     } finally {
       setSaving((current) => ({ ...current, [config.key]: false }));
+    }
+  };
+
+  const resolveDirectoryUrl = (directory: string) => {
+    if (!directory) return null;
+    if (/^[a-zA-Z]:[\\/]/.test(directory)) {
+      return `file:///${directory.replace(/\\/g, '/')}`;
+    }
+    if (directory.startsWith('/')) {
+      return `file://${directory}`;
+    }
+    return null;
+  };
+
+  const copyBackupDirectory = async () => {
+    try {
+      await navigator.clipboard.writeText(backupDirectory);
+      notify.info('Caminho copiado para a area de transferencia.');
+    } catch {
+      notify.error('Nao foi possivel copiar o caminho do backup.');
+    }
+  };
+
+  const handleOpenBackupDirectory = async () => {
+    if (!backupDirectory) {
+      notify.error('Diretorio de backup nao configurado.');
+      return;
+    }
+
+    const url = resolveDirectoryUrl(backupDirectory);
+    if (!url) {
+      await copyBackupDirectory();
+      return;
+    }
+
+    const opened = window.open(url, '_blank');
+    if (!opened) {
+      await copyBackupDirectory();
+    }
+  };
+
+  const handleExportAll = async () => {
+    setExportingAll(true);
+    setError(null);
+
+    try {
+      const response = await api.post(
+        '/backups/export',
+        { entities: backupOptions.map((option) => option.key) },
+        // @ts-expect-error - skipNotify is a custom property
+        { responseType: 'blob', skipNotify: true },
+      );
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      anchor.href = url;
+      anchor.download = `facilita-backup-${date}.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      notify.success('Backup gerado com sucesso.');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || 'Nao foi possivel gerar o backup.';
+      notify.error(
+        typeof message === 'string' ? message : 'Erro ao gerar backup.',
+      );
+    } finally {
+      setExportingAll(false);
     }
   };
 
@@ -208,16 +287,10 @@ export default function SettingsPage() {
             Configuracoes do sistema
           </h1>
           <p className="text-sm text-muted-foreground">
-            Ajuste diretorios padrao e defina o backup automatico.
+            Defina o backup automatico e gere um backup completo quando quiser.
           </p>
         </div>
       </div>
-
-      {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-          {error}
-        </div>
-      )}
 
       {loading && (
         <div className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-xs text-muted-foreground">
@@ -237,13 +310,35 @@ export default function SettingsPage() {
             key={group.key}
             className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4"
           >
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                {group.label}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {group.items.length} configuracoes
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {group.label}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {group.items.length} configuracoes
+                </p>
+              </div>
+              {group.key === 'backup' && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
+                    onClick={handleOpenBackupDirectory}
+                    disabled={!backupDirectory || Boolean(error)}
+                  >
+                    Abrir diretorio de backup
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-primary px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)] disabled:opacity-60"
+                    onClick={handleExportAll}
+                    disabled={exportingAll || Boolean(error)}
+                  >
+                    {exportingAll ? 'Gerando...' : 'Backup total agora'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="mt-3 grid gap-3">
@@ -254,7 +349,6 @@ export default function SettingsPage() {
                 const dirty = formattedValue !== config.value;
                 const valid = isValidValue(config, value);
                 const isSaving = Boolean(saving[config.key]);
-                const saveError = saveErrors[config.key];
                 const label = configLabels[config.key] || config.key;
                 const inputId = `system-config-${config.key}`;
 
@@ -351,12 +445,6 @@ export default function SettingsPage() {
                         </div>
                       )}
                     </div>
-
-                    {saveError && (
-                      <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                        {saveError}
-                      </div>
-                    )}
 
                     {config.isEditable && (
                       <div className="mt-3 flex items-center justify-between gap-2">

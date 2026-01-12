@@ -68,12 +68,10 @@ export declare class UsersController {
         updatedAt: Date;
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
-        cpf: string | null;
         companyId: string | null;
         unitId: string | null;
         sectorId: string | null;
-        passwordHash: string;
         avatarUrl: string | null;
-        theme: import("@prisma/client/runtime/client").JsonValue | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
     }>;
 }

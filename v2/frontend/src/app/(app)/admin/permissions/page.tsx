@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import type { RolePermission, UserRole } from '@/types';
+import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 type PermissionKey = Exclude<
   keyof RolePermission,
@@ -188,6 +189,9 @@ export default function PermissionsPage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
 
+  useNotifyOnChange(error);
+  useNotifyOnChange(saveError);
+
   useEffect(() => {
     let active = true;
 
@@ -359,12 +363,6 @@ export default function PermissionsPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
       <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
         <div className="surface animate-in fade-in slide-in-from-bottom-2 p-4">
           <div className="flex items-center justify-between">
@@ -485,12 +483,6 @@ export default function PermissionsPage() {
                 <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   {normalizedSearch ? 'Filtro ativo' : 'Todos os grupos'}
                 </span>
-              </div>
-            )}
-
-            {saveError && (
-              <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-xs text-destructive">
-                {saveError}
               </div>
             )}
 
