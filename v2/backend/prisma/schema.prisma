@@ -47,6 +47,7 @@ model Company {
   links         Link[]
   schedules     UploadedSchedule[]
   notes         Note[]
+  uploadedImages UploadedImage[]
 }
 
 model Unit {
@@ -108,6 +109,7 @@ model User {
   linkVersions    LinkVersion[]   @relation("LinkVersionChanger")
   activityLogs    ActivityLog[]   @relation("ActivityLogger")
   auditLogs       AuditLog[]      @relation("AuditLogger")
+  uploadedImages  UploadedImage[] @relation("ImageUploader")
 }
 
 model RolePermission {
@@ -264,6 +266,35 @@ model Note {
   @@index([userId])
   @@index([sectorId])
   @@index([categoryId])
+}
+
+model UploadedImage {
+  id           String       @id @default(uuid()) @db.Uuid
+  companyId    String       @db.Uuid
+  uploadedBy   String       @db.Uuid
+
+  filename     String
+  originalName String
+  url          String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+
+  alt          String?
+  tags         String[]     @default([])
+
+  status       EntityStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  company      Company      @relation(fields: [companyId], references: [id])
+  user         User         @relation("ImageUploader", fields: [uploadedBy], references: [id])
+
+  @@index([companyId])
+  @@index([uploadedBy])
+  @@index([createdAt])
 }
 
 // ===== FUNCIONALIDADES EXTRAS =====

@@ -468,22 +468,21 @@ export default function FavoritosPage() {
     );
     const statusBadge = (
       <div
-        className={`absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[10px] border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] shadow-[0_2px_5px_rgba(0,0,0,0.06)] sm:py-1.5 sm:text-[11px] ${
+        className={`absolute bottom-3 left-3 z-10 flex items-center justify-center rounded-full border-2 p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.15)] sm:p-2 ${
           isInactive
-            ? 'border-red-200 bg-red-50/90 text-red-700'
-            : 'border-green-200 bg-green-50/90 text-green-700'
+            ? 'border-red-400 bg-red-500 text-white'
+            : 'border-green-400 bg-green-500 text-white'
         }`}
       >
         {isInactive ? (
-          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
         ) : (
-          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
           </svg>
         )}
-        {isInactive ? 'INATIVO' : 'ATIVO'}
       </div>
     );
 

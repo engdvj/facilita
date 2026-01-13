@@ -686,7 +686,7 @@ export default function Home() {
             {topFade}
             {bottomFade}
             {titleBadge}
-            {statusBadge}
+            {user && statusBadge}
             {typeBadge}
             {user && (
               <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -738,7 +738,7 @@ export default function Home() {
             {topFade}
             {bottomFade}
             {titleBadge}
-            {statusBadge}
+            {user && statusBadge}
             {typeBadge}
             {user && (
               <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -794,7 +794,7 @@ export default function Home() {
           {topFade}
           {bottomFade}
           {titleBadge}
-          {statusBadge}
+          {user && statusBadge}
           {typeBadge}
           {user && (
             <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>

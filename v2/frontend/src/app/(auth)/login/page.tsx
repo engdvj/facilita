@@ -55,7 +55,7 @@ export default function LoginPage() {
           Acesso ao painel
         </h1>
         <p className="text-[13px] sm:text-sm text-muted-foreground">
-          Use seu usuario para acessar o painel e seguir a operacao.
+          Use seu usuario para acessar o painel e ter acesso aos seus próprios itens.
         </p>
       </div>
 

@@ -40,7 +40,6 @@ export default function AppNav() {
           label: 'Navegacao',
           items: [
             { href: '/', label: 'Inicio' },
-            { href: '/dashboard', label: 'Dashboard' },
             { href: '/favoritos', label: 'Favoritos' },
           ],
         },

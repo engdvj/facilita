@@ -578,7 +578,7 @@ export default function CategoriesPage() {
                 onChange={(event) => setAdminOnly(event.target.checked)}
                 className="mt-1 rounded border-border/70"
               />
-              <span>Apenas administradores podem criar nesta categoria</span>
+              <span>Apenas administradores podem ver itens desta categoria</span>
             </label>
           </div>
         </div>

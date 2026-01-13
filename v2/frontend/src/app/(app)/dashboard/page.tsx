@@ -97,8 +97,8 @@ export default function DashboardPage() {
         setLoading(false);
         return;
       }
-      if (!isAdminUser) {
-        setError('Acesso restrito a administradores.');
+      if (!isSuperAdmin) {
+        setError('Acesso restrito a superadministradores.');
         setLoading(false);
         return;
       }
@@ -215,7 +215,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [hasHydrated, isAdminUser, isSuperAdmin, user]);
+  }, [hasHydrated, isSuperAdmin, user]);
 
   const visibleLinks = useMemo(() => {
     const canView = (link: LinkType) => {
@@ -910,6 +910,250 @@ export default function DashboardPage() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section
+        className="motion-item mt-4 rounded-2xl border border-border/70 bg-card/70 p-4 sm:p-6"
+        style={staggerStyle(3)}
+      >
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+            Cadastros do sistema
+          </p>
+          <h2 className="font-display text-xl text-foreground sm:text-2xl">
+            Usuarios, empresas e configuracoes
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            Visao geral dos cadastros e configuracoes do portal.
+          </p>
+        </div>
+
+        {error ? (
+          <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
+            {error}
+          </div>
+        ) : loading ? (
+          <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
+            Carregando cadastros...
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Usuarios
+                </p>
+                <div className="mt-2 text-3xl font-semibold text-foreground">
+                  {numberFormatter.format(users.length)}
+                </div>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Ativos:{' '}
+                  {numberFormatter.format(
+                    users.filter((u) => u.status?.toUpperCase() === 'ACTIVE').length
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Total de usuarios cadastrados
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Empresas
+                </p>
+                <div className="mt-2 text-3xl font-semibold text-foreground">
+                  {numberFormatter.format(companies.length)}
+                </div>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Ativas:{' '}
+                  {numberFormatter.format(
+                    companies.filter((c) => c.status?.toUpperCase() === 'ACTIVE').length
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Total de empresas cadastradas
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Setores
+                </p>
+                <div className="mt-2 text-3xl font-semibold text-foreground">
+                  {numberFormatter.format(sectors.length)}
+                </div>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Ativos:{' '}
+                  {numberFormatter.format(
+                    sectors.filter((s) => s.status?.toUpperCase() === 'ACTIVE').length
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Total de setores cadastrados
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Categorias
+                </p>
+                <div className="mt-2 text-3xl font-semibold text-foreground">
+                  {numberFormatter.format(categories.length)}
+                </div>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Ativas:{' '}
+                  {numberFormatter.format(
+                    categories.filter((c) => c.status?.toUpperCase() === 'ACTIVE').length
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Total de categorias cadastradas
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Usuarios por empresa
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    Top 5
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {companies
+                    .map((company) => ({
+                      ...company,
+                      userCount: users.filter((u) => u.companyId === company.id).length,
+                    }))
+                    .sort((a, b) => b.userCount - a.userCount)
+                    .slice(0, 5)
+                    .map((company) => {
+                      const maxUsers = Math.max(
+                        ...companies.map((c) =>
+                          users.filter((u) => u.companyId === c.id).length
+                        ),
+                        1
+                      );
+                      return (
+                        <div key={company.id} className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between text-[12px] text-foreground">
+                              <span className="truncate">{company.name}</span>
+                              <span className="ml-2 text-muted-foreground">
+                                {numberFormatter.format(company.userCount)}
+                              </span>
+                            </div>
+                            <div className="mt-1 h-1.5 w-full rounded-full bg-border/60">
+                              <div
+                                className="h-full rounded-full bg-primary/70"
+                                style={{
+                                  width: `${(company.userCount / maxUsers) * 100}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {companies.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhuma empresa cadastrada.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Usuarios por funcao
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    {numberFormatter.format(users.length)} usuarios
+                  </span>
+                </div>
+                <div className="mt-3 space-y-3">
+                  <div className="flex h-2 w-full overflow-hidden rounded-full bg-border/60">
+                    <div
+                      className="h-full bg-primary/80"
+                      style={{
+                        width: `${
+                          users.length > 0
+                            ? (users.filter((u) => u.role === 'SUPERADMIN').length /
+                                users.length) *
+                              100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                    <div
+                      className="h-full bg-primary/55"
+                      style={{
+                        width: `${
+                          users.length > 0
+                            ? (users.filter((u) => u.role === 'ADMIN').length /
+                                users.length) *
+                              100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                    <div
+                      className="h-full bg-primary/35"
+                      style={{
+                        width: `${
+                          users.length > 0
+                            ? (users.filter((u) => u.role === 'USER').length /
+                                users.length) *
+                              100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2 text-[12px] text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-foreground">
+                        <span className="h-2 w-2 rounded-full bg-primary/80" />
+                        Superadmin
+                      </span>
+                      <span>
+                        {numberFormatter.format(
+                          users.filter((u) => u.role === 'SUPERADMIN').length
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-foreground">
+                        <span className="h-2 w-2 rounded-full bg-primary/55" />
+                        Admin
+                      </span>
+                      <span>
+                        {numberFormatter.format(
+                          users.filter((u) => u.role === 'ADMIN').length
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-foreground">
+                        <span className="h-2 w-2 rounded-full bg-primary/35" />
+                        Usuario
+                      </span>
+                      <span>
+                        {numberFormatter.format(
+                          users.filter((u) => u.role === 'USER').length
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
