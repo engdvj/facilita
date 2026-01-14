@@ -16,7 +16,7 @@ export declare class BackupsService {
     }>;
     restore(payload: BackupPayload, entities?: BackupEntity[], mode?: 'merge'): Promise<{
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes"];
+        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages"];
     } | {
         restored: Record<string, number>;
         skipped?: undefined;
@@ -27,7 +27,7 @@ export declare class BackupsService {
             skipped: number;
         };
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes"];
+        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages"];
     } | {
         files: {
             restored: number;

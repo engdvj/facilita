@@ -42,6 +42,17 @@ export declare class CompaniesService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    getDependencies(id: string): Promise<{
+        units: number;
+        sectors: number;
+        users: number;
+        categories: number;
+        links: number;
+        schedules: number;
+        notes: number;
+        uploadedImages: number;
+        hasAny: boolean;
+    }>;
     remove(id: string): Promise<{
         id: string;
         cnpj: string | null;

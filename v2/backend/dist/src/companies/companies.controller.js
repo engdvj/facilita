@@ -34,6 +34,9 @@ let CompaniesController = class CompaniesController {
     findOne(id) {
         return this.companiesService.findById(id);
     }
+    getDependencies(id) {
+        return this.companiesService.getDependencies(id);
+    }
     create(data) {
         return this.companiesService.create(data);
     }
@@ -59,6 +62,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], CompaniesController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Get)(':id/dependencies'),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], CompaniesController.prototype, "getDependencies", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),

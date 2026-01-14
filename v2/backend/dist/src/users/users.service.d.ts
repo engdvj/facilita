@@ -125,6 +125,18 @@ export declare class UsersService {
         avatarUrl: string | null;
         theme: Prisma.JsonValue;
     }>;
+    getDependencies(id: string): Promise<{
+        links: number;
+        schedules: number;
+        notes: number;
+        uploadedImages: number;
+        linkVersions: number;
+        favorites: number;
+        refreshTokens: number;
+        activityLogs: number;
+        auditLogs: number;
+        hasAny: boolean;
+    }>;
     remove(id: string): Promise<{
         id: string;
         name: string;

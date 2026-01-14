@@ -80,7 +80,22 @@ export declare class UnitsService {
         updatedAt: Date;
         companyId: string;
     }>;
+    getDependencies(id: string): Promise<{
+        sectors: number;
+        users: number;
+        hasAny: boolean;
+    }>;
     remove(id: string): Promise<{
+        company: {
+            id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    } & {
         id: string;
         cnpj: string | null;
         name: string;

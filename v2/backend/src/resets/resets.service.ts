@@ -24,6 +24,7 @@ export class ResetsService {
       selection.add('links');
       selection.add('uploadedSchedules');
       selection.add('notes');
+      selection.add('uploadedImages');
     }
 
     const resolvedEntities = Array.from(selection);
@@ -161,6 +162,10 @@ export class ResetsService {
     deleted: Partial<Record<BackupEntity, number>>,
   ) {
     if (selection.has('companies')) {
+      // Companies requer deletar uploadedImages porque companyId é obrigatório
+      if (!selection.has('uploadedImages')) {
+        await tx.uploadedImage.deleteMany();
+      }
     }
 
     if (selection.has('users')) {
@@ -169,6 +174,11 @@ export class ResetsService {
 
       if (!selection.has('links')) {
         await tx.linkVersion.deleteMany();
+      }
+
+      // Users requer deletar uploadedImages porque uploadedBy é obrigatório
+      if (!selection.has('uploadedImages')) {
+        await tx.uploadedImage.deleteMany();
       }
     } else {
       if (selection.has('links')) {
@@ -205,6 +215,10 @@ export class ResetsService {
 
     if (selection.has('categories')) {
       deleted.categories = (await tx.category.deleteMany()).count;
+    }
+
+    if (selection.has('uploadedImages')) {
+      deleted.uploadedImages = (await tx.uploadedImage.deleteMany()).count;
     }
 
     if (selection.has('sectors')) {

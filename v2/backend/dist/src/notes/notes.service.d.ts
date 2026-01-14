@@ -44,6 +44,7 @@ export declare class NotesService {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -52,7 +53,6 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
         content: string;
     }>;
@@ -96,6 +96,7 @@ export declare class NotesService {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -104,7 +105,6 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
         content: string;
     })[]>;
@@ -142,6 +142,7 @@ export declare class NotesService {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -150,7 +151,6 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
         content: string;
     }>;
@@ -188,6 +188,7 @@ export declare class NotesService {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -196,7 +197,6 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
         content: string;
     }>;
@@ -207,6 +207,7 @@ export declare class NotesService {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -215,7 +216,6 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
         content: string;
     }>;
@@ -226,6 +226,7 @@ export declare class NotesService {
         updatedAt: Date;
         companyId: string;
         sectorId: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -234,7 +235,6 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
         content: string;
     }>;

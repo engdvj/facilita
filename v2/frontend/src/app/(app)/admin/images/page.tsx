@@ -96,37 +96,18 @@ export default function ImagesPage() {
   };
 
   const handleDelete = async (imageId: string) => {
-    console.log('handleDelete chamado com imageId:', imageId);
+    if (!confirm('Tem certeza que deseja deletar esta imagem?')) return;
 
-    const confirmed = confirm('Tem certeza que deseja deletar esta imagem?');
-    console.log('Confirmação:', confirmed);
-
-    if (!confirmed) return;
-
-    console.log('Iniciando deleção...');
     setIsDeleting(true);
-
     try {
-      console.log('Chamando API delete...');
-      const response = await api.delete(`/uploads/images/${imageId}`);
-      console.log('Resposta da API:', response);
-
-      // Aguarda um pouco para garantir que o backend processou
+      await api.delete(`/uploads/images/${imageId}`);
       await new Promise(resolve => setTimeout(resolve, 100));
-
-      console.log('Fechando modal...');
       setSelectedImage(null);
-
-      console.log('Recarregando lista...');
       await refresh();
-
-      console.log('Deleção concluída!');
     } catch (err: any) {
       console.error('Erro ao deletar:', err);
-      console.error('Detalhes do erro:', err.response?.data);
       alert('Erro ao deletar imagem. Tente novamente.');
     } finally {
-      console.log('Finalizando deleção...');
       setIsDeleting(false);
     }
   };

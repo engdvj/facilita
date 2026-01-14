@@ -21,6 +21,7 @@ const restoreOrder: BackupEntity[] = [
   'links',
   'uploadedSchedules',
   'notes',
+  'uploadedImages',
 ];
 
 type BackupArchive = {
@@ -63,6 +64,9 @@ export class BackupsService {
           break;
         case 'notes':
           data.notes = await this.prisma.note.findMany();
+          break;
+        case 'uploadedImages':
+          data.uploadedImages = await this.prisma.uploadedImage.findMany();
           break;
         default:
           break;
@@ -208,6 +212,12 @@ export class BackupsService {
             results.notes = await this.upsertById(
               tx.note,
               items as Prisma.NoteUncheckedCreateInput[],
+            );
+            break;
+          case 'uploadedImages':
+            results.uploadedImages = await this.upsertById(
+              tx.uploadedImage,
+              items as Prisma.UploadedImageUncheckedCreateInput[],
             );
             break;
           default:
@@ -394,6 +404,7 @@ export class BackupsService {
     addFrom('links', ['imageUrl']);
     addFrom('uploadedSchedules', ['fileUrl', 'imageUrl']);
     addFrom('notes', ['imageUrl']);
+    addFrom('uploadedImages', ['url']);
 
     return paths;
   }
@@ -426,6 +437,7 @@ export class BackupsService {
     this.applyIdMap(data.links, 'companyId', companyIdMap);
     this.applyIdMap(data.uploadedSchedules, 'companyId', companyIdMap);
     this.applyIdMap(data.notes, 'companyId', companyIdMap);
+    this.applyIdMap(data.uploadedImages, 'companyId', companyIdMap);
 
     this.applyIdMap(data.sectors, 'unitId', unitIdMap);
     this.applyIdMap(data.users, 'unitId', unitIdMap);
@@ -433,6 +445,7 @@ export class BackupsService {
     this.applyIdMap(data.links, 'userId', userIdMap);
     this.applyIdMap(data.uploadedSchedules, 'userId', userIdMap);
     this.applyIdMap(data.notes, 'userId', userIdMap);
+    this.applyIdMap(data.uploadedImages, 'uploadedBy', userIdMap);
   }
 
   private async buildCompanyIdMap(

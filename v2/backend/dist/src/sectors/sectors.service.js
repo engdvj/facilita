@@ -52,9 +52,45 @@ let SectorsService = class SectorsService {
             include: { company: true, unit: true },
         });
     }
+    async getDependencies(id) {
+        const [users, links, schedules, notes] = await Promise.all([
+            this.prisma.user.count({ where: { sectorId: id } }),
+            this.prisma.link.count({ where: { sectorId: id } }),
+            this.prisma.uploadedSchedule.count({ where: { sectorId: id } }),
+            this.prisma.note.count({ where: { sectorId: id } }),
+        ]);
+        return {
+            users,
+            links,
+            schedules,
+            notes,
+            hasAny: users > 0 || links > 0 || schedules > 0 || notes > 0,
+        };
+    }
     async remove(id) {
         await this.findById(id);
-        return this.prisma.sector.delete({ where: { id } });
+        return this.prisma.$transaction(async (tx) => {
+            await tx.user.updateMany({
+                data: { sectorId: null },
+                where: { sectorId: id },
+            });
+            await tx.link.updateMany({
+                data: { sectorId: null },
+                where: { sectorId: id },
+            });
+            await tx.uploadedSchedule.updateMany({
+                data: { sectorId: null },
+                where: { sectorId: id },
+            });
+            await tx.note.updateMany({
+                data: { sectorId: null },
+                where: { sectorId: id },
+            });
+            return tx.sector.delete({
+                where: { id },
+                include: { company: true, unit: true },
+            });
+        });
     }
 };
 exports.SectorsService = SectorsService;

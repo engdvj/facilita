@@ -4,8 +4,8 @@ export declare class ResetsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     reset(entities: BackupEntity[]): Promise<{
-        deleted: Partial<Record<"units" | "sectors" | "users" | "categories" | "links" | "notes" | "companies" | "rolePermissions" | "uploadedSchedules", number>>;
-        entities: ("units" | "sectors" | "users" | "categories" | "links" | "notes" | "companies" | "rolePermissions" | "uploadedSchedules")[];
+        deleted: Partial<Record<"units" | "sectors" | "users" | "categories" | "links" | "notes" | "uploadedImages" | "companies" | "rolePermissions" | "uploadedSchedules", number>>;
+        entities: ("units" | "sectors" | "users" | "categories" | "links" | "notes" | "uploadedImages" | "companies" | "rolePermissions" | "uploadedSchedules")[];
         seeded: boolean;
     }>;
     private detachRelations;

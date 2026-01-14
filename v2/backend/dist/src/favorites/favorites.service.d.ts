@@ -36,6 +36,7 @@ export declare class FavoritesService {
             companyId: string;
             sectorId: string | null;
             description: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -45,7 +46,6 @@ export declare class FavoritesService {
             isPublic: boolean;
             order: number;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
         }) | null;
         note: ({
@@ -77,6 +77,7 @@ export declare class FavoritesService {
             updatedAt: Date;
             companyId: string;
             sectorId: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -85,7 +86,6 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
             content: string;
         }) | null;
@@ -118,6 +118,7 @@ export declare class FavoritesService {
             updatedAt: Date;
             companyId: string;
             sectorId: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -126,7 +127,6 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
             fileUrl: string;
             fileName: string;
@@ -179,6 +179,7 @@ export declare class FavoritesService {
             companyId: string;
             sectorId: string | null;
             description: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -188,7 +189,6 @@ export declare class FavoritesService {
             isPublic: boolean;
             order: number;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
         }) | null;
         note: ({
@@ -226,6 +226,7 @@ export declare class FavoritesService {
             updatedAt: Date;
             companyId: string;
             sectorId: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -234,7 +235,6 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
             content: string;
         }) | null;
@@ -273,6 +273,7 @@ export declare class FavoritesService {
             updatedAt: Date;
             companyId: string;
             sectorId: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -281,7 +282,6 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
             fileUrl: string;
             fileName: string;
@@ -328,6 +328,7 @@ export declare class FavoritesService {
             companyId: string;
             sectorId: string | null;
             description: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -337,7 +338,6 @@ export declare class FavoritesService {
             isPublic: boolean;
             order: number;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
         }) | null;
         note: ({
@@ -369,6 +369,7 @@ export declare class FavoritesService {
             updatedAt: Date;
             companyId: string;
             sectorId: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -377,7 +378,6 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
             content: string;
         }) | null;
@@ -410,6 +410,7 @@ export declare class FavoritesService {
             updatedAt: Date;
             companyId: string;
             sectorId: string | null;
+            userId: string | null;
             title: string;
             color: string | null;
             imageUrl: string | null;
@@ -418,7 +419,6 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
-            userId: string | null;
             categoryId: string | null;
             fileUrl: string;
             fileName: string;

@@ -1,4 +1,4 @@
-export declare const backupEntities: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes"];
+export declare const backupEntities: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages"];
 export type BackupEntity = (typeof backupEntities)[number];
 export type BackupPayload = {
     meta: {

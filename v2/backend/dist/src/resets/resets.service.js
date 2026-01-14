@@ -32,6 +32,7 @@ let ResetsService = class ResetsService {
             selection.add('links');
             selection.add('uploadedSchedules');
             selection.add('notes');
+            selection.add('uploadedImages');
         }
         const resolvedEntities = Array.from(selection);
         const resetAll = backups_types_1.backupEntities.every((entity) => selection.has(entity));
@@ -142,12 +143,18 @@ let ResetsService = class ResetsService {
     }
     async clearDependents(tx, selection, deleted) {
         if (selection.has('companies')) {
+            if (!selection.has('uploadedImages')) {
+                await tx.uploadedImage.deleteMany();
+            }
         }
         if (selection.has('users')) {
             await tx.refreshToken.deleteMany();
             await tx.favorite.deleteMany();
             if (!selection.has('links')) {
                 await tx.linkVersion.deleteMany();
+            }
+            if (!selection.has('uploadedImages')) {
+                await tx.uploadedImage.deleteMany();
             }
         }
         else {
@@ -175,6 +182,9 @@ let ResetsService = class ResetsService {
         }
         if (selection.has('categories')) {
             deleted.categories = (await tx.category.deleteMany()).count;
+        }
+        if (selection.has('uploadedImages')) {
+            deleted.uploadedImages = (await tx.uploadedImage.deleteMany()).count;
         }
         if (selection.has('sectors')) {
             deleted.sectors = (await tx.sector.deleteMany()).count;

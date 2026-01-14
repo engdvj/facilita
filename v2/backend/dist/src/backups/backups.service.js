@@ -31,6 +31,7 @@ const restoreOrder = [
     'links',
     'uploadedSchedules',
     'notes',
+    'uploadedImages',
 ];
 let BackupsService = class BackupsService {
     constructor(prisma) {
@@ -66,6 +67,9 @@ let BackupsService = class BackupsService {
                     break;
                 case 'notes':
                     data.notes = await this.prisma.note.findMany();
+                    break;
+                case 'uploadedImages':
+                    data.uploadedImages = await this.prisma.uploadedImage.findMany();
                     break;
                 default:
                     break;
@@ -157,6 +161,9 @@ let BackupsService = class BackupsService {
                         break;
                     case 'notes':
                         results.notes = await this.upsertById(tx.note, items);
+                        break;
+                    case 'uploadedImages':
+                        results.uploadedImages = await this.upsertById(tx.uploadedImage, items);
                         break;
                     default:
                         break;
@@ -296,6 +303,7 @@ let BackupsService = class BackupsService {
         addFrom('links', ['imageUrl']);
         addFrom('uploadedSchedules', ['fileUrl', 'imageUrl']);
         addFrom('notes', ['imageUrl']);
+        addFrom('uploadedImages', ['url']);
         return paths;
     }
     async reconcileUniqueIds(tx, payload) {
@@ -319,11 +327,13 @@ let BackupsService = class BackupsService {
         this.applyIdMap(data.links, 'companyId', companyIdMap);
         this.applyIdMap(data.uploadedSchedules, 'companyId', companyIdMap);
         this.applyIdMap(data.notes, 'companyId', companyIdMap);
+        this.applyIdMap(data.uploadedImages, 'companyId', companyIdMap);
         this.applyIdMap(data.sectors, 'unitId', unitIdMap);
         this.applyIdMap(data.users, 'unitId', unitIdMap);
         this.applyIdMap(data.links, 'userId', userIdMap);
         this.applyIdMap(data.uploadedSchedules, 'userId', userIdMap);
         this.applyIdMap(data.notes, 'userId', userIdMap);
+        this.applyIdMap(data.uploadedImages, 'uploadedBy', userIdMap);
     }
     async buildCompanyIdMap(tx, items) {
         const cnpjs = this.collectStrings(items, 'cnpj');

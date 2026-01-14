@@ -32,6 +32,18 @@ export declare class UsersController {
         avatarUrl: string | null;
         theme: import("@prisma/client/runtime/client").JsonValue;
     }>;
+    getDependencies(id: string): Promise<{
+        links: number;
+        schedules: number;
+        notes: number;
+        uploadedImages: number;
+        linkVersions: number;
+        favorites: number;
+        refreshTokens: number;
+        activityLogs: number;
+        auditLogs: number;
+        hasAny: boolean;
+    }>;
     create(data: CreateUserDto): Promise<{
         id: string;
         name: string;

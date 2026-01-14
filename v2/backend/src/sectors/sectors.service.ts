@@ -47,8 +47,51 @@ export class SectorsService {
     });
   }
 
+  async getDependencies(id: string) {
+    const [users, links, schedules, notes] = await Promise.all([
+      this.prisma.user.count({ where: { sectorId: id } }),
+      this.prisma.link.count({ where: { sectorId: id } }),
+      this.prisma.uploadedSchedule.count({ where: { sectorId: id } }),
+      this.prisma.note.count({ where: { sectorId: id } }),
+    ]);
+
+    return {
+      users,
+      links,
+      schedules,
+      notes,
+      hasAny: users > 0 || links > 0 || schedules > 0 || notes > 0,
+    };
+  }
+
   async remove(id: string) {
     await this.findById(id);
-    return this.prisma.sector.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      // Desassocia usuários do setor
+      await tx.user.updateMany({
+        data: { sectorId: null },
+        where: { sectorId: id },
+      });
+
+      // Desassocia conteúdos do setor
+      await tx.link.updateMany({
+        data: { sectorId: null },
+        where: { sectorId: id },
+      });
+      await tx.uploadedSchedule.updateMany({
+        data: { sectorId: null },
+        where: { sectorId: id },
+      });
+      await tx.note.updateMany({
+        data: { sectorId: null },
+        where: { sectorId: id },
+      });
+
+      // Finalmente remove o setor
+      return tx.sector.delete({
+        where: { id },
+        include: { company: true, unit: true },
+      });
+    });
   }
 }

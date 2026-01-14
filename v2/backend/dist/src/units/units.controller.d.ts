@@ -42,6 +42,11 @@ export declare class UnitsController {
         updatedAt: Date;
         companyId: string;
     }>;
+    getDependencies(id: string): Promise<{
+        sectors: number;
+        users: number;
+        hasAny: boolean;
+    }>;
     create(data: CreateUnitDto): import(".prisma/client").Prisma.Prisma__UnitClient<{
         company: {
             id: string;
@@ -81,6 +86,16 @@ export declare class UnitsController {
         companyId: string;
     }>;
     remove(id: string): Promise<{
+        company: {
+            id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    } & {
         id: string;
         cnpj: string | null;
         name: string;

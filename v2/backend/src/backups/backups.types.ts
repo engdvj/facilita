@@ -8,6 +8,7 @@ export const backupEntities = [
   'links',
   'uploadedSchedules',
   'notes',
+  'uploadedImages',
 ] as const;
 
 export type BackupEntity = (typeof backupEntities)[number];

@@ -40,6 +40,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -49,7 +50,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
@@ -88,6 +88,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -97,7 +98,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     })[]>;
     findAllAdmin(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
@@ -136,6 +136,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -145,7 +146,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     })[]>;
     findAllAdminAlias(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
@@ -184,6 +184,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -193,7 +194,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     })[]>;
     findOne(id: string): Promise<{
@@ -234,8 +234,8 @@ export declare class LinksController {
             id: string;
             createdAt: Date;
             description: string | null;
-            title: string;
             changedBy: string;
+            title: string;
             changeReason: string | null;
             linkId: string;
         })[];
@@ -248,6 +248,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -257,7 +258,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     update(id: string, updateLinkDto: UpdateLinkDto, req: any): Promise<{
@@ -296,6 +296,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -305,7 +306,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     remove(id: string, req: any): Promise<{
@@ -317,6 +317,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -326,7 +327,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     restore(id: string): Promise<{
@@ -338,6 +338,7 @@ export declare class LinksController {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -347,7 +348,6 @@ export declare class LinksController {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
 }

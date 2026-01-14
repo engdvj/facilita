@@ -11,5 +11,6 @@ exports.backupEntities = [
     'links',
     'uploadedSchedules',
     'notes',
+    'uploadedImages',
 ];
 //# sourceMappingURL=backups.types.js.map

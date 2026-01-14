@@ -31,6 +31,9 @@ let UnitsController = class UnitsController {
     findOne(id) {
         return this.unitsService.findById(id);
     }
+    getDependencies(id) {
+        return this.unitsService.getDependencies(id);
+    }
     create(data) {
         return this.unitsService.create(data);
     }
@@ -55,6 +58,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UnitsController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Get)(':id/dependencies'),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnitsController.prototype, "getDependencies", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),

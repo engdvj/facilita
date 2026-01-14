@@ -14,8 +14,8 @@ export declare class UploadsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        deletedAt: Date | null;
         uploadedBy: string;
+        deletedAt: Date | null;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -40,8 +40,8 @@ export declare class UploadsService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            deletedAt: Date | null;
             uploadedBy: string;
+            deletedAt: Date | null;
             filename: string;
             originalName: string;
             mimeType: string;
@@ -70,8 +70,8 @@ export declare class UploadsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        deletedAt: Date | null;
         uploadedBy: string;
+        deletedAt: Date | null;
         filename: string;
         originalName: string;
         mimeType: string;
@@ -88,8 +88,8 @@ export declare class UploadsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        deletedAt: Date | null;
         uploadedBy: string;
+        deletedAt: Date | null;
         filename: string;
         originalName: string;
         mimeType: string;

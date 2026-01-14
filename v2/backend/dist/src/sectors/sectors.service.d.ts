@@ -120,7 +120,33 @@ export declare class SectorsService {
         unitId: string;
         description: string | null;
     }>;
+    getDependencies(id: string): Promise<{
+        users: number;
+        links: number;
+        schedules: number;
+        notes: number;
+        hasAny: boolean;
+    }>;
     remove(id: string): Promise<{
+        company: {
+            id: string;
+            cnpj: string | null;
+            name: string;
+            logoUrl: string | null;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        unit: {
+            id: string;
+            cnpj: string | null;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+        };
+    } & {
         id: string;
         name: string;
         status: import(".prisma/client").$Enums.EntityStatus;

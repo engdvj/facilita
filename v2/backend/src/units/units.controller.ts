@@ -33,6 +33,11 @@ export class UnitsController {
     return this.unitsService.findById(id);
   }
 
+  @Get(':id/dependencies')
+  getDependencies(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.unitsService.getDependencies(id);
+  }
+
   @Post()
   create(@Body() data: CreateUnitDto) {
     return this.unitsService.create(data);

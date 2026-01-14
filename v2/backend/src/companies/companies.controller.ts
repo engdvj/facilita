@@ -37,6 +37,11 @@ export class CompaniesController {
     return this.companiesService.findById(id);
   }
 
+  @Get(':id/dependencies')
+  getDependencies(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.companiesService.getDependencies(id);
+  }
+
   @Post()
   create(@Body() data: CreateCompanyDto) {
     return this.companiesService.create(data);

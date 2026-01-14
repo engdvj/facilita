@@ -33,6 +33,11 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
+  @Get(':id/dependencies')
+  getDependencies(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.usersService.getDependencies(id);
+  }
+
   @Post()
   create(@Body() data: CreateUserDto) {
     return this.usersService.create(data);

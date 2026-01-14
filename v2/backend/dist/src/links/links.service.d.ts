@@ -46,6 +46,7 @@ export declare class LinksService {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -55,7 +56,6 @@ export declare class LinksService {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     findAll(companyId?: string, filters?: {
@@ -100,6 +100,7 @@ export declare class LinksService {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -109,7 +110,6 @@ export declare class LinksService {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     })[]>;
     findOne(id: string): Promise<{
@@ -150,8 +150,8 @@ export declare class LinksService {
             id: string;
             createdAt: Date;
             description: string | null;
-            title: string;
             changedBy: string;
+            title: string;
             changeReason: string | null;
             linkId: string;
         })[];
@@ -164,6 +164,7 @@ export declare class LinksService {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -173,7 +174,6 @@ export declare class LinksService {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     update(id: string, updateLinkDto: UpdateLinkDto, actor?: LinkActor): Promise<{
@@ -212,6 +212,7 @@ export declare class LinksService {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -221,7 +222,6 @@ export declare class LinksService {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     remove(id: string, actor?: LinkActor): Promise<{
@@ -233,6 +233,7 @@ export declare class LinksService {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -242,7 +243,6 @@ export declare class LinksService {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
     private assertCanMutate;
@@ -258,6 +258,7 @@ export declare class LinksService {
         companyId: string;
         sectorId: string | null;
         description: string | null;
+        userId: string | null;
         title: string;
         color: string | null;
         imageUrl: string | null;
@@ -267,7 +268,6 @@ export declare class LinksService {
         isPublic: boolean;
         order: number;
         deletedAt: Date | null;
-        userId: string | null;
         categoryId: string | null;
     }>;
 }

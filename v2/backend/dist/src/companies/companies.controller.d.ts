@@ -22,6 +22,17 @@ export declare class CompaniesController {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    getDependencies(id: string): Promise<{
+        units: number;
+        sectors: number;
+        users: number;
+        categories: number;
+        links: number;
+        schedules: number;
+        notes: number;
+        uploadedImages: number;
+        hasAny: boolean;
+    }>;
     create(data: CreateCompanyDto): import(".prisma/client").Prisma.Prisma__CompanyClient<{
         id: string;
         cnpj: string | null;

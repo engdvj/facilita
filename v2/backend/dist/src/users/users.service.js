@@ -107,6 +107,39 @@ let UsersService = class UsersService {
             select: userSelect,
         });
     }
+    async getDependencies(id) {
+        const [links, schedules, notes, uploadedImages, linkVersions, favorites, refreshTokens, activityLogs, auditLogs,] = await Promise.all([
+            this.prisma.link.count({ where: { userId: id } }),
+            this.prisma.uploadedSchedule.count({ where: { userId: id } }),
+            this.prisma.note.count({ where: { userId: id } }),
+            this.prisma.uploadedImage.count({ where: { uploadedBy: id } }),
+            this.prisma.linkVersion.count({ where: { changedBy: id } }),
+            this.prisma.favorite.count({ where: { userId: id } }),
+            this.prisma.refreshToken.count({ where: { userId: id } }),
+            this.prisma.activityLog.count({ where: { userId: id } }),
+            this.prisma.auditLog.count({ where: { userId: id } }),
+        ]);
+        return {
+            links,
+            schedules,
+            notes,
+            uploadedImages,
+            linkVersions,
+            favorites,
+            refreshTokens,
+            activityLogs,
+            auditLogs,
+            hasAny: links > 0 ||
+                schedules > 0 ||
+                notes > 0 ||
+                uploadedImages > 0 ||
+                linkVersions > 0 ||
+                favorites > 0 ||
+                refreshTokens > 0 ||
+                activityLogs > 0 ||
+                auditLogs > 0,
+        };
+    }
     async remove(id) {
         await this.findOne(id);
         return this.prisma.$transaction(async (tx) => {
@@ -130,6 +163,7 @@ let UsersService = class UsersService {
                 data: { userId: null },
                 where: { userId: id },
             });
+            await tx.uploadedImage.deleteMany({ where: { uploadedBy: id } });
             await tx.refreshToken.deleteMany({ where: { userId: id } });
             await tx.favorite.deleteMany({ where: { userId: id } });
             await tx.linkVersion.deleteMany({ where: { changedBy: id } });

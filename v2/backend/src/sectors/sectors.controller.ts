@@ -33,6 +33,11 @@ export class SectorsController {
     return this.sectorsService.findById(id);
   }
 
+  @Get(':id/dependencies')
+  getDependencies(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.sectorsService.getDependencies(id);
+  }
+
   @Post()
   create(@Body() data: CreateSectorDto) {
     return this.sectorsService.create(data);
