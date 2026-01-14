@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UploadsModule = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
+const prisma_module_1 = require("../prisma/prisma.module");
 const uploads_service_1 = require("./uploads.service");
 const uploads_controller_1 = require("./uploads.controller");
 let UploadsModule = class UploadsModule {
@@ -16,7 +17,7 @@ let UploadsModule = class UploadsModule {
 exports.UploadsModule = UploadsModule;
 exports.UploadsModule = UploadsModule = __decorate([
     (0, common_1.Module)({
-        imports: [platform_express_1.MulterModule.register({})],
+        imports: [platform_express_1.MulterModule.register({}), prisma_module_1.PrismaModule],
         controllers: [uploads_controller_1.UploadsController],
         providers: [uploads_service_1.UploadsService],
         exports: [uploads_service_1.UploadsService],

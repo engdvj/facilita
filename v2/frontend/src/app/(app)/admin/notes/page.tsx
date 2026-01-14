@@ -6,6 +6,7 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
+import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Note, Sector } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
@@ -964,19 +965,14 @@ export default function NotesPage() {
             <div className="rounded-2xl border border-border/70 bg-card/60 p-5 shadow-sm">
               <div className="space-y-5">
                 <AdminField label="Imagem" htmlFor="note-image" hint="Opcional">
-                  <input
-                    id="note-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
+                  <ImageSelector
+                    value={formData.imageUrl || ''}
+                    onChange={(url) =>
+                      setFormData((prev) => ({ ...prev, imageUrl: url }))
+                    }
+                    companyId={formResolvedCompanyId}
                     disabled={imageUploading}
-                    className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
                   />
-                  {imageUploading && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Fazendo upload...
-                    </p>
-                  )}
                   {formData.imageUrl && (
                     <div className="mt-3 space-y-3">
                       <div className="space-y-2 rounded-xl border border-border/70 bg-card/50 p-4">

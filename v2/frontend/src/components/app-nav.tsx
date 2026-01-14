@@ -50,6 +50,7 @@ export default function AppNav() {
             { href: '/admin/links', label: 'Links' },
             { href: '/admin/schedules', label: 'Documentos' },
             { href: '/admin/notes', label: 'Notas' },
+            { href: '/admin/images', label: 'Galeria' },
           ],
         },
       ];
@@ -71,6 +72,7 @@ export default function AppNav() {
           { href: '/admin/links', label: 'Links' },
           { href: '/admin/schedules', label: 'Documentos' },
           { href: '/admin/notes', label: 'Notas' },
+          { href: '/admin/images', label: 'Galeria' },
         ],
       },
       {

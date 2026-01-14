@@ -19,20 +19,42 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const uploads_service_1 = require("./uploads.service");
 const multer_config_1 = require("./config/multer.config");
 const file_type_filter_1 = require("./filters/file-type.filter");
+const query_images_dto_1 = require("./dto/query-images.dto");
+const update_image_dto_1 = require("./dto/update-image.dto");
 let UploadsController = class UploadsController {
     constructor(uploadsService) {
         this.uploadsService = uploadsService;
     }
-    uploadImage(file) {
+    async uploadImage(file, req) {
         if (!file) {
             throw new common_1.BadRequestException('No file uploaded');
         }
-        return {
+        const url = this.uploadsService.getFileUrl(file.filename, 'images');
+        const image = await this.uploadsService.createImageRecord({
+            companyId: req.user.companyId,
+            uploadedBy: req.user.id,
             filename: file.filename,
             originalName: file.originalname,
+            url,
+            mimeType: file.mimetype,
             size: file.size,
-            url: this.uploadsService.getFileUrl(file.filename, 'images'),
-        };
+        });
+        return image;
+    }
+    async listImages(query, req) {
+        if (!query.companyId) {
+            query.companyId = req.user.companyId;
+        }
+        return this.uploadsService.listImages(query);
+    }
+    async getImage(id) {
+        return this.uploadsService.getImageById(id);
+    }
+    async updateImage(id, dto) {
+        return this.uploadsService.updateImage(id, dto);
+    }
+    async deleteImage(id) {
+        return this.uploadsService.deleteImage(id);
     }
     uploadDocument(file) {
         if (!file) {
@@ -54,10 +76,41 @@ __decorate([
         fileFilter: file_type_filter_1.imageFileFilter,
     })),
     __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
 ], UploadsController.prototype, "uploadImage", null);
+__decorate([
+    (0, common_1.Get)('images'),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [query_images_dto_1.QueryImagesDto, Object]),
+    __metadata("design:returntype", Promise)
+], UploadsController.prototype, "listImages", null);
+__decorate([
+    (0, common_1.Get)('images/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UploadsController.prototype, "getImage", null);
+__decorate([
+    (0, common_1.Patch)('images/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_image_dto_1.UpdateImageDto]),
+    __metadata("design:returntype", Promise)
+], UploadsController.prototype, "updateImage", null);
+__decorate([
+    (0, common_1.Delete)('images/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UploadsController.prototype, "deleteImage", null);
 __decorate([
     (0, common_1.Post)('document'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {

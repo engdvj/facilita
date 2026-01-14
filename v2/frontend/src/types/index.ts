@@ -246,3 +246,30 @@ export interface SystemConfig {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface UploadedImage {
+  id: string;
+  companyId: string;
+  uploadedBy: string;
+  filename: string;
+  originalName: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  width?: number;
+  height?: number;
+  alt?: string;
+  tags: string[];
+  status: EntityStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  user?: Pick<User, 'id' | 'name' | 'email' | 'avatarUrl'>;
+  usageCount?: number;
+}
+
+export interface ImageFilters {
+  search?: string;
+  uploadedBy?: string;
+  tags?: string[];
+}

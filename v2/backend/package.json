@@ -9,7 +9,9 @@
     "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "migrate:images": "ts-node --compiler-options {\\\"module\\\":\\\"commonjs\\\"} src/scripts/migrate-existing-images.ts",
+    "fix:image-names": "ts-node --compiler-options {\\\"module\\\":\\\"commonjs\\\"} src/scripts/fix-image-names.ts"
   },
   "keywords": [],
   "author": "",
@@ -47,6 +49,7 @@
     "@types/archiver": "^7.0.0",
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.8",
+    "@types/mime-types": "^3.0.1",
     "@types/node": "^22.10.2",
     "@types/passport": "^1.0.16",
     "@types/passport-jwt": "^4.0.1",

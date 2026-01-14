@@ -32,7 +32,10 @@
       "Bash(wc:*)",
       "Bash(head:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill -9)"
+      "Bash(xargs kill -9)",
+      "Bash(npm run migrate:images:*)",
+      "Bash(find:*)",
+      "Bash(npm run fix:image-names:*)"
     ]
   }
 }

@@ -1,16 +1,25 @@
 import {
   Controller,
   Post,
+  Get,
+  Patch,
+  Delete,
   UseInterceptors,
   UploadedFile,
   UseGuards,
   BadRequestException,
+  Param,
+  Query,
+  Body,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadsService } from './uploads.service';
 import { imageMulterConfig, documentMulterConfig } from './config/multer.config';
 import { imageFileFilter, documentFileFilter } from './filters/file-type.filter';
+import { QueryImagesDto } from './dto/query-images.dto';
+import { UpdateImageDto } from './dto/update-image.dto';
 
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
@@ -24,17 +33,47 @@ export class UploadsController {
       fileFilter: imageFileFilter,
     }),
   )
-  uploadImage(@UploadedFile() file: Express.Multer.File) {
+  async uploadImage(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
-    return {
+    const url = this.uploadsService.getFileUrl(file.filename, 'images');
+
+    const image = await this.uploadsService.createImageRecord({
+      companyId: req.user.companyId,
+      uploadedBy: req.user.id,
       filename: file.filename,
       originalName: file.originalname,
+      url,
+      mimeType: file.mimetype,
       size: file.size,
-      url: this.uploadsService.getFileUrl(file.filename, 'images'),
-    };
+    });
+
+    return image;
+  }
+
+  @Get('images')
+  async listImages(@Query() query: QueryImagesDto, @Req() req: any) {
+    if (!query.companyId) {
+      query.companyId = req.user.companyId;
+    }
+    return this.uploadsService.listImages(query);
+  }
+
+  @Get('images/:id')
+  async getImage(@Param('id') id: string) {
+    return this.uploadsService.getImageById(id);
+  }
+
+  @Patch('images/:id')
+  async updateImage(@Param('id') id: string, @Body() dto: UpdateImageDto) {
+    return this.uploadsService.updateImage(id, dto);
+  }
+
+  @Delete('images/:id')
+  async deleteImage(@Param('id') id: string) {
+    return this.uploadsService.deleteImage(id);
   }
 
   @Post('document')
