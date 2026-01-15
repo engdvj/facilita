@@ -403,6 +403,14 @@ export default function LinksPage() {
         order: formData.order,
       };
 
+      console.log('[LinksPage] Dados sendo enviados:', {
+        formCompanyId,
+        formResolvedCompanyId,
+        userCompanyId: user?.companyId,
+        isSuperAdmin,
+        dataToSend,
+      });
+
       if (editing) {
         await api.patch(`/links/${editing.id}`, dataToSend);
       } else {

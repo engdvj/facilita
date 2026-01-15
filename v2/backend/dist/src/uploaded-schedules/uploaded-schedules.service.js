@@ -13,12 +13,16 @@ exports.UploadedSchedulesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
+const notifications_service_1 = require("../notifications/notifications.service");
+const notifications_gateway_1 = require("../notifications/notifications.gateway");
 let UploadedSchedulesService = class UploadedSchedulesService {
-    constructor(prisma) {
+    constructor(prisma, notificationsService, notificationsGateway) {
         this.prisma = prisma;
+        this.notificationsService = notificationsService;
+        this.notificationsGateway = notificationsGateway;
     }
     async create(createScheduleDto) {
-        return this.prisma.uploadedSchedule.create({
+        const schedule = await this.prisma.uploadedSchedule.create({
             data: createScheduleDto,
             include: {
                 category: true,
@@ -32,6 +36,31 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 },
             },
         });
+        try {
+            const recipients = await this.notificationsService.getRecipientsByAudience(schedule.companyId, schedule.sectorId, schedule.audience, schedule.userId || undefined);
+            if (recipients.length > 0) {
+                await this.notificationsService.createBulk(recipients, {
+                    type: client_1.NotificationType.CONTENT_CREATED,
+                    entityType: client_1.EntityType.SCHEDULE,
+                    entityId: schedule.id,
+                    title: 'Novo Documento Disponível',
+                    message: `Documento "${schedule.title}" foi publicado`,
+                    actionUrl: `/?highlight=document-${schedule.id}`,
+                    metadata: { scheduleTitle: schedule.title, creatorName: schedule.user?.name },
+                });
+                this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                    type: 'CONTENT_CREATED',
+                    entityType: 'SCHEDULE',
+                    entityId: schedule.id,
+                    title: 'Novo Documento Disponível',
+                    message: `Documento "${schedule.title}" foi publicado`,
+                });
+            }
+        }
+        catch (error) {
+            console.error('Failed to create notification:', error);
+        }
+        return schedule;
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
@@ -104,6 +133,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         if (shouldUpdateAudience && actor?.role) {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
         }
+        const hasChanges = updateScheduleDto.title !== existingSchedule.title;
         const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateScheduleDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingSchedule.sectorId ?? undefined
@@ -119,7 +149,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             updateData.audience = resolvedAudience;
             updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
         }
-        return this.prisma.uploadedSchedule.update({
+        const updated = await this.prisma.uploadedSchedule.update({
             where: { id },
             data: updateData,
             include: {
@@ -134,32 +164,293 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 },
             },
         });
+        if (hasChanges && actor?.id) {
+            try {
+                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.SCHEDULE, id);
+                const recipients = favoritedBy.filter((uid) => uid !== actor.id);
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.FAVORITE_UPDATED,
+                        entityType: client_1.EntityType.SCHEDULE,
+                        entityId: id,
+                        title: 'Documento Favoritado Atualizado',
+                        message: `Documento "${updated.title}" foi atualizado`,
+                        actionUrl: `/?highlight=document-${id}`,
+                        metadata: { scheduleTitle: updated.title, editorId: actor.id },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'FAVORITE_UPDATED',
+                        entityType: 'SCHEDULE',
+                        entityId: id,
+                        title: 'Documento Favoritado Atualizado',
+                        message: `Documento "${updated.title}" foi atualizado`,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify favorites:', error);
+            }
+        }
+        return updated;
     }
-    async remove(id, actor) {
+    async remove(id, actor, adminMessage) {
         const existingSchedule = await this.findOne(id);
         this.assertCanMutate(existingSchedule, actor);
-        return this.prisma.uploadedSchedule.update({
+        const deleted = await this.prisma.uploadedSchedule.update({
             where: { id },
             data: {
                 deletedAt: new Date(),
                 status: client_1.EntityStatus.INACTIVE,
             },
         });
+        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+            try {
+                const recipients = await this.notificationsService.getRecipientsByAudience(existingSchedule.companyId, existingSchedule.sectorId, existingSchedule.audience, actor.id);
+                const message = adminMessage || `Documento "${existingSchedule.title}" foi removido por um administrador`;
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.CONTENT_DELETED,
+                        entityType: client_1.EntityType.SCHEDULE,
+                        entityId: id,
+                        title: 'Documento Removido',
+                        message,
+                        actionUrl: undefined,
+                        metadata: {
+                            scheduleTitle: existingSchedule.title,
+                            deletedBy: actor.id,
+                            adminMessage,
+                        },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'CONTENT_DELETED',
+                        entityType: 'SCHEDULE',
+                        entityId: id,
+                        title: 'Documento Removido',
+                        message,
+                    });
+                }
+                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.SCHEDULE, id);
+                const favoriteRecipients = favoritedBy.filter((uid) => uid !== actor.id && !recipients.includes(uid));
+                if (favoriteRecipients.length > 0) {
+                    await this.notificationsService.createBulk(favoriteRecipients, {
+                        type: client_1.NotificationType.FAVORITE_DELETED,
+                        entityType: client_1.EntityType.SCHEDULE,
+                        entityId: id,
+                        title: 'Documento Favoritado Removido',
+                        message,
+                        actionUrl: undefined,
+                        metadata: { scheduleTitle: existingSchedule.title, adminMessage },
+                    });
+                    this.notificationsGateway.emitToUsers(favoriteRecipients, 'notification', {
+                        type: 'FAVORITE_DELETED',
+                        entityType: 'SCHEDULE',
+                        entityId: id,
+                        title: 'Documento Favoritado Removido',
+                        message,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify deletion:', error);
+            }
+        }
+        return deleted;
     }
     async restore(id) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
         if (!schedule) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
-        return this.prisma.uploadedSchedule.update({
+        const restored = await this.prisma.uploadedSchedule.update({
             where: { id },
             data: {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
+        try {
+            const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
+            if (recipients.length > 0) {
+                await this.notificationsService.createBulk(recipients, {
+                    type: client_1.NotificationType.CONTENT_RESTORED,
+                    entityType: client_1.EntityType.SCHEDULE,
+                    entityId: restored.id,
+                    title: 'Documento Restaurado',
+                    message: `Documento "${restored.title}" foi restaurado e está disponível novamente`,
+                    actionUrl: `/?highlight=document-${restored.id}`,
+                    metadata: { scheduleTitle: restored.title },
+                });
+                this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                    type: 'CONTENT_RESTORED',
+                    entityType: 'SCHEDULE',
+                    entityId: restored.id,
+                    title: 'Documento Restaurado',
+                    message: `Documento "${restored.title}" foi restaurado e está disponível novamente`,
+                    actionUrl: `/?highlight=document-${restored.id}`,
+                });
+            }
+        }
+        catch (error) {
+            console.error('Failed to notify restoration:', error);
+        }
+        return restored;
+    }
+    async activate(id, actor) {
+        const schedule = await this.prisma.uploadedSchedule.findUnique({
+            where: { id },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (!schedule) {
+            throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(schedule, actor);
+        }
+        const activated = await this.prisma.uploadedSchedule.update({
+            where: { id },
+            data: {
+                status: client_1.EntityStatus.ACTIVE,
+            },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+            try {
+                const recipients = await this.notificationsService.getRecipientsByAudience(activated.companyId, activated.sectorId, activated.audience, actor.id);
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.CONTENT_ACTIVATED,
+                        entityType: client_1.EntityType.SCHEDULE,
+                        entityId: activated.id,
+                        title: 'Documento Ativado',
+                        message: `Documento "${activated.title}" foi ativado e está disponível novamente`,
+                        actionUrl: `/?highlight=document-${activated.id}`,
+                        metadata: { scheduleTitle: activated.title },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'CONTENT_ACTIVATED',
+                        entityType: 'SCHEDULE',
+                        entityId: activated.id,
+                        title: 'Documento Ativado',
+                        message: `Documento "${activated.title}" foi ativado e está disponível novamente`,
+                        actionUrl: `/?highlight=document-${activated.id}`,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify activation:', error);
+            }
+        }
+        return activated;
+    }
+    async deactivate(id, actor) {
+        const schedule = await this.prisma.uploadedSchedule.findUnique({
+            where: { id },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (!schedule) {
+            throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(schedule, actor);
+        }
+        const deactivated = await this.prisma.uploadedSchedule.update({
+            where: { id },
+            data: {
+                status: client_1.EntityStatus.INACTIVE,
+            },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+            try {
+                const recipients = await this.notificationsService.getRecipientsByAudience(deactivated.companyId, deactivated.sectorId, deactivated.audience, actor.id);
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.CONTENT_DEACTIVATED,
+                        entityType: client_1.EntityType.SCHEDULE,
+                        entityId: deactivated.id,
+                        title: 'Documento Desativado',
+                        message: `Documento "${deactivated.title}" foi temporariamente desativado`,
+                        actionUrl: undefined,
+                        metadata: { scheduleTitle: deactivated.title },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'CONTENT_DEACTIVATED',
+                        entityType: 'SCHEDULE',
+                        entityId: deactivated.id,
+                        title: 'Documento Desativado',
+                        message: `Documento "${deactivated.title}" foi temporariamente desativado`,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify deactivation:', error);
+            }
+        }
+        return deactivated;
     }
     assertCanMutate(schedule, actor) {
         if (!actor)
@@ -207,6 +498,8 @@ let UploadedSchedulesService = class UploadedSchedulesService {
 exports.UploadedSchedulesService = UploadedSchedulesService;
 exports.UploadedSchedulesService = UploadedSchedulesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notifications_service_1.NotificationsService,
+        notifications_gateway_1.NotificationsGateway])
 ], UploadedSchedulesService);
 //# sourceMappingURL=uploaded-schedules.service.js.map

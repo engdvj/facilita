@@ -13,12 +13,16 @@ exports.NotesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
+const notifications_service_1 = require("../notifications/notifications.service");
+const notifications_gateway_1 = require("../notifications/notifications.gateway");
 let NotesService = class NotesService {
-    constructor(prisma) {
+    constructor(prisma, notificationsService, notificationsGateway) {
         this.prisma = prisma;
+        this.notificationsService = notificationsService;
+        this.notificationsGateway = notificationsGateway;
     }
     async create(createNoteDto) {
-        return this.prisma.note.create({
+        const note = await this.prisma.note.create({
             data: createNoteDto,
             include: {
                 category: true,
@@ -32,6 +36,31 @@ let NotesService = class NotesService {
                 },
             },
         });
+        try {
+            const recipients = await this.notificationsService.getRecipientsByAudience(note.companyId, note.sectorId, note.audience, note.userId || undefined);
+            if (recipients.length > 0) {
+                await this.notificationsService.createBulk(recipients, {
+                    type: client_1.NotificationType.CONTENT_CREATED,
+                    entityType: client_1.EntityType.NOTE,
+                    entityId: note.id,
+                    title: 'Nova Nota Disponível',
+                    message: `Nota "${note.title}" foi publicada`,
+                    actionUrl: `/?highlight=note-${note.id}`,
+                    metadata: { noteTitle: note.title, creatorName: note.user?.name },
+                });
+                this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                    type: 'CONTENT_CREATED',
+                    entityType: 'NOTE',
+                    entityId: note.id,
+                    title: 'Nova Nota Disponível',
+                    message: `Nota "${note.title}" foi publicada`,
+                });
+            }
+        }
+        catch (error) {
+            console.error('Failed to create notification:', error);
+        }
+        return note;
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
@@ -100,6 +129,8 @@ let NotesService = class NotesService {
         if (shouldUpdateAudience && actor?.role) {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
         }
+        const hasChanges = updateNoteDto.title !== existingNote.title ||
+            updateNoteDto.content !== existingNote.content;
         const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateNoteDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingNote.sectorId ?? undefined
@@ -115,7 +146,7 @@ let NotesService = class NotesService {
             updateData.audience = resolvedAudience;
             updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
         }
-        return this.prisma.note.update({
+        const updated = await this.prisma.note.update({
             where: { id },
             data: updateData,
             include: {
@@ -130,32 +161,293 @@ let NotesService = class NotesService {
                 },
             },
         });
+        if (hasChanges && actor?.id) {
+            try {
+                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.NOTE, id);
+                const recipients = favoritedBy.filter((uid) => uid !== actor.id);
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.FAVORITE_UPDATED,
+                        entityType: client_1.EntityType.NOTE,
+                        entityId: id,
+                        title: 'Nota Favoritada Atualizada',
+                        message: `Nota "${updated.title}" foi atualizada`,
+                        actionUrl: `/?highlight=note-${id}`,
+                        metadata: { noteTitle: updated.title, editorId: actor.id },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'FAVORITE_UPDATED',
+                        entityType: 'NOTE',
+                        entityId: id,
+                        title: 'Nota Favoritada Atualizada',
+                        message: `Nota "${updated.title}" foi atualizada`,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify favorites:', error);
+            }
+        }
+        return updated;
     }
-    async remove(id, actor) {
+    async remove(id, actor, adminMessage) {
         const existingNote = await this.findOne(id);
         this.assertCanMutate(existingNote, actor);
-        return this.prisma.note.update({
+        const deleted = await this.prisma.note.update({
             where: { id },
             data: {
                 deletedAt: new Date(),
                 status: client_1.EntityStatus.INACTIVE,
             },
         });
+        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+            try {
+                const recipients = await this.notificationsService.getRecipientsByAudience(existingNote.companyId, existingNote.sectorId, existingNote.audience, actor.id);
+                const message = adminMessage || `Nota "${existingNote.title}" foi removida por um administrador`;
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.CONTENT_DELETED,
+                        entityType: client_1.EntityType.NOTE,
+                        entityId: id,
+                        title: 'Nota Removida',
+                        message,
+                        actionUrl: undefined,
+                        metadata: {
+                            noteTitle: existingNote.title,
+                            deletedBy: actor.id,
+                            adminMessage,
+                        },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'CONTENT_DELETED',
+                        entityType: 'NOTE',
+                        entityId: id,
+                        title: 'Nota Removida',
+                        message,
+                    });
+                }
+                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.NOTE, id);
+                const favoriteRecipients = favoritedBy.filter((uid) => uid !== actor.id && !recipients.includes(uid));
+                if (favoriteRecipients.length > 0) {
+                    await this.notificationsService.createBulk(favoriteRecipients, {
+                        type: client_1.NotificationType.FAVORITE_DELETED,
+                        entityType: client_1.EntityType.NOTE,
+                        entityId: id,
+                        title: 'Nota Favoritada Removida',
+                        message,
+                        actionUrl: undefined,
+                        metadata: { noteTitle: existingNote.title, adminMessage },
+                    });
+                    this.notificationsGateway.emitToUsers(favoriteRecipients, 'notification', {
+                        type: 'FAVORITE_DELETED',
+                        entityType: 'NOTE',
+                        entityId: id,
+                        title: 'Nota Favoritada Removida',
+                        message,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify deletion:', error);
+            }
+        }
+        return deleted;
     }
     async restore(id) {
         const note = await this.prisma.note.findUnique({
             where: { id },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
         if (!note) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
-        return this.prisma.note.update({
+        const restored = await this.prisma.note.update({
             where: { id },
             data: {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
         });
+        try {
+            const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
+            if (recipients.length > 0) {
+                await this.notificationsService.createBulk(recipients, {
+                    type: client_1.NotificationType.CONTENT_RESTORED,
+                    entityType: client_1.EntityType.NOTE,
+                    entityId: restored.id,
+                    title: 'Nota Restaurada',
+                    message: `Nota "${restored.title}" foi restaurada e está disponível novamente`,
+                    actionUrl: `/?highlight=note-${restored.id}`,
+                    metadata: { noteTitle: restored.title },
+                });
+                this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                    type: 'CONTENT_RESTORED',
+                    entityType: 'NOTE',
+                    entityId: restored.id,
+                    title: 'Nota Restaurada',
+                    message: `Nota "${restored.title}" foi restaurada e está disponível novamente`,
+                    actionUrl: `/?highlight=note-${restored.id}`,
+                });
+            }
+        }
+        catch (error) {
+            console.error('Failed to notify restoration:', error);
+        }
+        return restored;
+    }
+    async activate(id, actor) {
+        const note = await this.prisma.note.findUnique({
+            where: { id },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`Note with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(note, actor);
+        }
+        const activated = await this.prisma.note.update({
+            where: { id },
+            data: {
+                status: client_1.EntityStatus.ACTIVE,
+            },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+            try {
+                const recipients = await this.notificationsService.getRecipientsByAudience(activated.companyId, activated.sectorId, activated.audience, actor.id);
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.CONTENT_ACTIVATED,
+                        entityType: client_1.EntityType.NOTE,
+                        entityId: activated.id,
+                        title: 'Nota Ativada',
+                        message: `Nota "${activated.title}" foi ativada e está disponível novamente`,
+                        actionUrl: `/?highlight=note-${activated.id}`,
+                        metadata: { noteTitle: activated.title },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'CONTENT_ACTIVATED',
+                        entityType: 'NOTE',
+                        entityId: activated.id,
+                        title: 'Nota Ativada',
+                        message: `Nota "${activated.title}" foi ativada e está disponível novamente`,
+                        actionUrl: `/?highlight=note-${activated.id}`,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify activation:', error);
+            }
+        }
+        return activated;
+    }
+    async deactivate(id, actor) {
+        const note = await this.prisma.note.findUnique({
+            where: { id },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`Note with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(note, actor);
+        }
+        const deactivated = await this.prisma.note.update({
+            where: { id },
+            data: {
+                status: client_1.EntityStatus.INACTIVE,
+            },
+            include: {
+                category: true,
+                sector: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+            try {
+                const recipients = await this.notificationsService.getRecipientsByAudience(deactivated.companyId, deactivated.sectorId, deactivated.audience, actor.id);
+                if (recipients.length > 0) {
+                    await this.notificationsService.createBulk(recipients, {
+                        type: client_1.NotificationType.CONTENT_DEACTIVATED,
+                        entityType: client_1.EntityType.NOTE,
+                        entityId: deactivated.id,
+                        title: 'Nota Desativada',
+                        message: `Nota "${deactivated.title}" foi temporariamente desativada`,
+                        actionUrl: undefined,
+                        metadata: { noteTitle: deactivated.title },
+                    });
+                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
+                        type: 'CONTENT_DEACTIVATED',
+                        entityType: 'NOTE',
+                        entityId: deactivated.id,
+                        title: 'Nota Desativada',
+                        message: `Nota "${deactivated.title}" foi temporariamente desativada`,
+                    });
+                }
+            }
+            catch (error) {
+                console.error('Failed to notify deactivation:', error);
+            }
+        }
+        return deactivated;
     }
     assertCanMutate(note, actor) {
         if (!actor)
@@ -215,6 +507,8 @@ let NotesService = class NotesService {
 exports.NotesService = NotesService;
 exports.NotesService = NotesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notifications_service_1.NotificationsService,
+        notifications_gateway_1.NotificationsGateway])
 ], NotesService);
 //# sourceMappingURL=notes.service.js.map

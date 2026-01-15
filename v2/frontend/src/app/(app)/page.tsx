@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, useRef, type CSSProperties } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import api, { serverURL } from '@/lib/api';
 import AdminModal from '@/components/admin/modal';
 import {
@@ -40,6 +41,9 @@ const publicCompanyId = process.env.NEXT_PUBLIC_COMPANY_ID || '';
 
 export default function Home() {
   const user = useAuthStore((state) => state.user);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [links, setLinks] = useState<LinkType[]>([]);
   const [documents, setDocuments] = useState<UploadedSchedule[]>([]);
@@ -203,6 +207,34 @@ export default function Home() {
       active = false;
     };
   }, [hasHydrated, isSuperAdmin, user?.companyId]);
+
+  // Handle highlight from notification
+  useEffect(() => {
+    const highlight = searchParams.get('highlight');
+    if (highlight && !loading) {
+      console.log('[HomePage] Highlighting item:', highlight);
+      setHighlightedId(highlight);
+
+      // Wait for content to render, then scroll to element
+      setTimeout(() => {
+        const element = document.querySelector(`[data-item-id="${highlight}"]`);
+        console.log('[HomePage] Found element to scroll:', element);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+
+      // Remove highlight after animation
+      setTimeout(() => {
+        setHighlightedId(null);
+        // Remove highlight param from URL
+        const newParams = new URLSearchParams(searchParams.toString());
+        newParams.delete('highlight');
+        const newQuery = newParams.toString();
+        router.replace(newQuery ? `/?${newQuery}` : '/');
+      }, 4500);
+    }
+  }, [searchParams, loading, router]);
 
   const visibleLinks = useMemo(() => {
     const canView = (link: LinkType) => {
@@ -603,6 +635,8 @@ export default function Home() {
     const motionStyle =
       typeof index === 'number' ? staggerStyle(index) : undefined;
     const isInactive = item.status?.toUpperCase() !== 'ACTIVE';
+    const itemId = `${item.type}-${item.id}`;
+    const isHighlighted = highlightedId === itemId;
     const titleBadge = (
       <div
         className="absolute left-3 top-3 z-10 max-w-[calc(100%-24px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1 text-[11px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)] sm:py-1.5 sm:text-[13px]"
@@ -654,6 +688,7 @@ export default function Home() {
       return (
         <article
           key={`${item.type}-${item.id}`}
+          data-item-id={itemId}
           role="button"
           tabIndex={isInactive ? -1 : 0}
           onClick={isInactive ? undefined : () => note && setSelectedNote(note)}
@@ -663,7 +698,7 @@ export default function Home() {
               setSelectedNote(note);
             }
           }}
-          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
+          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : 'cursor-pointer'} ${isHighlighted ? 'animate-[pulse_1.5s_ease-in-out_3] ring-4 ring-primary shadow-[0_0_0_4px_rgba(59,130,246,0.3),0_18px_36px_rgba(16,44,50,0.24)] scale-105' : ''}`}
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -711,11 +746,12 @@ export default function Home() {
       return (
         <a
           key={`${item.type}-${item.id}`}
+          data-item-id={itemId}
           href={isInactive ? undefined : item.url}
           target={isInactive ? undefined : "_blank"}
           rel={isInactive ? undefined : "noopener noreferrer"}
           onClick={isInactive ? (e) => e.preventDefault() : undefined}
-          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''}`}
+          className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''} ${isHighlighted ? 'animate-[pulse_1.5s_ease-in-out_3] ring-4 ring-primary shadow-[0_0_0_4px_rgba(59,130,246,0.3),0_18px_36px_rgba(16,44,50,0.24)] scale-105' : ''}`}
           style={motionStyle}
         >
           <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">
@@ -767,11 +803,12 @@ export default function Home() {
     return (
       <a
         key={`${item.type}-${item.id}`}
+        data-item-id={itemId}
         href={isInactive ? undefined : fileUrl}
         target={isInactive ? undefined : "_blank"}
         rel={isInactive ? undefined : "noopener noreferrer"}
         onClick={isInactive ? (e) => e.preventDefault() : undefined}
-        className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''}`}
+        className={`motion-item group flex flex-col overflow-hidden rounded-lg bg-card/95 ring-1 ring-black/5 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 h-40 sm:h-48 ${isInactive ? 'cursor-not-allowed pointer-events-none' : ''} ${isHighlighted ? 'animate-[pulse_1.5s_ease-in-out_3] ring-4 ring-primary shadow-[0_0_0_4px_rgba(59,130,246,0.3),0_18px_36px_rgba(16,44,50,0.24)] scale-105' : ''}`}
         style={motionStyle}
       >
         <div className="relative h-full w-full shrink-0 overflow-hidden bg-secondary/60">

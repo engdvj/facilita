@@ -110,6 +110,7 @@ model User {
   activityLogs    ActivityLog[]   @relation("ActivityLogger")
   auditLogs       AuditLog[]      @relation("AuditLogger")
   uploadedImages  UploadedImage[] @relation("ImageUploader")
+  notifications   Notification[]  @relation("UserNotifications")
 }
 
 model RolePermission {
@@ -309,6 +310,38 @@ enum EntityType {
   USER
   SECTOR
   COMPANY
+}
+
+enum NotificationType {
+  CONTENT_DELETED
+  CONTENT_CREATED
+  CONTENT_UPDATED
+  CONTENT_RESTORED
+  CONTENT_ACTIVATED
+  CONTENT_DEACTIVATED
+  FAVORITE_UPDATED
+  FAVORITE_DELETED
+  CONTENT_FAVORITED
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  type        NotificationType
+  entityType  EntityType
+  entityId    String           @db.Uuid
+  title       String
+  message     String
+  actionUrl   String?
+  metadata    Json?
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model Favorite {

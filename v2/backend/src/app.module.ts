@@ -17,6 +17,7 @@ import { BackupsModule } from './backups/backups.module';
 import { ResetsModule } from './resets/resets.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { SystemConfigModule } from './system-config/system-config.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { SystemConfigModule } from './system-config/system-config.module';
     ResetsModule,
     FavoritesModule,
     SystemConfigModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

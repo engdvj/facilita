@@ -236,8 +236,8 @@ export declare class LinksController {
             description: string | null;
             changedBy: string;
             title: string;
-            changeReason: string | null;
             linkId: string;
+            changeReason: string | null;
         })[];
     } & {
         url: string;
@@ -308,7 +308,9 @@ export declare class LinksController {
         deletedAt: Date | null;
         categoryId: string | null;
     }>;
-    remove(id: string, req: any): Promise<{
+    remove(id: string, body: {
+        adminMessage?: string;
+    } | undefined, req: any): Promise<{
         url: string;
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -330,6 +332,129 @@ export declare class LinksController {
         categoryId: string | null;
     }>;
     restore(id: string): Promise<{
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
+        url: string;
+        id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        sectorId: string | null;
+        description: string | null;
+        userId: string | null;
+        title: string;
+        color: string | null;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
+        isPublic: boolean;
+        order: number;
+        deletedAt: Date | null;
+        categoryId: string | null;
+    }>;
+    activate(id: string, req: any): Promise<{
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
+        url: string;
+        id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        sectorId: string | null;
+        description: string | null;
+        userId: string | null;
+        title: string;
+        color: string | null;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
+        isPublic: boolean;
+        order: number;
+        deletedAt: Date | null;
+        categoryId: string | null;
+    }>;
+    deactivate(id: string, req: any): Promise<{
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
         url: string;
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;

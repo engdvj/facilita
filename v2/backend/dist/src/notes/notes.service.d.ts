@@ -2,6 +2,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { ContentAudience, UserRole } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 type NoteActor = {
     id: string;
     role: UserRole;
@@ -9,7 +11,9 @@ type NoteActor = {
 };
 export declare class NotesService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private notificationsService;
+    private notificationsGateway;
+    constructor(prisma: PrismaService, notificationsService: NotificationsService, notificationsGateway: NotificationsGateway);
     create(createNoteDto: CreateNoteDto): Promise<{
         sector: {
             id: string;
@@ -200,7 +204,7 @@ export declare class NotesService {
         categoryId: string | null;
         content: string;
     }>;
-    remove(id: string, actor?: NoteActor): Promise<{
+    remove(id: string, actor?: NoteActor, adminMessage?: string): Promise<{
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;
@@ -220,6 +224,125 @@ export declare class NotesService {
         content: string;
     }>;
     restore(id: string): Promise<{
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
+        id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        sectorId: string | null;
+        userId: string | null;
+        title: string;
+        color: string | null;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
+        isPublic: boolean;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    }>;
+    activate(id: string, actor?: NoteActor): Promise<{
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
+        id: string;
+        status: import(".prisma/client").$Enums.EntityStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        sectorId: string | null;
+        userId: string | null;
+        title: string;
+        color: string | null;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        audience: import(".prisma/client").$Enums.ContentAudience;
+        isPublic: boolean;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    }>;
+    deactivate(id: string, actor?: NoteActor): Promise<{
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            unitId: string;
+            description: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        } | null;
+        category: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+        } | null;
+    } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
         createdAt: Date;

@@ -6,11 +6,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
-import { EntityType, EntityStatus } from '@prisma/client';
+import { EntityType, EntityStatus, NotificationType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class FavoritesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+    private notificationsGateway: NotificationsGateway,
+  ) {}
 
   /**
    * Adiciona um item aos favoritos do usuário
@@ -44,32 +50,65 @@ export class FavoritesService {
       );
     }
 
-    // Verificar se a entidade existe
+    // Verificar se a entidade existe e guardar dados para notificação
+    let creatorId: string | null = null;
+    let entityTitle = '';
+
     if (dto.linkId) {
       const link = await this.prisma.link.findUnique({
         where: { id: dto.linkId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       });
       if (!link) {
         throw new NotFoundException('Link não encontrado');
       }
+      creatorId = link.userId;
+      entityTitle = link.title;
     }
 
     if (dto.scheduleId) {
       const schedule = await this.prisma.uploadedSchedule.findUnique({
         where: { id: dto.scheduleId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       });
       if (!schedule) {
         throw new NotFoundException('Agenda não encontrada');
       }
+      creatorId = schedule.userId;
+      entityTitle = schedule.title;
     }
 
     if (dto.noteId) {
       const note = await this.prisma.note.findUnique({
         where: { id: dto.noteId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       });
       if (!note) {
         throw new NotFoundException('Nota não encontrada');
       }
+      creatorId = note.userId;
+      entityTitle = note.title;
     }
 
     // Verificar se já existe esse favorito
@@ -88,7 +127,7 @@ export class FavoritesService {
     }
 
     // Criar favorito
-    return this.prisma.favorite.create({
+    const favorite = await this.prisma.favorite.create({
       data: {
         userId,
         entityType: dto.entityType,
@@ -117,6 +156,51 @@ export class FavoritesService {
         },
       },
     });
+
+    // Notificar criador do conteúdo (se existir e for diferente do usuário que favoritou)
+    if (creatorId && creatorId !== userId) {
+      try {
+        const entityId = dto.linkId || dto.scheduleId || dto.noteId || '';
+        const entityTypeLabel = dto.entityType === EntityType.LINK ? 'link' :
+                                dto.entityType === EntityType.SCHEDULE ? 'documento' : 'nota';
+        const actionUrl = dto.entityType === EntityType.LINK ? `/?highlight=link-${entityId}` :
+                          dto.entityType === EntityType.SCHEDULE ? `/?highlight=document-${entityId}` :
+                          `/?highlight=note-${entityId}`;
+
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        });
+
+        await this.notificationsService.createBulk([creatorId], {
+          type: NotificationType.CONTENT_FAVORITED,
+          entityType: dto.entityType,
+          entityId,
+          title: 'Conteúdo Favoritado',
+          message: `${user?.name || 'Alguém'} favoritou seu ${entityTypeLabel} "${entityTitle}"`,
+          actionUrl,
+          metadata: {
+            [dto.entityType === EntityType.LINK ? 'linkTitle' :
+             dto.entityType === EntityType.SCHEDULE ? 'scheduleTitle' : 'noteTitle']: entityTitle,
+            favoritedBy: userId,
+            favoritedByName: user?.name,
+          },
+        });
+
+        this.notificationsGateway.emitToUsers([creatorId], 'notification', {
+          type: 'CONTENT_FAVORITED',
+          entityType: dto.entityType,
+          entityId,
+          title: 'Conteúdo Favoritado',
+          message: `${user?.name || 'Alguém'} favoritou seu ${entityTypeLabel} "${entityTitle}"`,
+          actionUrl,
+        });
+      } catch (error) {
+        console.error('Failed to notify content creator about favorite:', error);
+      }
+    }
+
+    return favorite;
   }
 
   /**

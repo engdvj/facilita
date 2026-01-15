@@ -1,25 +1,89 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNotificationStore } from '@/stores/notification-store';
 
 const variantStyles = {
   success: {
     dot: 'bg-emerald-500',
+    progressBar: 'bg-emerald-500',
     tone: 'text-emerald-700',
     title: 'Sucesso',
   },
   error: {
     dot: 'bg-destructive',
+    progressBar: 'bg-destructive',
     tone: 'text-destructive',
     title: 'Erro',
   },
   info: {
     dot: 'bg-foreground/40',
+    progressBar: 'bg-foreground/40',
     tone: 'text-muted-foreground',
     title: 'Aviso',
   },
 };
+
+function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
+  const [progress, setProgress] = useState(100);
+  const variant = variantStyles[toast.variant];
+  const title = toast.title ?? variant.title;
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / toast.duration) * 100);
+      setProgress(remaining);
+
+      if (remaining === 0) {
+        clearInterval(interval);
+      }
+    }, 16); // ~60fps
+
+    return () => clearInterval(interval);
+  }, [toast.duration]);
+
+  return (
+    <div
+      className="pointer-events-auto relative overflow-hidden rounded-lg border border-border/70 bg-card/95 shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2"
+    >
+      {/* Progress bar */}
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-border/20">
+        <div
+          className={`h-full transition-all duration-75 ease-linear ${variant.progressBar}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="flex items-start gap-2.5 px-3 py-2.5 pb-3">
+        <span
+          className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${variant.dot}`}
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className={`text-[9px] font-semibold uppercase tracking-wider ${variant.tone}`}>
+            {title}
+          </p>
+          <p className="text-xs font-medium text-foreground leading-snug">
+            {toast.message}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="motion-press shrink-0 rounded p-1 text-muted-foreground/60 transition hover:bg-muted/50 hover:text-foreground"
+          aria-label="Fechar notificação"
+        >
+          <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function NotificationStack() {
   const notifications = useNotificationStore((state) => state.notifications);
@@ -55,40 +119,10 @@ export default function NotificationStack() {
   if (!notifications.length) return null;
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-full max-w-sm flex-col gap-3 sm:right-6 sm:top-6">
-      {notifications.map((toast) => {
-        const variant = variantStyles[toast.variant];
-        const title = toast.title ?? variant.title;
-        return (
-        <div
-          key={toast.id}
-          className="pointer-events-auto flex items-start gap-3 rounded-xl border border-border/70 bg-card/80 px-4 py-3 shadow-[0_10px_22px_rgba(16,32,36,0.08)] backdrop-blur animate-in fade-in slide-in-from-top-2"
-        >
-          <span
-            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${variant.dot}`}
-            aria-hidden="true"
-          />
-          <div className="min-w-0 flex-1 space-y-1">
-            <p
-              className={`text-[10px] uppercase tracking-[0.2em] ${variant.tone}`}
-            >
-              {title}
-            </p>
-            <p className="text-sm font-medium text-foreground leading-snug">
-              {toast.message}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => remove(toast.id)}
-            className="motion-press text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:text-foreground"
-            aria-label="Fechar notificacao"
-          >
-            Fechar
-          </button>
-        </div>
-      );
-      })}
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[9998] flex w-full max-w-xs flex-col gap-2 sm:bottom-6 sm:right-6">
+      {notifications.map((toast) => (
+        <ToastItem key={toast.id} toast={toast} onRemove={() => remove(toast.id)} />
+      ))}
     </div>
   );
 }

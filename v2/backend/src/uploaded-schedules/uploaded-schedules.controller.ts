@@ -22,7 +22,7 @@ import { ContentAudience, UserRole } from '@prisma/client';
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
   [UserRole.ADMIN]: ContentAudience.COMPANY,
-  [UserRole.COLLABORATOR]: ContentAudience.PRIVATE,
+  [UserRole.COLLABORATOR]: ContentAudience.COMPANY,
 };
 
 const audienceOptionsByRole: Record<UserRole, ContentAudience[]> = {
@@ -219,12 +219,20 @@ export class UploadedSchedulesController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  remove(@Param('id') id: string, @Request() req: any) {
-    return this.schedulesService.remove(id, {
-      id: req.user.id,
-      role: req.user.role,
-      companyId: req.user.companyId,
-    });
+  remove(
+    @Param('id') id: string,
+    @Body() body: { adminMessage?: string } | undefined,
+    @Request() req: any,
+  ) {
+    return this.schedulesService.remove(
+      id,
+      {
+        id: req.user.id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+      },
+      body?.adminMessage,
+    );
   }
 
   @Post(':id/restore')
@@ -232,5 +240,33 @@ export class UploadedSchedulesController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   restore(@Param('id') id: string) {
     return this.schedulesService.restore(id);
+  }
+
+  @Post(':id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  activate(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    return this.schedulesService.activate(id, {
+      id: req.user.id,
+      role: req.user.role,
+      companyId: req.user.companyId,
+    });
+  }
+
+  @Post(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  deactivate(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    return this.schedulesService.deactivate(id, {
+      id: req.user.id,
+      role: req.user.role,
+      companyId: req.user.companyId,
+    });
   }
 }

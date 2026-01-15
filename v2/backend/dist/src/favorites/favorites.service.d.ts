@@ -1,9 +1,13 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { EntityType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 export declare class FavoritesService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private notificationsService;
+    private notificationsGateway;
+    constructor(prisma: PrismaService, notificationsService: NotificationsService, notificationsGateway: NotificationsGateway);
     create(userId: string, dto: CreateFavoriteDto): Promise<{
         link: ({
             sector: {

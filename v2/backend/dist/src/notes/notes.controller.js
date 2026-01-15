@@ -24,7 +24,7 @@ const client_1 = require("@prisma/client");
 const defaultAudienceByRole = {
     [client_1.UserRole.SUPERADMIN]: client_1.ContentAudience.COMPANY,
     [client_1.UserRole.ADMIN]: client_1.ContentAudience.COMPANY,
-    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.PRIVATE,
+    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.COMPANY,
 };
 const audienceOptionsByRole = {
     [client_1.UserRole.SUPERADMIN]: [
@@ -137,15 +137,29 @@ let NotesController = class NotesController {
             companyId: req.user.companyId,
         });
     }
-    remove(id, req) {
+    remove(id, body, req) {
         return this.notesService.remove(id, {
+            id: req.user.id,
+            role: req.user.role,
+            companyId: req.user.companyId,
+        }, body?.adminMessage);
+    }
+    restore(id) {
+        return this.notesService.restore(id);
+    }
+    activate(id, req) {
+        return this.notesService.activate(id, {
             id: req.user.id,
             role: req.user.role,
             companyId: req.user.companyId,
         });
     }
-    restore(id) {
-        return this.notesService.restore(id);
+    deactivate(id, req) {
+        return this.notesService.deactivate(id, {
+            id: req.user.id,
+            role: req.user.role,
+            companyId: req.user.companyId,
+        });
     }
 };
 exports.NotesController = NotesController;
@@ -221,9 +235,10 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COLLABORATOR),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], NotesController.prototype, "remove", null);
 __decorate([
@@ -235,6 +250,26 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], NotesController.prototype, "restore", null);
+__decorate([
+    (0, common_1.Post)(':id/activate'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], NotesController.prototype, "activate", null);
+__decorate([
+    (0, common_1.Post)(':id/deactivate'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], NotesController.prototype, "deactivate", null);
 exports.NotesController = NotesController = __decorate([
     (0, common_1.Controller)('notes'),
     __metadata("design:paramtypes", [notes_service_1.NotesService])

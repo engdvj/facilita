@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import AppNav from '@/components/app-nav';
 import MaxWidth from '@/components/max-width';
+import NotificationBell from '@/components/notification-bell';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function AppHeader() {
@@ -47,6 +48,7 @@ export default function AppHeader() {
           {hasHydrated ? (
             user ? (
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <NotificationBell />
                 <button
                   type="button"
                   onClick={() => setMenuOpen((prev) => !prev)}

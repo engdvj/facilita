@@ -23,7 +23,7 @@ import { ContentAudience, UserRole } from '@prisma/client';
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
   [UserRole.ADMIN]: ContentAudience.COMPANY,
-  [UserRole.COLLABORATOR]: ContentAudience.PRIVATE,
+  [UserRole.COLLABORATOR]: ContentAudience.COMPANY,
 };
 
 const audienceOptionsByRole: Record<UserRole, ContentAudience[]> = {
@@ -74,6 +74,14 @@ export class LinksController {
     const isSuperAdmin = user?.role === UserRole.SUPERADMIN;
     const companyId = isSuperAdmin ? createLinkDto.companyId : user?.companyId;
     const audience = resolveAudience(user?.role, createLinkDto);
+
+    console.log('[LinksController.create] Recebido:', {
+      userRole: user?.role,
+      userCompanyId: user?.companyId,
+      dtoCompanyId: createLinkDto.companyId,
+      resolvedCompanyId: companyId,
+      audience,
+    });
 
     if (!companyId) {
       throw new ForbiddenException('Empresa obrigatoria.');
@@ -228,12 +236,20 @@ export class LinksController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
-  remove(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) {
-    return this.linksService.remove(id, {
-      id: req.user.id,
-      role: req.user.role,
-      companyId: req.user.companyId,
-    });
+  remove(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: { adminMessage?: string } | undefined,
+    @Request() req: any,
+  ) {
+    return this.linksService.remove(
+      id,
+      {
+        id: req.user.id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+      },
+      body?.adminMessage,
+    );
   }
 
   @Post(':id/restore')
@@ -241,5 +257,33 @@ export class LinksController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   restore(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.linksService.restore(id);
+  }
+
+  @Post(':id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  activate(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Request() req: any,
+  ) {
+    return this.linksService.activate(id, {
+      id: req.user.id,
+      role: req.user.role,
+      companyId: req.user.companyId,
+    });
+  }
+
+  @Post(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  deactivate(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Request() req: any,
+  ) {
+    return this.linksService.deactivate(id, {
+      id: req.user.id,
+      role: req.user.role,
+      companyId: req.user.companyId,
+    });
   }
 }

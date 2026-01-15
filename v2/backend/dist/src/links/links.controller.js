@@ -24,7 +24,7 @@ const client_1 = require("@prisma/client");
 const defaultAudienceByRole = {
     [client_1.UserRole.SUPERADMIN]: client_1.ContentAudience.COMPANY,
     [client_1.UserRole.ADMIN]: client_1.ContentAudience.COMPANY,
-    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.PRIVATE,
+    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.COMPANY,
 };
 const audienceOptionsByRole = {
     [client_1.UserRole.SUPERADMIN]: [
@@ -66,6 +66,13 @@ let LinksController = class LinksController {
         const isSuperAdmin = user?.role === client_1.UserRole.SUPERADMIN;
         const companyId = isSuperAdmin ? createLinkDto.companyId : user?.companyId;
         const audience = resolveAudience(user?.role, createLinkDto);
+        console.log('[LinksController.create] Recebido:', {
+            userRole: user?.role,
+            userCompanyId: user?.companyId,
+            dtoCompanyId: createLinkDto.companyId,
+            resolvedCompanyId: companyId,
+            audience,
+        });
         if (!companyId) {
             throw new common_1.ForbiddenException('Empresa obrigatoria.');
         }
@@ -150,15 +157,29 @@ let LinksController = class LinksController {
             companyId: req.user.companyId,
         });
     }
-    remove(id, req) {
+    remove(id, body, req) {
         return this.linksService.remove(id, {
+            id: req.user.id,
+            role: req.user.role,
+            companyId: req.user.companyId,
+        }, body?.adminMessage);
+    }
+    restore(id) {
+        return this.linksService.restore(id);
+    }
+    activate(id, req) {
+        return this.linksService.activate(id, {
             id: req.user.id,
             role: req.user.role,
             companyId: req.user.companyId,
         });
     }
-    restore(id) {
-        return this.linksService.restore(id);
+    deactivate(id, req) {
+        return this.linksService.deactivate(id, {
+            id: req.user.id,
+            role: req.user.role,
+            companyId: req.user.companyId,
+        });
     }
 };
 exports.LinksController = LinksController;
@@ -234,9 +255,10 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COLLABORATOR),
     __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
-    __param(1, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], LinksController.prototype, "remove", null);
 __decorate([
@@ -248,6 +270,26 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], LinksController.prototype, "restore", null);
+__decorate([
+    (0, common_1.Post)(':id/activate'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], LinksController.prototype, "activate", null);
+__decorate([
+    (0, common_1.Post)(':id/deactivate'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], LinksController.prototype, "deactivate", null);
 exports.LinksController = LinksController = __decorate([
     (0, common_1.Controller)('links'),
     __metadata("design:paramtypes", [links_service_1.LinksService])
