@@ -25,13 +25,17 @@ let UploadsController = class UploadsController {
     constructor(uploadsService) {
         this.uploadsService = uploadsService;
     }
-    async uploadImage(file, req) {
+    async uploadImage(file, req, companyIdParam) {
         if (!file) {
             throw new common_1.BadRequestException('No file uploaded');
         }
+        const isSuperAdmin = req.user.role === 'SUPERADMIN';
+        const companyId = isSuperAdmin && companyIdParam
+            ? companyIdParam
+            : req.user.companyId;
         const url = this.uploadsService.getFileUrl(file.filename, 'images');
         const image = await this.uploadsService.createImageRecord({
-            companyId: req.user.companyId,
+            companyId,
             uploadedBy: req.user.id,
             filename: file.filename,
             originalName: file.originalname,
@@ -77,8 +81,9 @@ __decorate([
     })),
     __param(0, (0, common_1.UploadedFile)()),
     __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Query)('companyId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", Promise)
 ], UploadsController.prototype, "uploadImage", null);
 __decorate([

@@ -221,7 +221,6 @@ export default function SettingsPage() {
       const response = await api.post(
         '/backups/export',
         { entities: backupOptions.map((option) => option.key) },
-        // @ts-expect-error - skipNotify is a custom property
         { responseType: 'blob', skipNotify: true },
       );
       const blob = new Blob([response.data], { type: 'application/zip' });
@@ -316,7 +315,6 @@ export default function SettingsPage() {
 
     try {
       const response = await api.get(`/backups/auto/files/${encodeURIComponent(name)}`, {
-        // @ts-expect-error - skipNotify is a custom property
         responseType: 'blob',
         skipNotify: true,
       });

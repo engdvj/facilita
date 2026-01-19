@@ -60,7 +60,6 @@ export default function BackupPage() {
       const response = await api.post(
         '/backups/export',
         { entities: selectedEntities },
-        // @ts-expect-error - skipNotify is a custom property
         { responseType: 'blob', skipNotify: true },
       );
       const blob = new Blob([response.data], { type: 'application/zip' });

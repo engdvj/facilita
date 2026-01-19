@@ -1,93 +1,76 @@
-# FACILITA CHVC
+# FACILITA V2
 
-Portal de links e documentos multi-empresa para ambientes corporativos.
+Portal corporativo multi-empresa para links, documentos e notas, com permissões granulares e administração centralizada.
 
-## Estrutura do Projeto
+## Stack
+- Backend: NestJS 11, TypeScript, Prisma, PostgreSQL
+- Frontend: Next.js 16, React 19, Tailwind CSS
+- Infra: Docker Compose, Redis, Nginx
 
-Este repositório contém duas versões do sistema:
+## Inicio rapido (Docker)
+```bash
+cd v2
+cp .env.example .env
+# Ajuste SUPERADMIN_* e secrets
+```
 
-### V1 - Sistema Legado (Flask + React)
-Sistema original em produção, localizado na raiz do repositório.
-- Backend: Flask/Python
-- Frontend: React/Vite
-- Banco: PostgreSQL
+Windows:
+```bat
+start.bat up
+```
 
-### V2 - Nova Arquitetura (NestJS + Next.js)
-Nova versão em desenvolvimento, localizada em `/v2`.
-- Backend: NestJS + TypeScript + Prisma
-- Frontend: Next.js 15 + Tailwind CSS
-- Suporte multi-empresa nativo
+Linux/macOS:
+```bash
+./start.sh up
+```
 
-**📖 [Documentação completa da V2](v2/README.md)**
+Ou direto com Docker Compose:
+```bash
+docker compose up -d --build
+```
 
-## Início Rápido - V2
+### Acessos
+- Frontend: http://localhost
+- API: http://localhost:3001/api
+- Healthcheck: http://localhost:3001/api/health
 
-### Opção 1: Desenvolvimento (Terminal)
+### Login inicial
+O SUPERADMIN e criado automaticamente na primeira subida do backend, usando os valores de `v2/.env`:
+- `SUPERADMIN_EMAIL`
+- `SUPERADMIN_PASSWORD`
+- `SUPERADMIN_NAME`
 
-**Backend:**
+## Desenvolvimento local
+Backend:
 ```bash
 cd v2/backend
-npm install
 cp .env.example .env
+npm install
 npm run prisma:generate
 npm run prisma:migrate
 npm run start:dev
 ```
-Acesse: http://localhost:3001/api
 
-**Frontend (em outro terminal):**
+Frontend:
 ```bash
 cd v2/frontend
 npm install
 echo "NEXT_PUBLIC_API_URL=http://localhost:3001/api" > .env.local
 npm run dev
 ```
-Acesse: http://localhost:3000
 
-### Opção 2: Docker
-
-```bash
-cd v2
-cp .env.example .env
-docker-compose up -d --build
+## Estrutura
 ```
-Acesse: http://localhost
-
-**Credenciais padrão:**
-- Email: superadmin@facilita.local
-- Senha: ChangeMe123!
-
-## V1 - Instalação Legada
-
-### Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # ou venv\Scripts\activate no Windows
-pip install -r requirements.txt
-FLASK_DEBUG=0 python wsgi.py
+v2/
+  backend/
+  frontend/
+  nginx/
+  docs/
 ```
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev  # http://localhost:5173
-```
+## Documentacao
+Arquivos de planejamento e especificacoes estao em `v2/docs`.
 
-### Docker V1
-```bash
-docker compose up --build
-```
-
-Credenciais V1: admin/admin123
-
-## Documentação Adicional
-
-- [Resumo Estratégico](Resumo%20Estratégico%20do%20Projeto%20FACILITA%20CHVC.md)
-- [Plano de Desenvolvimento V2](plano.md)
-
----
-
-**Branch atual:** feature/facilita-v2-nestjs
-**Status V2:** 🟢 Em desenvolvimento ativo
+## Observacoes
+- A pagina de configuracoes depende do seed de `SystemConfig` no backend.
+- Em producao, altere os secrets e credenciais do superadmin.

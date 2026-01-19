@@ -34,9 +34,12 @@ export default function ImageSelector({
 
     try {
       setUploading(true);
-      const response = await api.post('/uploads/image', uploadData, {
+      // Pass companyId as query param so superadmins upload to the correct company
+      const uploadUrl = companyId
+        ? `/uploads/image?companyId=${companyId}`
+        : '/uploads/image';
+      const response = await api.post(uploadUrl, uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       onChange(response.data.url);

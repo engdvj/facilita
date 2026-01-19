@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef, type CSSProperties } from 'react';
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import api, { serverURL } from '@/lib/api';
 import AdminModal from '@/components/admin/modal';
@@ -39,7 +46,7 @@ type ContentItem = {
 
 const publicCompanyId = process.env.NEXT_PUBLIC_COMPANY_ID || '';
 
-export default function Home() {
+function HomeContent() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -154,11 +161,21 @@ export default function Home() {
         const notesEndpoint =
           isLoggedIn && isSuperAdmin ? '/notes/admin/list' : '/notes';
 
+        console.log('[HomePage] Carregando dados:', {
+          isLoggedIn,
+          isSuperAdmin,
+          userCompanyId: user?.companyId,
+          companyId,
+          queryString,
+          linksEndpoint,
+        });
+
         try {
           const linksResponse = await api.get(
             queryString ? `${linksEndpoint}?${queryString}` : linksEndpoint,
           );
           if (!active) return;
+          console.log('[HomePage] Links recebidos:', linksResponse.data.length, linksResponse.data.map((l: any) => ({ title: l.title, companyId: l.companyId })));
           setLinks(linksResponse.data);
         } catch (linkError) {
           console.error('Error loading links:', linkError);
@@ -256,11 +273,7 @@ export default function Home() {
         return Boolean(user.sectorId) && link.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {
-        return (
-          user.role === 'ADMIN' &&
-          Boolean(user.companyId) &&
-          link.companyId === user.companyId
-        );
+        return Boolean(user.companyId) && link.companyId === user.companyId;
       }
       return false;
     };
@@ -288,11 +301,7 @@ export default function Home() {
         return Boolean(user.sectorId) && document.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {
-        return (
-          user.role === 'ADMIN' &&
-          Boolean(user.companyId) &&
-          document.companyId === user.companyId
-        );
+        return Boolean(user.companyId) && document.companyId === user.companyId;
       }
       return false;
     };
@@ -320,11 +329,7 @@ export default function Home() {
         return Boolean(user.sectorId) && note.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {
-        return (
-          user.role === 'ADMIN' &&
-          Boolean(user.companyId) &&
-          note.companyId === user.companyId
-        );
+        return Boolean(user.companyId) && note.companyId === user.companyId;
       }
       return false;
     };
@@ -1026,5 +1031,19 @@ export default function Home() {
         </AdminModal>
       )}
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="motion-fade rounded-2xl border border-border/70 bg-card/70 px-5 py-8 text-center text-sm text-muted-foreground">
+          Carregando conteudo...
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

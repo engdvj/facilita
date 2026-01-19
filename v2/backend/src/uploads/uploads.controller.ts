@@ -33,15 +33,25 @@ export class UploadsController {
       fileFilter: imageFileFilter,
     }),
   )
-  async uploadImage(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+    @Query('companyId') companyIdParam?: string,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
+    // Superadmins can specify companyId, others use their own
+    const isSuperAdmin = req.user.role === 'SUPERADMIN';
+    const companyId = isSuperAdmin && companyIdParam
+      ? companyIdParam
+      : req.user.companyId;
+
     const url = this.uploadsService.getFileUrl(file.filename, 'images');
 
     const image = await this.uploadsService.createImageRecord({
-      companyId: req.user.companyId,
+      companyId,
       uploadedBy: req.user.id,
       filename: file.filename,
       originalName: file.originalname,

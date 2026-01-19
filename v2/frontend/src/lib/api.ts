@@ -4,14 +4,35 @@ import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/auth-store';
 import { useNotificationStore } from '@/stores/notification-store';
 
-const defaultHost =
+const getDefaultHost = () =>
   typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-const baseURL =
-  process.env.NEXT_PUBLIC_API_URL || `http://${defaultHost}:3001/api`;
+
+const getBaseURL = (): string => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) return apiUrl;
+  return `http://${getDefaultHost()}:3001/api`;
+};
+
+const getServerURL = (): string => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // If API URL is relative (e.g., /api), use current origin
+  if (apiUrl?.startsWith('/')) {
+    return typeof window !== 'undefined' ? window.location.origin : '';
+  }
+
+  // If API URL is absolute, remove /api suffix
+  if (apiUrl) {
+    return apiUrl.replace('/api', '');
+  }
+
+  return `http://${getDefaultHost()}:3001`;
+};
+
+const baseURL = getBaseURL();
 
 // Base URL do servidor (sem /api) para acesso a arquivos estáticos
-export const serverURL =
-  process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || `http://${defaultHost}:3001`;
+export const serverURL = getServerURL();
 
 const api = axios.create({
   baseURL,

@@ -56,7 +56,9 @@ export default function LinksPage() {
   const isCollaborator = user?.role === 'COLLABORATOR';
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
-  const formResolvedCompanyId = isSuperAdmin ? formCompanyId : user?.companyId;
+  const formResolvedCompanyId = isSuperAdmin
+    ? formCompanyId || ''
+    : (user?.companyId || '');
   useNotifyOnChange(error);
   useNotifyOnChange(formError);
   const visibleSectors = useMemo(() => {
@@ -341,7 +343,6 @@ export default function LinksPage() {
       setUploading(true);
       const response = await api.post('/uploads/image', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       setFormData((prev) => ({ ...prev, imageUrl: response.data.url }));

@@ -57,7 +57,9 @@ export default function SchedulesPage() {
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
-  const formResolvedCompanyId = isSuperAdmin ? formCompanyId : user?.companyId;
+  const formResolvedCompanyId = isSuperAdmin
+    ? formCompanyId || ''
+    : (user?.companyId || '');
   useNotifyOnChange(error);
   useNotifyOnChange(formError);
 
@@ -312,7 +314,6 @@ export default function SchedulesPage() {
       setFileUploading(true);
       const response = await api.post('/uploads/document', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       setFormData((prev) => ({
@@ -341,7 +342,6 @@ export default function SchedulesPage() {
       setImageUploading(true);
       const response = await api.post('/uploads/image', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       setFormData((prev) => ({

@@ -117,7 +117,6 @@ export function FavoritesProvider({
         const response = await api.post(
           "/favorites",
           payload,
-          // @ts-expect-error - skipNotify is a custom property
           { skipNotify: true }
         );
 
@@ -147,7 +146,6 @@ export function FavoritesProvider({
     try {
       await api.delete(
         `/favorites/${favoriteId}`,
-        // @ts-expect-error - skipNotify is a custom property
         { skipNotify: true }
       );
 
@@ -180,7 +178,6 @@ export function FavoritesProvider({
       try {
         await api.delete(
           `/favorites/entity/${entityType}/${entityId}`,
-          // @ts-expect-error - skipNotify is a custom property
           { skipNotify: true }
         );
 

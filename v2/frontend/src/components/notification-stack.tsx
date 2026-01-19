@@ -1,9 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useNotificationStore } from '@/stores/notification-store';
+import {
+  useNotificationStore,
+  type NotificationToast,
+  type NotificationVariant,
+} from '@/stores/notification-store';
 
-const variantStyles = {
+type VariantStyle = {
+  dot: string;
+  progressBar: string;
+  tone: string;
+  title: string;
+};
+
+const variantStyles: Record<NotificationVariant, VariantStyle> = {
   success: {
     dot: 'bg-emerald-500',
     progressBar: 'bg-emerald-500',
@@ -24,7 +35,13 @@ const variantStyles = {
   },
 };
 
-function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
+function ToastItem({
+  toast,
+  onRemove,
+}: {
+  toast: NotificationToast;
+  onRemove: () => void;
+}) {
   const [progress, setProgress] = useState(100);
   const variant = variantStyles[toast.variant];
   const title = toast.title ?? variant.title;

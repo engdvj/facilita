@@ -35,7 +35,9 @@
       "Bash(xargs kill -9)",
       "Bash(npm run migrate:images:*)",
       "Bash(find:*)",
-      "Bash(npm run fix:image-names:*)"
+      "Bash(npm run fix:image-names:*)",
+      "Bash(tree:*)",
+      "Bash(node -e:*)"
     ]
   }
 }

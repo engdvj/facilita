@@ -26,13 +26,13 @@ export default function ImagesPage() {
 
     const loadCompanies = async () => {
       try {
-        const response = await api.get<Company[]>('/companies', {
-          // @ts-expect-error - skipNotify is a custom property
+        const response = await api.get('/companies', {
           skipNotify: true,
         });
-        setCompanies(response.data);
-        if (response.data.length > 0 && !selectedCompanyId) {
-          setSelectedCompanyId(response.data[0].id);
+        const data = response.data as Company[];
+        setCompanies(data);
+        if (data.length > 0 && !selectedCompanyId) {
+          setSelectedCompanyId(data[0].id);
         }
       } catch (err) {
         console.error('Erro ao carregar empresas:', err);
@@ -115,7 +115,6 @@ export default function ImagesPage() {
   const loadImageDetails = async (imageId: string) => {
     try {
       const response = await api.get(`/uploads/images/${imageId}`, {
-        // @ts-expect-error - skipNotify is a custom property
         skipNotify: true,
       });
       setSelectedImage(response.data);

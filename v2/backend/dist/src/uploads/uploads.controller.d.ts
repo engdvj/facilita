@@ -4,7 +4,7 @@ import { UpdateImageDto } from './dto/update-image.dto';
 export declare class UploadsController {
     private readonly uploadsService;
     constructor(uploadsService: UploadsService);
-    uploadImage(file: Express.Multer.File, req: any): Promise<{
+    uploadImage(file: Express.Multer.File, req: any, companyIdParam?: string): Promise<{
         url: string;
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;

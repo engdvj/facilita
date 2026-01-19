@@ -14,7 +14,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Generate Prisma Client
+# Generate Prisma Client (dummy URL for build time only)
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/facilita_v2?schema=public"
 RUN npm run prisma:generate
 
 # Build application
@@ -47,4 +48,4 @@ RUN mkdir -p uploads/images uploads/documents backups
 EXPOSE 3001
 
 # Start application
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

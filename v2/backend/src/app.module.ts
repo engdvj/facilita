@@ -14,6 +14,7 @@ import { UploadedSchedulesModule } from './uploaded-schedules/uploaded-schedules
 import { NotesModule } from './notes/notes.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { BackupsModule } from './backups/backups.module';
+import { BootstrapModule } from './bootstrap/bootstrap.module';
 import { ResetsModule } from './resets/resets.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { SystemConfigModule } from './system-config/system-config.module';
@@ -39,6 +40,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     NotesModule,
     UploadsModule,
     BackupsModule,
+    BootstrapModule,
     ResetsModule,
     FavoritesModule,
     SystemConfigModule,

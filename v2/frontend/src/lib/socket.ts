@@ -5,13 +5,28 @@ import { useAuthStore } from '@/stores/auth-store';
 
 let socket: Socket | null = null;
 
+const getServerURL = (): string => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // If API URL is relative (e.g., /api), use current origin
+  if (apiUrl?.startsWith('/')) {
+    return typeof window !== 'undefined' ? window.location.origin : '';
+  }
+
+  // If API URL is absolute, remove /api suffix
+  if (apiUrl) {
+    return apiUrl.replace('/api', '');
+  }
+
+  // Fallback to default
+  const defaultHost =
+    typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return `http://${defaultHost}:3001`;
+};
+
 export const getSocket = (): Socket => {
   if (!socket) {
-    const defaultHost =
-      typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const serverURL =
-      process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ||
-      `http://${defaultHost}:3001`;
+    const serverURL = getServerURL();
 
     const token = useAuthStore.getState().accessToken;
 

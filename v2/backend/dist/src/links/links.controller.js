@@ -120,9 +120,18 @@ let LinksController = class LinksController {
                     ? undefined
                     : true,
         };
-        console.log('LinksController.findAll - companyId:', normalizedCompanyId, 'filters:', filters);
+        console.log('[LinksController.findAll] Query params:', {
+            companyId,
+            normalizedCompanyId,
+            sectorId,
+            categoryId,
+            isPublic,
+            audience,
+            filters,
+        });
         const result = await this.linksService.findAll(normalizedCompanyId, filters);
-        console.log('LinksController.findAll - resultado:', result.length, 'links');
+        console.log('[LinksController.findAll] Retornando', result.length, 'links:');
+        result.forEach(l => console.log(`  - ${l.title} (companyId: ${l.companyId})`));
         return result;
     }
     async findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience) {
