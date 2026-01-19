@@ -26,8 +26,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck and set timezone to Sao Paulo
+RUN apk add --no-cache curl tzdata && \
+    cp /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \
+    echo "America/Sao_Paulo" > /etc/timezone && \
+    apk del tzdata
+
+# Set timezone for Node.js
+ENV TZ=America/Sao_Paulo
 
 # Copy package files
 COPY package*.json ./
@@ -42,7 +48,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create directories for uploads and backups
-RUN mkdir -p uploads/images uploads/documents backups
+RUN mkdir -p uploads/images uploads/documents backups/auto backups/tmp
 
 # Expose port
 EXPOSE 3001

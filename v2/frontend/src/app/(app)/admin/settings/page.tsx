@@ -291,22 +291,9 @@ export default function SettingsPage() {
   const handleOpenAutoBackups = async () => {
     setAutoBackupOpening(true);
     setAutoBackupError(null);
-
-    try {
-      await api.post('/backups/auto/open');
-      notify.success('Diretorio aberto.');
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel abrir o diretorio no servidor.';
-      notify.error(
-        typeof message === 'string' ? message : 'Erro ao abrir diretorio.',
-      );
-      setAutoBackupOpen(true);
-      void loadAutoBackups();
-    } finally {
-      setAutoBackupOpening(false);
-    }
+    setAutoBackupOpen(true);
+    await loadAutoBackups();
+    setAutoBackupOpening(false);
   };
 
   const handleDownloadAutoBackup = async (name: string) => {

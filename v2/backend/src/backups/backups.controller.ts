@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Get,
-  InternalServerErrorException,
   NotFoundException,
   Param,
   Post,
@@ -108,13 +107,15 @@ export class BackupsController {
         });
         child.on('error', reject);
       });
-    } catch {
-      throw new InternalServerErrorException(
-        'Nao foi possivel abrir o diretorio no servidor.',
-      );
+      return { opened: true, directory };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      return {
+        opened: false,
+        directory,
+        reason: code === 'ENOENT' ? 'not_supported' : 'failed',
+      };
     }
-
-    return { opened: true, directory };
   }
 
   @Get('auto/files/:name')
