@@ -24,9 +24,6 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
-
 ENV NODE_ENV=production
 
 # Create non-root user
