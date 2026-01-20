@@ -16,9 +16,12 @@ type Sector = {
   status?: string | null;
   createdAt?: string | null;
   companyId?: string | null;
-  unitId?: string | null;
   company?: { name: string } | null;
-  unit?: { name: string } | null;
+  sectorUnits?: {
+    unitId: string;
+    isPrimary?: boolean | null;
+    unit?: { id: string; name: string; companyId?: string | null } | null;
+  }[] | null;
 };
 
 type CompanyOption = { id: string; name: string };
@@ -26,6 +29,12 @@ type CompanyOption = { id: string; name: string };
 type UnitOption = { id: string; name: string; companyId?: string | null };
 
 const pageSize = 8;
+
+const getPrimarySectorUnit = (sector: Sector) =>
+  sector.sectorUnits?.find((unit) => unit.isPrimary) || sector.sectorUnits?.[0];
+
+const sectorMatchesUnit = (sector: Sector, selectedUnitId: string) =>
+  Boolean(sector.sectorUnits?.some((unit) => unit.unitId === selectedUnitId));
 
 export default function SectorsPage() {
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -46,7 +55,8 @@ export default function SectorsPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [companyId, setCompanyId] = useState('');
-  const [unitId, setUnitId] = useState('');
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
+  const [primaryUnitId, setPrimaryUnitId] = useState('');
   const [status, setStatus] = useState('ACTIVE');
   const [deleteTarget, setDeleteTarget] = useState<Sector | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -103,9 +113,14 @@ export default function SectorsPage() {
   const filteredSectors = useMemo(() => {
     const term = search.trim().toLowerCase();
     return sectors.filter((sector) => {
+      const unitNames =
+        sector.sectorUnits
+          ?.map((unit) => unit.unit?.name)
+          .filter((name): name is string => Boolean(name))
+          .join(' ') || '';
       if (
         term &&
-        !`${sector.name} ${sector.unit?.name ?? ''} ${sector.company?.name ?? ''}`
+        !`${sector.name} ${unitNames} ${sector.company?.name ?? ''}`
           .toLowerCase()
           .includes(term)
       ) {
@@ -118,7 +133,7 @@ export default function SectorsPage() {
       if (filterCompanyId && sector.companyId !== filterCompanyId) {
         return false;
       }
-      if (filterUnitId && sector.unitId !== filterUnitId) {
+      if (filterUnitId && !sectorMatchesUnit(sector, filterUnitId)) {
         return false;
       }
       return true;
@@ -158,23 +173,48 @@ export default function SectorsPage() {
     return units.filter((unit) => unit.companyId === filterCompanyId);
   }, [filterCompanyId, units]);
 
+  const toggleUnitSelection = (unitId: string) => {
+    setSelectedUnitIds((current) => {
+      const isSelected = current.includes(unitId);
+      if (isSelected) {
+        const next = current.filter((id) => id !== unitId);
+        setPrimaryUnitId((primary) => (primary === unitId ? (next[0] || '') : primary));
+        return next;
+      }
+      const next = [...current, unitId];
+      setPrimaryUnitId((primary) => primary || unitId);
+      return next;
+    });
+  };
+
+  const handlePrimaryUnitChange = (unitId: string) => {
+    setPrimaryUnitId(unitId);
+    setSelectedUnitIds((current) =>
+      current.includes(unitId) ? current : [...current, unitId],
+    );
+  };
+
   const openCreate = () => {
     setEditing(null);
     setName('');
     setDescription('');
     setCompanyId('');
-    setUnitId('');
+    setSelectedUnitIds([]);
+    setPrimaryUnitId('');
     setStatus('ACTIVE');
     setFormError(null);
     setModalOpen(true);
   };
 
   const openEdit = (sector: Sector) => {
+    const primaryUnit = getPrimarySectorUnit(sector);
     setEditing(sector);
     setName(sector.name);
     setDescription(sector.description || '');
     setCompanyId(sector.companyId || '');
-    setUnitId(sector.unitId || '');
+    const unitIds = sector.sectorUnits?.map((unit) => unit.unitId) || [];
+    setSelectedUnitIds(unitIds);
+    setPrimaryUnitId(primaryUnit?.unitId || unitIds[0] || '');
     setStatus(sector.status || 'ACTIVE');
     setFormError(null);
     setModalOpen(true);
@@ -189,7 +229,10 @@ export default function SectorsPage() {
           name,
           description: description || undefined,
           companyId,
-          unitId,
+          units: selectedUnitIds.map((unit) => ({
+            unitId: unit,
+            isPrimary: unit === primaryUnitId,
+          })),
           status,
         });
       } else {
@@ -197,7 +240,10 @@ export default function SectorsPage() {
           name,
           description: description || undefined,
           companyId,
-          unitId,
+          units: selectedUnitIds.map((unit) => ({
+            unitId: unit,
+            isPrimary: unit === primaryUnitId,
+          })),
           status,
         });
       }
@@ -387,6 +433,7 @@ export default function SectorsPage() {
           {paginatedSectors.map((sector) => {
             const normalizedStatus = (sector.status || 'INACTIVE').toUpperCase();
             const isActive = normalizedStatus === 'ACTIVE';
+            const primaryUnit = getPrimarySectorUnit(sector);
             return (
               <article
                 key={sector.id}
@@ -406,9 +453,9 @@ export default function SectorsPage() {
                     <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
                       {sector.name}
                     </h3>
-                    {(sector.unit?.name || sector.company?.name) && (
+                    {(primaryUnit?.unit?.name || sector.company?.name) && (
                       <span className="text-[11px] text-muted-foreground">
-                        {sector.unit?.name || sector.company?.name}
+                        {primaryUnit?.unit?.name || sector.company?.name}
                       </span>
                     )}
                   </div>
@@ -456,7 +503,7 @@ export default function SectorsPage() {
       <AdminModal
         open={modalOpen}
         title={editing ? 'Editar setor' : 'Novo setor'}
-        description="Setores organizam times dentro de uma unidade." 
+        description="Setores organizam times dentro de uma ou mais unidades." 
         onClose={() => setModalOpen(false)}
         panelClassName="max-w-5xl"
         footer={
@@ -487,7 +534,13 @@ export default function SectorsPage() {
               type="button"
               className="rounded-lg bg-primary px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary-foreground"
               onClick={handleSave}
-              disabled={formLoading || !name.trim() || !companyId || !unitId}
+              disabled={
+                formLoading ||
+                !name.trim() ||
+                !companyId ||
+                selectedUnitIds.length === 0 ||
+                !primaryUnitId
+              }
             >
               {formLoading ? 'Salvando' : 'Salvar'}
             </button>
@@ -527,7 +580,7 @@ export default function SectorsPage() {
               />
             </AdminField>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <AdminField label="Empresa" htmlFor="sector-company">
               <select
                 id="sector-company"
@@ -535,7 +588,8 @@ export default function SectorsPage() {
                 value={companyId}
                 onChange={(event) => {
                   setCompanyId(event.target.value);
-                  setUnitId('');
+                  setSelectedUnitIds([]);
+                  setPrimaryUnitId('');
                 }}
               >
                 <option value="">Selecione</option>
@@ -547,26 +601,79 @@ export default function SectorsPage() {
               </select>
             </AdminField>
           </div>
-          <AdminField
-            label="Unidade"
-            htmlFor="sector-unit"
-            hint={!companyId ? 'Selecione uma empresa primeiro.' : undefined}
-          >
-            <select
-              id="sector-unit"
-              className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-              value={unitId}
-              onChange={(event) => setUnitId(event.target.value)}
-              disabled={!companyId}
+          <div className="md:col-span-3">
+            <AdminField
+              label="Unidades"
+              htmlFor="sector-units"
+              hint={
+                !companyId
+                  ? 'Selecione uma empresa primeiro.'
+                  : 'Escolha uma ou mais unidades e marque a principal.'
+              }
             >
-              <option value="">Selecione</option>
-              {filteredUnits.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.name}
-                </option>
-              ))}
-            </select>
-          </AdminField>
+              <div
+                id="sector-units"
+                className="space-y-2 rounded-lg border border-border/70 bg-card/60 p-3"
+              >
+                {!companyId && (
+                  <p className="text-xs text-muted-foreground">
+                    Selecione uma empresa para listar unidades.
+                  </p>
+                )}
+                {companyId && filteredUnits.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhuma unidade encontrada para esta empresa.
+                  </p>
+                )}
+                {companyId && filteredUnits.length > 0 && (
+                  <div className="space-y-2">
+                    {filteredUnits.map((unit) => {
+                      const isSelected = selectedUnitIds.includes(unit.id);
+                      const isPrimary = primaryUnitId === unit.id;
+                      return (
+                        <div
+                          key={unit.id}
+                          className={`flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 ${
+                            isSelected
+                              ? 'border-foreground/30 bg-white/90'
+                              : 'border-border/70 bg-card/70'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-border/70"
+                            checked={isSelected}
+                            onChange={() => toggleUnitSelection(unit.id)}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground">
+                              {unit.name}
+                            </p>
+                            {isSelected && (
+                              <p className="text-[11px] text-muted-foreground">
+                                {isPrimary ? 'Unidade principal' : 'Selecionada'}
+                              </p>
+                            )}
+                          </div>
+                          <label className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            <input
+                              type="radio"
+                              name="sector-primary-unit"
+                              className="h-4 w-4"
+                              checked={isPrimary}
+                              onChange={() => handlePrimaryUnitChange(unit.id)}
+                              disabled={!isSelected}
+                            />
+                            Principal
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </AdminField>
+          </div>
         </div>
       </AdminModal>
 

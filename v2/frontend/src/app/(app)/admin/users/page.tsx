@@ -17,17 +17,70 @@ type User = {
   status: string;
   createdAt?: string | null;
   companyId?: string | null;
-  unitId?: string | null;
-  sectorId?: string | null;
+  userSectors?: {
+    sectorId: string;
+    isPrimary?: boolean | null;
+    role?: SectorRole | null;
+    sector?: SectorOption | null;
+  }[] | null;
 };
 
 type CompanyOption = { id: string; name: string };
 
 type UnitOption = { id: string; name: string; companyId?: string | null };
 
-type SectorOption = { id: string; name: string; unitId?: string | null };
+type SectorOption = {
+  id: string;
+  name: string;
+  companyId?: string | null;
+  sectorUnits?: {
+    unitId: string;
+    isPrimary?: boolean | null;
+    unit?: UnitOption | null;
+  }[] | null;
+};
+
+type SectorRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+
+type UserSectorSelection = {
+  sectorId: string;
+  role: SectorRole;
+  isPrimary: boolean;
+};
 
 const pageSize = 8;
+
+const getPrimaryUserSector = (user: User) =>
+  user.userSectors?.find((sector) => sector.isPrimary) || user.userSectors?.[0];
+
+const getPrimarySectorUnit = (sector?: SectorOption | null) =>
+  sector?.sectorUnits?.find((unit) => unit.isPrimary) ||
+  sector?.sectorUnits?.[0];
+
+const userMatchesUnit = (user: User, selectedUnitId: string) =>
+  Boolean(
+    user.userSectors?.some((userSector) =>
+      userSector.sector?.sectorUnits?.some(
+        (unit) => unit.unitId === selectedUnitId
+      )
+    )
+  );
+
+const userMatchesSector = (user: User, selectedSectorId: string) =>
+  Boolean(
+    user.userSectors?.some((userSector) => userSector.sectorId === selectedSectorId)
+  );
+
+const sectorMatchesUnit = (sector: SectorOption, selectedUnitId: string) =>
+  Boolean(sector.sectorUnits?.some((unit) => unit.unitId === selectedUnitId));
+
+const sectorRoleOptions: SectorRole[] = ['OWNER', 'ADMIN', 'MEMBER', 'VIEWER'];
+
+const getSectorUnitNames = (sector?: SectorOption | null) =>
+  sector?.sectorUnits
+    ?.map((unit) => unit.unit?.name)
+    .filter((name): name is string => Boolean(name))
+    .join(', ') || '';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -54,8 +107,8 @@ export default function UsersPage() {
   const [role, setRole] = useState('COLLABORATOR');
   const [status, setStatus] = useState('ACTIVE');
   const [companyId, setCompanyId] = useState('');
-  const [unitId, setUnitId] = useState('');
-  const [sectorId, setSectorId] = useState('');
+  const [sectorUnitFilterId, setSectorUnitFilterId] = useState('');
+  const [sectorSelections, setSectorSelections] = useState<UserSectorSelection[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
@@ -133,10 +186,10 @@ export default function UsersPage() {
       if (filterCompanyId && user.companyId !== filterCompanyId) {
         return false;
       }
-      if (filterUnitId && user.unitId !== filterUnitId) {
+      if (filterUnitId && !userMatchesUnit(user, filterUnitId)) {
         return false;
       }
-      if (filterSectorId && user.sectorId !== filterSectorId) {
+      if (filterSectorId && !userMatchesSector(user, filterSectorId)) {
         return false;
       }
       return true;
@@ -175,11 +228,6 @@ export default function UsersPage() {
     return units.filter((unit) => unit.companyId === companyId);
   }, [companyId, units]);
 
-  const filteredSectors = useMemo(() => {
-    if (!unitId) return sectors;
-    return sectors.filter((sector) => sector.unitId === unitId);
-  }, [unitId, sectors]);
-
   const filteredFilterUnits = useMemo(() => {
     if (!filterCompanyId) return units;
     return units.filter((unit) => unit.companyId === filterCompanyId);
@@ -187,8 +235,97 @@ export default function UsersPage() {
 
   const filteredFilterSectors = useMemo(() => {
     if (!filterUnitId) return sectors;
-    return sectors.filter((sector) => sector.unitId === filterUnitId);
+    return sectors.filter((sector) => sectorMatchesUnit(sector, filterUnitId));
   }, [filterUnitId, sectors]);
+
+  const sectorSelectionMap = useMemo(() => {
+    const map = new Map<string, UserSectorSelection>();
+    sectorSelections.forEach((selection) => {
+      map.set(selection.sectorId, selection);
+    });
+    return map;
+  }, [sectorSelections]);
+
+  const availableSectors = useMemo(() => {
+    let scoped = sectors;
+    if (companyId) {
+      scoped = scoped.filter((sector) => sector.companyId === companyId);
+    }
+    if (sectorUnitFilterId) {
+      scoped = scoped.filter((sector) =>
+        sectorMatchesUnit(sector, sectorUnitFilterId),
+      );
+    }
+
+    const selectedIds = new Set(sectorSelections.map((selection) => selection.sectorId));
+    const selectedExtras = sectors.filter(
+      (sector) => selectedIds.has(sector.id) && !scoped.some((item) => item.id === sector.id),
+    );
+
+    return [...selectedExtras, ...scoped];
+  }, [companyId, sectorSelections, sectorUnitFilterId, sectors]);
+
+  const toggleSectorSelection = (sectorId: string) => {
+    setSectorSelections((current) => {
+      const existing = current.find((selection) => selection.sectorId === sectorId);
+      if (existing) {
+        const next = current.filter((selection) => selection.sectorId !== sectorId);
+        if (existing.isPrimary && next.length > 0) {
+          return next.map((selection, index) => ({
+            ...selection,
+            isPrimary: index === 0,
+          }));
+        }
+        return next;
+      }
+
+      const nextSelection: UserSectorSelection = {
+        sectorId,
+        role: 'MEMBER',
+        isPrimary: current.length === 0,
+      };
+      return [...current, nextSelection];
+    });
+  };
+
+  const handlePrimarySectorChange = (sectorId: string) => {
+    setSectorSelections((current) => {
+      const hasSelection = current.some((selection) => selection.sectorId === sectorId);
+      if (!hasSelection) {
+        return [
+          ...current.map((selection) => ({ ...selection, isPrimary: false })),
+          {
+            sectorId,
+            role: 'MEMBER',
+            isPrimary: true,
+          },
+        ];
+      }
+      return current.map((selection) => ({
+        ...selection,
+        isPrimary: selection.sectorId === sectorId,
+      }));
+    });
+  };
+
+  const handleSectorRoleChange = (sectorId: string, role: SectorRole) => {
+    setSectorSelections((current) => {
+      const hasSelection = current.some((selection) => selection.sectorId === sectorId);
+      if (!hasSelection) {
+        return [
+          ...current,
+          {
+            sectorId,
+            role,
+            isPrimary: current.length === 0,
+          },
+        ];
+      }
+      return current.map((selection) =>
+        selection.sectorId === sectorId ? { ...selection, role } : selection,
+      );
+    });
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -198,13 +335,28 @@ export default function UsersPage() {
     setRole('COLLABORATOR');
     setStatus('ACTIVE');
     setCompanyId('');
-    setUnitId('');
-    setSectorId('');
+    setSectorUnitFilterId('');
+    setSectorSelections([]);
     setFormError(null);
     setModalOpen(true);
   };
 
   const openEdit = (user: User) => {
+    const primaryUserSector = getPrimaryUserSector(user);
+    const primarySectorUnit = getPrimarySectorUnit(primaryUserSector?.sector);
+    const selections =
+      user.userSectors?.map((sector) => ({
+        sectorId: sector.sectorId,
+        role: sector.role || 'MEMBER',
+        isPrimary: Boolean(sector.isPrimary),
+      })) || [];
+    const hasPrimary = selections.some((selection) => selection.isPrimary);
+    const normalizedSelections = hasPrimary
+      ? selections
+      : selections.map((selection, index) => ({
+          ...selection,
+          isPrimary: index === 0,
+        }));
     setEditing(user);
     setName(user.name);
     setUsername(user.email);
@@ -212,8 +364,8 @@ export default function UsersPage() {
     setRole(user.role);
     setStatus(user.status);
     setCompanyId(user.companyId || '');
-    setUnitId(user.unitId || '');
-    setSectorId(user.sectorId || '');
+    setSectorUnitFilterId(primarySectorUnit?.unitId || '');
+    setSectorSelections(normalizedSelections);
     setFormError(null);
     setModalOpen(true);
   };
@@ -228,8 +380,11 @@ export default function UsersPage() {
         role,
         status,
         companyId: companyId || undefined,
-        unitId: unitId || undefined,
-        sectorId: sectorId || undefined,
+        sectors: sectorSelections.map((selection) => ({
+          sectorId: selection.sectorId,
+          isPrimary: selection.isPrimary,
+          role: selection.role,
+        })),
       };
 
       if (!editing || password.trim()) {
@@ -632,8 +787,8 @@ export default function UsersPage() {
                   value={companyId}
                   onChange={(event) => {
                     setCompanyId(event.target.value);
-                    setUnitId('');
-                    setSectorId('');
+                    setSectorUnitFilterId('');
+                    setSectorSelections([]);
                   }}
                 >
                   <option value="">Sem vinculo</option>
@@ -645,21 +800,22 @@ export default function UsersPage() {
                 </select>
               </AdminField>
               <AdminField
-                label="Unidade"
-                htmlFor="user-unit"
-                hint={!companyId ? 'Selecione uma empresa primeiro.' : 'Opcional'}
+                label="Unidade (filtro)"
+                htmlFor="user-unit-filter"
+                hint={
+                  !companyId
+                    ? 'Selecione uma empresa primeiro.'
+                    : 'Opcional. Filtra a lista de setores.'
+                }
               >
                 <select
-                  id="user-unit"
+                  id="user-unit-filter"
                   className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-                  value={unitId}
-                  onChange={(event) => {
-                    setUnitId(event.target.value);
-                    setSectorId('');
-                  }}
+                  value={sectorUnitFilterId}
+                  onChange={(event) => setSectorUnitFilterId(event.target.value)}
                   disabled={!companyId}
                 >
-                  <option value="">Sem vinculo</option>
+                  <option value="">Todas</option>
                   {filteredUnits.map((unit) => (
                     <option key={unit.id} value={unit.id}>
                       {unit.name}
@@ -668,24 +824,90 @@ export default function UsersPage() {
                 </select>
               </AdminField>
               <AdminField
-                label="Setor"
-                htmlFor="user-sector"
-                hint={!unitId ? 'Selecione uma unidade primeiro.' : 'Opcional'}
+                label="Setores"
+                htmlFor="user-sectors"
+                hint="Selecione setores, defina o principal e o papel."
               >
-                <select
-                  id="user-sector"
-                  className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-                  value={sectorId}
-                  onChange={(event) => setSectorId(event.target.value)}
-                  disabled={!unitId}
+                <div
+                  id="user-sectors"
+                  className="space-y-2 rounded-lg border border-border/70 bg-card/60 p-3"
                 >
-                  <option value="">Sem vinculo</option>
-                  {filteredSectors.map((sector) => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
+                  {!companyId && (
+                    <p className="text-xs text-muted-foreground">
+                      Selecione uma empresa para listar setores.
+                    </p>
+                  )}
+                  {companyId && availableSectors.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhum setor disponivel para esta empresa.
+                    </p>
+                  )}
+                  {companyId && availableSectors.length > 0 && (
+                    <div className="space-y-2">
+                      {availableSectors.map((sector) => {
+                        const selection = sectorSelectionMap.get(sector.id);
+                        const isSelected = Boolean(selection);
+                        const unitNames = getSectorUnitNames(sector);
+                        return (
+                          <div
+                            key={sector.id}
+                            className={`flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 ${
+                              isSelected
+                                ? 'border-foreground/30 bg-white/90'
+                                : 'border-border/70 bg-card/70'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-border/70"
+                              checked={isSelected}
+                              onChange={() => toggleSectorSelection(sector.id)}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-foreground">
+                                {sector.name}
+                              </p>
+                              {unitNames && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  {unitNames}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                                <input
+                                  type="radio"
+                                  name="user-primary-sector"
+                                  className="h-4 w-4"
+                                  checked={selection?.isPrimary ?? false}
+                                  onChange={() => handlePrimarySectorChange(sector.id)}
+                                />
+                                Principal
+                              </label>
+                              <select
+                                className="rounded-md border border-border/70 bg-white/80 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground disabled:opacity-70"
+                                value={selection?.role ?? 'MEMBER'}
+                                onChange={(event) =>
+                                  handleSectorRoleChange(
+                                    sector.id,
+                                    event.target.value as SectorRole,
+                                  )
+                                }
+                                disabled={!isSelected}
+                              >
+                                {sectorRoleOptions.map((roleOption) => (
+                                  <option key={roleOption} value={roleOption}>
+                                    {roleOption}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </AdminField>
             </div>
           </div>
