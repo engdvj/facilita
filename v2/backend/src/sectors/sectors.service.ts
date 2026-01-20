@@ -10,14 +10,28 @@ export class SectorsService {
   findAll() {
     return this.prisma.sector.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { company: true, unit: true },
+      include: {
+        company: true,
+        sectorUnits: {
+          include: {
+            unit: true,
+          },
+        },
+      },
     });
   }
 
   async findById(id: string) {
     const sector = await this.prisma.sector.findUnique({
       where: { id },
-      include: { company: true, unit: true },
+      include: {
+        company: true,
+        sectorUnits: {
+          include: {
+            unit: true,
+          },
+        },
+      },
     });
     if (!sector) {
       throw new NotFoundException('Sector not found');
@@ -29,27 +43,66 @@ export class SectorsService {
     return this.prisma.sector.create({
       data: {
         companyId: data.companyId,
-        unitId: data.unitId,
         name: data.name,
         description: data.description,
         status: data.status,
+        sectorUnits: {
+          create: data.units.map((unit) => ({
+            unitId: unit.unitId,
+            isPrimary: unit.isPrimary ?? false,
+          })),
+        },
       },
-      include: { company: true, unit: true },
+      include: {
+        company: true,
+        sectorUnits: {
+          include: {
+            unit: true,
+          },
+        },
+      },
     });
   }
 
   async update(id: string, data: UpdateSectorDto) {
     await this.findById(id);
+
+    const updateData: any = {
+      name: data.name,
+      description: data.description,
+      status: data.status,
+      companyId: data.companyId,
+    };
+
+    // Se units foi fornecido, atualiza os relacionamentos
+    if (data.units) {
+      updateData.sectorUnits = {
+        deleteMany: {}, // Remove todos os relacionamentos antigos
+        create: data.units.map((unit) => ({
+          unitId: unit.unitId,
+          isPrimary: unit.isPrimary ?? false,
+        })),
+      };
+    }
+
     return this.prisma.sector.update({
       where: { id },
-      data,
-      include: { company: true, unit: true },
+      data: updateData,
+      include: {
+        company: true,
+        sectorUnits: {
+          include: {
+            unit: true,
+          },
+        },
+      },
     });
   }
 
   async getDependencies(id: string) {
-    const [users, links, schedules, notes] = await Promise.all([
-      this.prisma.user.count({ where: { sectorId: id } }),
+    const [users, units, links, schedules, notes] = await Promise.all([
+      this.prisma.userSector.count({ where: { sectorId: id } }),
+      this.prisma.sectorUnit.count({ where: { sectorId: id } }),
       this.prisma.link.count({ where: { sectorId: id } }),
       this.prisma.uploadedSchedule.count({ where: { sectorId: id } }),
       this.prisma.note.count({ where: { sectorId: id } }),
@@ -57,21 +110,19 @@ export class SectorsService {
 
     return {
       users,
+      units,
       links,
       schedules,
       notes,
-      hasAny: users > 0 || links > 0 || schedules > 0 || notes > 0,
+      hasAny: users > 0 || units > 0 || links > 0 || schedules > 0 || notes > 0,
     };
   }
 
   async remove(id: string) {
     await this.findById(id);
     return this.prisma.$transaction(async (tx) => {
-      // Desassocia usuários do setor
-      await tx.user.updateMany({
-        data: { sectorId: null },
-        where: { sectorId: id },
-      });
+      // Remove relacionamentos com unidades (cascade já configurado no schema)
+      // Remove relacionamentos com usuários (cascade já configurado no schema)
 
       // Desassocia conteúdos do setor
       await tx.link.updateMany({
@@ -87,10 +138,17 @@ export class SectorsService {
         where: { sectorId: id },
       });
 
-      // Finalmente remove o setor
+      // Remove o setor (relacionamentos UserSector e SectorUnit serão removidos por cascade)
       return tx.sector.delete({
         where: { id },
-        include: { company: true, unit: true },
+        include: {
+          company: true,
+          sectorUnits: {
+            include: {
+              unit: true,
+            },
+          },
+        },
       });
     });
   }

@@ -113,7 +113,12 @@ export class NotificationsService {
 
       case ContentAudience.SECTOR:
         if (sectorId) {
-          where.sectorId = sectorId;
+          // Busca usuários que pertencem a este setor através da tabela UserSector
+          where.userSectors = {
+            some: {
+              sectorId: sectorId,
+            },
+          };
         } else {
           where.companyId = companyId;
         }

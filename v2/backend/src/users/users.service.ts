@@ -12,12 +12,23 @@ const userSelect = {
   role: true,
   status: true,
   companyId: true,
-  unitId: true,
-  sectorId: true,
   avatarUrl: true,
   theme: true,
   createdAt: true,
   updatedAt: true,
+  userSectors: {
+    include: {
+      sector: {
+        include: {
+          sectorUnits: {
+            include: {
+              unit: true,
+            },
+          },
+        },
+      },
+    },
+  },
 };
 
 @Injectable()
@@ -77,10 +88,17 @@ export class UsersService {
         role: data.role,
         status: data.status,
         companyId: data.companyId,
-        unitId: data.unitId,
-        sectorId: data.sectorId,
         avatarUrl: data.avatarUrl,
         theme,
+        userSectors: data.sectors
+          ? {
+              create: data.sectors.map((sector) => ({
+                sectorId: sector.sectorId,
+                isPrimary: sector.isPrimary ?? false,
+                role: sector.role ?? 'MEMBER',
+              })),
+            }
+          : undefined,
       },
       select: userSelect,
     });
@@ -95,8 +113,6 @@ export class UsersService {
       role: data.role,
       status: data.status,
       companyId: data.companyId,
-      unitId: data.unitId,
-      sectorId: data.sectorId,
       avatarUrl: data.avatarUrl,
       theme: data.theme
         ? (data.theme as Prisma.InputJsonValue)
@@ -105,6 +121,18 @@ export class UsersService {
 
     if (data.password) {
       updateData.passwordHash = await bcrypt.hash(data.password, 12);
+    }
+
+    // Se sectors foi fornecido, atualiza os relacionamentos
+    if (data.sectors) {
+      updateData.userSectors = {
+        deleteMany: {}, // Remove todos os relacionamentos antigos
+        create: data.sectors.map((sector) => ({
+          sectorId: sector.sectorId,
+          isPrimary: sector.isPrimary ?? false,
+          role: sector.role ?? 'MEMBER',
+        })),
+      };
     }
 
     return this.prisma.user.update({
@@ -116,6 +144,7 @@ export class UsersService {
 
   async getDependencies(id: string) {
     const [
+      sectors,
       links,
       schedules,
       notes,
@@ -126,6 +155,7 @@ export class UsersService {
       activityLogs,
       auditLogs,
     ] = await Promise.all([
+      this.prisma.userSector.count({ where: { userId: id } }),
       this.prisma.link.count({ where: { userId: id } }),
       this.prisma.uploadedSchedule.count({ where: { userId: id } }),
       this.prisma.note.count({ where: { userId: id } }),
@@ -138,6 +168,7 @@ export class UsersService {
     ]);
 
     return {
+      sectors,
       links,
       schedules,
       notes,
@@ -148,6 +179,7 @@ export class UsersService {
       activityLogs,
       auditLogs,
       hasAny:
+        sectors > 0 ||
         links > 0 ||
         schedules > 0 ||
         notes > 0 ||
@@ -163,6 +195,8 @@ export class UsersService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.$transaction(async (tx) => {
+      // Remove relacionamentos com setores (cascade já configurado no schema)
+
       // Desassocia conteúdos criados pelo usuário
       await tx.link.updateMany({
         data: { userId: null },
@@ -191,6 +225,7 @@ export class UsersService {
       await tx.favorite.deleteMany({ where: { userId: id } });
       await tx.linkVersion.deleteMany({ where: { changedBy: id } });
 
+      // Remove o usuário (relacionamentos UserSector serão removidos por cascade)
       return tx.user.delete({ where: { id }, select: userSelect });
     });
   }

@@ -1,12 +1,29 @@
 import {
+  IsArray,
+  IsBoolean,
   IsEnum,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus, SectorRole } from '@prisma/client';
+import { Type } from 'class-transformer';
+
+export class UserSectorDto {
+  @IsUUID()
+  sectorId!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
+
+  @IsOptional()
+  @IsEnum(SectorRole)
+  role?: SectorRole;
+}
 
 export class CreateUserDto {
   @IsString()
@@ -34,12 +51,10 @@ export class CreateUserDto {
   companyId?: string;
 
   @IsOptional()
-  @IsUUID()
-  unitId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  sectorId?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UserSectorDto)
+  sectors?: UserSectorDto[]; // Array de setores do usuário
 
   @IsOptional()
   @IsString()

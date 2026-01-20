@@ -84,6 +84,7 @@ export class LinksService {
     companyId?: string,
     filters?: {
       sectorId?: string;
+      sectorIds?: string[]; // Novo: permite filtrar por múltiplos setores
       categoryId?: string;
       isPublic?: boolean;
       audience?: ContentAudience;
@@ -91,10 +92,18 @@ export class LinksService {
     },
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+
+    // Se sectorIds foi fornecido, filtra por múltiplos setores
+    const sectorFilter = filters?.sectorIds
+      ? { sectorId: { in: filters.sectorIds } }
+      : filters?.sectorId
+      ? { sectorId: filters.sectorId }
+      : {};
+
     const where = {
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
-      ...(filters?.sectorId && { sectorId: filters.sectorId }),
+      ...sectorFilter,
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
       ...(!shouldFilterPublic &&
         filters?.audience && { audience: filters.audience }),
@@ -131,6 +140,32 @@ export class LinksService {
 
     console.log('LinksService.findAll - links encontrados:', links.length);
     return links;
+  }
+
+  // Método helper para buscar links de todos os setores de um usuário
+  async findAllByUser(userId: string, companyId?: string) {
+    // Busca todos os setores do usuário
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userSectors: {
+          select: {
+            sectorId: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    const sectorIds = user.userSectors.map((us) => us.sectorId);
+
+    // Busca links dos setores do usuário + links públicos/company
+    return this.findAll(companyId, {
+      sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
+    });
   }
 
   async findOne(id: string) {
