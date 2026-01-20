@@ -9,7 +9,7 @@ import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
-import { Category, Company, ContentAudience, Sector, UploadedSchedule } from '@/types';
+import { Category, Company, ContentAudience, Sector, Unit, UploadedSchedule } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 const pageSize = 8;
@@ -18,6 +18,7 @@ const emptyFormData = {
   title: '',
   categoryId: '',
   sectorId: '',
+  unitId: '',
   fileUrl: '',
   fileName: '',
   fileSize: 0,
@@ -34,12 +35,14 @@ export default function SchedulesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [filterSectorId, setFilterSectorId] = useState('');
+  const [filterUnitId, setFilterUnitId] = useState('');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UploadedSchedule | null>(null);
@@ -87,6 +90,13 @@ export default function SchedulesPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
+  const matchesUnit = (unitId?: string | null) => {
+    if (!unitId) return true;
+    if (!user) return false;
+    if (isAdmin || isSuperAdmin) return true;
+    return Boolean(user.unitId && user.unitId === unitId);
+  };
+
   const scopedSectors = useMemo(() => {
     if (!resolvedCompanyId) return sectors;
     return sectors.filter((sector) => sector.companyId === resolvedCompanyId);
@@ -116,6 +126,25 @@ export default function SchedulesPage() {
     );
   }, [formCompanyId, formResolvedCompanyId, isSuperAdmin, scopedSectors]);
 
+  const formUnits = useMemo(() => {
+    let scoped = units;
+    if (formResolvedCompanyId) {
+      scoped = scoped.filter((unit) => unit.companyId === formResolvedCompanyId);
+    }
+    if (!formData.sectorId) {
+      return scoped;
+    }
+    const sector = formSectors.find((item) => item.id === formData.sectorId);
+    if (!sector) return [];
+    const unitIds = new Set(sector.sectorUnits?.map((unit) => unit.unitId));
+    return scoped.filter((unit) => unitIds.has(unit.id));
+  }, [formData.sectorId, formResolvedCompanyId, formSectors, units]);
+
+  const filterUnits = useMemo(() => {
+    if (!resolvedCompanyId) return units;
+    return units.filter((unit) => unit.companyId === resolvedCompanyId);
+  }, [resolvedCompanyId, units]);
+
   const audienceOptions = useMemo(() => {
     if (isAdmin) {
       return [
@@ -135,7 +164,7 @@ export default function SchedulesPage() {
 
   const loadData = async () => {
     if (!resolvedCompanyId && !isSuperAdmin) return;
-    const [schedulesRes, catsRes, sectorsRes] = await Promise.all([
+    const [schedulesRes, catsRes, sectorsRes, unitsRes] = await Promise.all([
       resolvedCompanyId
         ? api.get(`/schedules/admin/list?companyId=${resolvedCompanyId}`)
         : api.get('/schedules/admin/list'),
@@ -149,10 +178,12 @@ export default function SchedulesPage() {
         : isSuperAdmin
           ? api.get('/sectors')
           : Promise.resolve({ data: [] }),
+      api.get('/units'),
     ]);
     setSchedules(schedulesRes.data);
     setCategories(catsRes.data);
     setSectors(sectorsRes.data);
+    setUnits(unitsRes.data);
   };
 
   const loadCompanies = async () => {
@@ -212,7 +243,11 @@ export default function SchedulesPage() {
       if (isSuperAdmin) return true;
       if (audience === 'SUPERADMIN') return false;
       if (audience === 'ADMIN') return isAdmin;
-      if (audience === 'SECTOR') return true;
+      if (audience === 'SECTOR') {
+        if (isAdmin) return true;
+        if (!matchesUnit(schedule.unitId)) return false;
+        return Boolean(user.sectorId) && schedule.sectorId === user.sectorId;
+      }
       if (audience === 'COMPANY') return isAdmin;
       return false;
     };
@@ -243,11 +278,15 @@ export default function SchedulesPage() {
       if (filterSectorId && schedule.sectorId !== filterSectorId) {
         return false;
       }
+      if (filterUnitId && schedule.unitId && schedule.unitId !== filterUnitId) {
+        return false;
+      }
       return true;
     });
   }, [
     filterCategoryId,
     filterSectorId,
+    filterUnitId,
     filterStatus,
     search,
     visibleSchedules,
@@ -256,7 +295,8 @@ export default function SchedulesPage() {
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId));
+    Number(Boolean(filterSectorId)) +
+    Number(Boolean(filterUnitId));
 
   const totalPages = Math.max(1, Math.ceil(filteredSchedules.length / pageSize));
   const paginatedSchedules = filteredSchedules.slice(
@@ -276,6 +316,7 @@ export default function SchedulesPage() {
       ...emptyFormData,
       audience: 'COMPANY',
       sectorId: '',
+      unitId: '',
     });
     setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
@@ -289,6 +330,7 @@ export default function SchedulesPage() {
       title: schedule.title,
       categoryId: schedule.categoryId || '',
       sectorId: schedule.sectorId || '',
+      unitId: schedule.unitId || '',
       fileUrl: schedule.fileUrl,
       fileName: schedule.fileName,
       fileSize: schedule.fileSize,
@@ -394,6 +436,7 @@ export default function SchedulesPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
+        unitId: normalizedAudience === 'SECTOR' ? formData.unitId || null : null,
         fileUrl: formData.fileUrl,
         fileName: formData.fileName,
         fileSize: formData.fileSize,
@@ -485,6 +528,7 @@ export default function SchedulesPage() {
     setFilterStatus('ALL');
     setFilterCategoryId('');
     setFilterSectorId('');
+    setFilterUnitId('');
     setPage(1);
   };
 
@@ -497,6 +541,7 @@ export default function SchedulesPage() {
       ...prev,
       audience: value,
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
+      unitId: value === 'SECTOR' ? prev.unitId : '',
     }));
   };
 
@@ -509,6 +554,7 @@ export default function SchedulesPage() {
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
   const shouldShowSectorField = formData.audience === 'SECTOR';
+  const shouldShowUnitField = shouldShowSectorField;
 
   return (
     <div className="space-y-6">
@@ -583,6 +629,26 @@ export default function SchedulesPage() {
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Unidade
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterUnitId}
+                  onChange={(event) => {
+                    setFilterUnitId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todas</option>
+                  {filterUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
                     </option>
                   ))}
                 </select>
@@ -939,6 +1005,7 @@ export default function SchedulesPage() {
                       setFormData((prev) => ({
                         ...prev,
                         sectorId: event.target.value,
+                        unitId: '',
                       }))
                     }
                     disabled={isSuperAdmin && !formCompanyId}
@@ -951,6 +1018,35 @@ export default function SchedulesPage() {
                     ))}
                   </select>
                 </AdminField>
+              )}
+              {shouldShowUnitField && (
+                <div className="md:col-span-2">
+                  <AdminField
+                    label="Unidade"
+                    htmlFor="schedule-unit"
+                    hint={!formData.sectorId ? 'Selecione um setor primeiro.' : undefined}
+                  >
+                    <select
+                      id="schedule-unit"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                      value={formData.unitId}
+                      onChange={(event) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          unitId: event.target.value,
+                        }))
+                      }
+                      disabled={!formData.sectorId}
+                    >
+                      <option value="">Todas as unidades</option>
+                      {formUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </option>
+                      ))}
+                    </select>
+                  </AdminField>
+                </div>
               )}
             </div>
           </div>

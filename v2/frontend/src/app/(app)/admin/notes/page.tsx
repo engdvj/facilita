@@ -8,7 +8,7 @@ import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
-import { Category, Company, ContentAudience, Note, Sector } from '@/types';
+import { Category, Company, ContentAudience, Note, Sector, Unit } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 const pageSize = 8;
@@ -18,6 +18,7 @@ const emptyFormData = {
   content: '',
   categoryId: '',
   sectorId: '',
+  unitId: '',
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
@@ -31,12 +32,14 @@ export default function NotesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [filterSectorId, setFilterSectorId] = useState('');
+  const [filterUnitId, setFilterUnitId] = useState('');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Note | null>(null);
@@ -105,6 +108,25 @@ export default function NotesPage() {
     visibleSectors,
   ]);
 
+  const formUnits = useMemo(() => {
+    let scoped = units;
+    if (formResolvedCompanyId) {
+      scoped = scoped.filter((unit) => unit.companyId === formResolvedCompanyId);
+    }
+    if (!formData.sectorId) {
+      return scoped;
+    }
+    const sector = formSectors.find((item) => item.id === formData.sectorId);
+    if (!sector) return [];
+    const unitIds = new Set(sector.sectorUnits?.map((unit) => unit.unitId));
+    return scoped.filter((unit) => unitIds.has(unit.id));
+  }, [formData.sectorId, formResolvedCompanyId, formSectors, units]);
+
+  const filterUnits = useMemo(() => {
+    if (!resolvedCompanyId) return units;
+    return units.filter((unit) => unit.companyId === resolvedCompanyId);
+  }, [resolvedCompanyId, units]);
+
   const getAudience = (note: Note): ContentAudience => {
     if (note.isPublic) return 'PUBLIC';
     if (note.audience) return note.audience;
@@ -132,6 +154,13 @@ export default function NotesPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
+  const matchesUnit = (unitId?: string | null) => {
+    if (!unitId) return true;
+    if (!user) return false;
+    if (isAdmin || isSuperAdmin) return true;
+    return Boolean(user.unitId && user.unitId === unitId);
+  };
+
   const canViewNote = (note: Note) => {
     const audience = getAudience(note);
     if (audience === 'PUBLIC') return true;
@@ -141,7 +170,9 @@ export default function NotesPage() {
     if (audience === 'ADMIN') return isAdmin;
     if (audience === 'PRIVATE') return note.userId === user.id;
     if (audience === 'SECTOR') {
-      return isAdmin ? true : note.sectorId === user.sectorId;
+      if (isAdmin) return true;
+      if (!matchesUnit(note.unitId)) return false;
+      return note.sectorId === user.sectorId;
     }
     if (audience === 'COMPANY') {
       return isAdmin;
@@ -172,7 +203,7 @@ export default function NotesPage() {
     if (!resolvedCompanyId && !isSuperAdmin) return;
     const notesPath = isAdmin || isSuperAdmin ? '/notes/admin/list' : '/notes';
     const notesQuery = resolvedCompanyId ? `?companyId=${resolvedCompanyId}` : '';
-    const [notesRes, catsRes, sectorsRes] = await Promise.all([
+    const [notesRes, catsRes, sectorsRes, unitsRes] = await Promise.all([
       api.get(`${notesPath}${notesQuery}`),
       resolvedCompanyId
         ? api.get(`/categories?companyId=${resolvedCompanyId}`)
@@ -186,10 +217,12 @@ export default function NotesPage() {
             ? api.get('/sectors')
             : Promise.resolve({ data: [] })
         : Promise.resolve({ data: [] }),
+      api.get('/units'),
     ]);
     setNotes(notesRes.data);
     setCategories(catsRes.data);
     setSectors(sectorsRes.data);
+    setUnits(unitsRes.data);
   };
 
   const loadCompanies = async () => {
@@ -251,7 +284,9 @@ export default function NotesPage() {
       if (audience === 'ADMIN') return isAdmin;
       if (audience === 'PRIVATE') return note.userId === user.id;
       if (audience === 'SECTOR') {
-        return isAdmin ? true : note.sectorId === user.sectorId;
+        if (isAdmin) return true;
+        if (!matchesUnit(note.unitId)) return false;
+        return note.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {
         return isAdmin;
@@ -289,11 +324,15 @@ export default function NotesPage() {
       if (filterSectorId && note.sectorId !== filterSectorId) {
         return false;
       }
+      if (filterUnitId && note.unitId && note.unitId !== filterUnitId) {
+        return false;
+      }
       return true;
     });
   }, [
     filterCategoryId,
     filterSectorId,
+    filterUnitId,
     filterStatus,
     search,
     visibleNotes,
@@ -302,7 +341,8 @@ export default function NotesPage() {
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId));
+    Number(Boolean(filterSectorId)) +
+    Number(Boolean(filterUnitId));
 
   const totalPages = Math.max(1, Math.ceil(filteredNotes.length / pageSize));
   const paginatedNotes = filteredNotes.slice(
@@ -321,6 +361,7 @@ export default function NotesPage() {
       ...emptyFormData,
       audience: isCollaborator ? 'PRIVATE' : 'COMPANY',
       sectorId: '',
+      unitId: '',
     });
     setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
@@ -335,6 +376,7 @@ export default function NotesPage() {
       content: note.content,
       categoryId: note.categoryId || '',
       sectorId: note.sectorId || '',
+      unitId: note.unitId || '',
       imageUrl: note.imageUrl || '',
       imagePosition: normalizeImagePosition(note.imagePosition),
       imageScale: note.imageScale || 1,
@@ -408,6 +450,7 @@ export default function NotesPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
+        unitId: normalizedAudience === 'SECTOR' ? formData.unitId || null : null,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -497,6 +540,7 @@ export default function NotesPage() {
     setFilterStatus('ALL');
     setFilterCategoryId('');
     setFilterSectorId('');
+    setFilterUnitId('');
     setPage(1);
   };
 
@@ -505,6 +549,7 @@ export default function NotesPage() {
       ...prev,
       audience: value,
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
+      unitId: value === 'SECTOR' ? prev.unitId : '',
     }));
   };
 
@@ -517,6 +562,7 @@ export default function NotesPage() {
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
   const shouldShowSectorField = formData.audience === 'SECTOR';
+  const shouldShowUnitField = shouldShowSectorField;
 
   const pageTitle = isCollaborator ? 'Minhas notas' : 'Notas';
   const pageDescription = isCollaborator
@@ -596,6 +642,26 @@ export default function NotesPage() {
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Unidade
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterUnitId}
+                  onChange={(event) => {
+                    setFilterUnitId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todas</option>
+                  {filterUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
                     </option>
                   ))}
                 </select>
@@ -943,6 +1009,7 @@ export default function NotesPage() {
                       setFormData((prev) => ({
                         ...prev,
                         sectorId: event.target.value,
+                        unitId: '',
                       }))
                     }
                     disabled={(isSuperAdmin && !formCompanyId) || isCollaborator}
@@ -955,6 +1022,35 @@ export default function NotesPage() {
                     ))}
                   </select>
                 </AdminField>
+              )}
+              {shouldShowUnitField && (
+                <div className="md:col-span-2">
+                  <AdminField
+                    label="Unidade"
+                    htmlFor="note-unit"
+                    hint={!formData.sectorId ? 'Selecione um setor primeiro.' : undefined}
+                  >
+                    <select
+                      id="note-unit"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                      value={formData.unitId}
+                      onChange={(event) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          unitId: event.target.value,
+                        }))
+                      }
+                      disabled={!formData.sectorId}
+                    >
+                      <option value="">Todas as unidades</option>
+                      {formUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </option>
+                      ))}
+                    </select>
+                  </AdminField>
+                </div>
               )}
             </div>
           </div>

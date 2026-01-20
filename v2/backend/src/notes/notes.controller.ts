@@ -70,7 +70,7 @@ export class NotesController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
-  create(@Body() createNoteDto: CreateNoteDto, @Request() req: any) {
+  async create(@Body() createNoteDto: CreateNoteDto, @Request() req: any) {
     const user = req.user;
     const isSuperAdmin = user?.role === UserRole.SUPERADMIN;
     const companyId = isSuperAdmin ? createNoteDto.companyId : user?.companyId;
@@ -91,7 +91,7 @@ export class NotesController {
     if (
       user?.role === UserRole.COLLABORATOR &&
       createNoteDto.sectorId &&
-      createNoteDto.sectorId !== user?.sectorId
+      !(await this.notesService.userHasSector(user.id, createNoteDto.sectorId))
     ) {
       throw new ForbiddenException('Setor nao autorizado.');
     }
@@ -107,6 +107,10 @@ export class NotesController {
         audience === ContentAudience.SECTOR
           ? createNoteDto.sectorId || undefined
           : undefined,
+      unitId:
+        audience === ContentAudience.SECTOR
+          ? createNoteDto.unitId ?? undefined
+          : undefined,
       userId: req.user.id,
       audience,
       isPublic: audience === ContentAudience.PUBLIC,
@@ -117,6 +121,7 @@ export class NotesController {
   async findAll(
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -125,6 +130,7 @@ export class NotesController {
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
+      unitId,
       categoryId,
       audience: parsedAudience || (isPublic === 'true' ? ContentAudience.PUBLIC : undefined),
       isPublic: isPublic === 'true' ? true : isPublic === 'false' ? false : undefined,
@@ -139,6 +145,7 @@ export class NotesController {
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -155,6 +162,7 @@ export class NotesController {
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
+      unitId,
       categoryId,
       audience: parsedAudience,
       isPublic: isPublic ? isPublic === 'true' : undefined,
@@ -171,6 +179,7 @@ export class NotesController {
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -179,6 +188,7 @@ export class NotesController {
       req,
       companyId,
       sectorId,
+      unitId,
       categoryId,
       isPublic,
       audience,

@@ -128,6 +128,13 @@ function HomeContent() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
+  const matchesUnit = (unitId?: string | null) => {
+    if (!unitId) return true;
+    if (!user) return false;
+    if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return true;
+    return Boolean(user.unitId && user.unitId === unitId);
+  };
+
   useEffect(() => {
     let active = true;
     const isLoggedIn = Boolean(user);
@@ -270,6 +277,7 @@ function HomeContent() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
+        if (!matchesUnit(link.unitId)) return false;
         return Boolean(user.sectorId) && link.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {
@@ -298,6 +306,7 @@ function HomeContent() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
+        if (!matchesUnit(document.unitId)) return false;
         return Boolean(user.sectorId) && document.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {
@@ -326,6 +335,7 @@ function HomeContent() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
+        if (!matchesUnit(note.unitId)) return false;
         return Boolean(user.sectorId) && note.sectorId === user.sectorId;
       }
       if (audience === 'COMPANY') {

@@ -69,7 +69,7 @@ export class LinksController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
-  create(@Body() createLinkDto: CreateLinkDto, @Request() req: any) {
+  async create(@Body() createLinkDto: CreateLinkDto, @Request() req: any) {
     const user = req.user;
     const isSuperAdmin = user?.role === UserRole.SUPERADMIN;
     const companyId = isSuperAdmin ? createLinkDto.companyId : user?.companyId;
@@ -98,7 +98,7 @@ export class LinksController {
     if (
       user?.role === UserRole.COLLABORATOR &&
       createLinkDto.sectorId &&
-      createLinkDto.sectorId !== user?.sectorId
+      !(await this.linksService.userHasSector(user.id, createLinkDto.sectorId))
     ) {
       throw new ForbiddenException('Setor nao autorizado.');
     }
@@ -114,6 +114,10 @@ export class LinksController {
         audience === ContentAudience.SECTOR
           ? createLinkDto.sectorId || undefined
           : undefined,
+      unitId:
+        audience === ContentAudience.SECTOR
+          ? createLinkDto.unitId ?? undefined
+          : undefined,
       userId: req.user.id,
       audience,
       isPublic: audience === ContentAudience.PUBLIC,
@@ -124,6 +128,7 @@ export class LinksController {
   async findAll(
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -132,6 +137,7 @@ export class LinksController {
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
+      unitId,
       categoryId,
       audience:
         parsedAudience ||
@@ -170,6 +176,7 @@ export class LinksController {
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -185,6 +192,7 @@ export class LinksController {
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
+      unitId,
       categoryId,
       audience: parsedAudience,
       isPublic: isPublic ? isPublic === 'true' : undefined,
@@ -203,6 +211,7 @@ export class LinksController {
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -211,6 +220,7 @@ export class LinksController {
       req,
       companyId,
       sectorId,
+      unitId,
       categoryId,
       isPublic,
       audience,

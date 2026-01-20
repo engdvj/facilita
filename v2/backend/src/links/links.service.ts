@@ -23,6 +23,8 @@ export class LinksService {
   async create(createLinkDto: CreateLinkDto) {
     console.log('[LinksService.create] Criando link com dados:', createLinkDto);
 
+    await this.assertUnitAllowed(createLinkDto.sectorId, createLinkDto.unitId ?? undefined);
+
     const link = await this.prisma.link.create({
       data: createLinkDto,
       include: {
@@ -85,6 +87,8 @@ export class LinksService {
     filters?: {
       sectorId?: string;
       sectorIds?: string[]; // Novo: permite filtrar por múltiplos setores
+      unitId?: string;
+      unitIds?: string[];
       categoryId?: string;
       isPublic?: boolean;
       audience?: ContentAudience;
@@ -100,6 +104,36 @@ export class LinksService {
       ? { sectorId: filters.sectorId }
       : {};
 
+    const unitFilter =
+      filters?.unitId !== undefined
+        ? {
+            OR: [
+              { unitId: null },
+              { unitId: filters.unitId },
+            ],
+          }
+        : filters?.unitIds !== undefined
+          ? {
+              OR: [
+                { unitId: null },
+                { unitId: { in: filters.unitIds } },
+              ],
+            }
+          : undefined;
+
+    const andFilters = [];
+    if (unitFilter) {
+      andFilters.push(unitFilter);
+    }
+    if (shouldFilterPublic) {
+      andFilters.push({
+        OR: [
+          { audience: ContentAudience.PUBLIC },
+          { isPublic: true },
+        ],
+      });
+    }
+
     const where = {
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
@@ -109,12 +143,7 @@ export class LinksService {
         filters?.audience && { audience: filters.audience }),
       ...(filters?.isPublic !== undefined &&
         !shouldFilterPublic && { isPublic: filters.isPublic }),
-      ...(shouldFilterPublic && {
-        OR: [
-          { audience: ContentAudience.PUBLIC },
-          { isPublic: true },
-        ],
-      }),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     console.log('LinksService.findAll - where clause:', JSON.stringify(where, null, 2));
@@ -151,6 +180,15 @@ export class LinksService {
         userSectors: {
           select: {
             sectorId: true,
+            sector: {
+              select: {
+                sectorUnits: {
+                  select: {
+                    unitId: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -161,11 +199,30 @@ export class LinksService {
     }
 
     const sectorIds = user.userSectors.map((us) => us.sectorId);
+    const unitIds = Array.from(
+      new Set(
+        user.userSectors.flatMap((userSector) =>
+          userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || []
+        )
+      ),
+    );
 
     // Busca links dos setores do usuário + links públicos/company
     return this.findAll(companyId, {
       sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
+      unitIds,
     });
+  }
+
+  async userHasSector(userId: string, sectorId: string) {
+    const count = await this.prisma.userSector.count({
+      where: {
+        userId,
+        sectorId,
+      },
+    });
+
+    return count > 0;
   }
 
   async findOne(id: string) {
@@ -241,6 +298,7 @@ export class LinksService {
       companyId,
       userId,
       sectorId: _sectorId,
+      unitId: _unitId,
       audience,
       isPublic,
       ...rest
@@ -249,14 +307,21 @@ export class LinksService {
       resolvedAudience === ContentAudience.SECTOR
         ? _sectorId ?? existingLink.sectorId ?? undefined
         : undefined;
+    const unitId =
+      resolvedAudience === ContentAudience.SECTOR
+        ? (_unitId !== undefined ? _unitId : existingLink.unitId) ?? undefined
+        : null;
 
     if (resolvedAudience === ContentAudience.SECTOR && !sectorId) {
       throw new ForbiddenException('Setor obrigatorio para links de setor.');
     }
 
+    await this.assertUnitAllowed(sectorId, unitId ?? undefined);
+
     const updateData: UpdateLinkDto = {
       ...rest,
       sectorId,
+      unitId,
     };
 
     if (shouldUpdateAudience) {
@@ -394,6 +459,27 @@ export class LinksService {
     }
 
     return deleted;
+  }
+
+  private async assertUnitAllowed(
+    sectorId?: string | null,
+    unitId?: string,
+  ) {
+    if (!unitId) return;
+    if (!sectorId) {
+      throw new ForbiddenException('Unidade requer setor.');
+    }
+
+    const relation = await this.prisma.sectorUnit.findFirst({
+      where: {
+        sectorId,
+        unitId,
+      },
+    });
+
+    if (!relation) {
+      throw new ForbiddenException('Unidade nao pertence ao setor.');
+    }
   }
 
   private assertCanMutate(link: { userId?: string | null; companyId: string }, actor?: LinkActor) {

@@ -97,6 +97,10 @@ export class UploadedSchedulesController {
         audience === ContentAudience.SECTOR
           ? createScheduleDto.sectorId || undefined
           : undefined,
+      unitId:
+        audience === ContentAudience.SECTOR
+          ? createScheduleDto.unitId ?? undefined
+          : undefined,
       userId: req.user.id,
       audience,
       isPublic: audience === ContentAudience.PUBLIC,
@@ -107,6 +111,7 @@ export class UploadedSchedulesController {
   async findAll(
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -115,6 +120,7 @@ export class UploadedSchedulesController {
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
+      unitId,
       categoryId,
       audience:
         parsedAudience ||
@@ -149,6 +155,7 @@ export class UploadedSchedulesController {
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -164,6 +171,7 @@ export class UploadedSchedulesController {
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
       sectorId,
+      unitId,
       categoryId,
       audience: parsedAudience,
       isPublic: isPublic ? isPublic === 'true' : undefined,
@@ -182,6 +190,7 @@ export class UploadedSchedulesController {
     @Request() req: any,
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
@@ -190,6 +199,7 @@ export class UploadedSchedulesController {
       req,
       companyId,
       sectorId,
+      unitId,
       categoryId,
       isPublic,
       audience,

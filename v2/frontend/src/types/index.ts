@@ -36,14 +36,17 @@ export interface Unit {
 export interface Sector {
   id: string;
   companyId: string;
-  unitId: string;
   name: string;
   description?: string;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
   company?: Company;
-  unit?: Unit;
+  sectorUnits?: {
+    unitId: string;
+    isPrimary?: boolean;
+    unit?: Unit;
+  }[];
 }
 
 export interface User {
@@ -94,6 +97,7 @@ export interface Link {
   companyId: string;
   userId?: string;
   sectorId?: string;
+  unitId?: string;
   categoryId?: string;
   title: string;
   url: string;
@@ -111,6 +115,7 @@ export interface Link {
   deletedAt?: string;
   category?: Category;
   sector?: Sector;
+  unit?: Unit;
   user?: Pick<User, 'id' | 'name' | 'email'>;
   tags?: {
     tag: Tag;
@@ -126,6 +131,7 @@ export interface UploadedSchedule {
   companyId: string;
   userId?: string;
   sectorId?: string;
+  unitId?: string;
   categoryId?: string;
   title: string;
   fileUrl: string;
@@ -143,6 +149,7 @@ export interface UploadedSchedule {
   deletedAt?: string;
   category?: Category;
   sector?: Sector;
+  unit?: Unit;
   user?: Pick<User, 'id' | 'name' | 'email'>;
   tags?: {
     tag: Tag;
@@ -157,6 +164,7 @@ export interface Note {
   companyId: string;
   userId?: string;
   sectorId?: string;
+  unitId?: string;
   categoryId?: string;
   title: string;
   content: string;
@@ -172,6 +180,7 @@ export interface Note {
   deletedAt?: string;
   category?: Category;
   sector?: Sector;
+  unit?: Unit;
   user?: Pick<User, 'id' | 'name' | 'email'>;
 }
 

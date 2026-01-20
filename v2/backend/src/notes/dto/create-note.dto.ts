@@ -22,6 +22,10 @@ export class CreateNoteDto {
 
   @IsUUID()
   @IsOptional()
+  unitId?: string | null;
+
+  @IsUUID()
+  @IsOptional()
   categoryId?: string;
 
   @IsString()

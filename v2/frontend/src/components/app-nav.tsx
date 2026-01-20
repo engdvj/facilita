@@ -78,6 +78,7 @@ export default function AppNav() {
       {
         label: 'Cadastros',
         items: [
+          { href: '/admin/hierarquia', label: 'Hierarquia' },
           { href: '/admin/companies', label: 'Empresas' },
           { href: '/admin/units', label: 'Unidades' },
           { href: '/admin/sectors', label: 'Setores' },

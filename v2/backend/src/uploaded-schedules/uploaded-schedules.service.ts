@@ -21,6 +21,8 @@ export class UploadedSchedulesService {
   ) {}
 
   async create(createScheduleDto: CreateScheduleDto) {
+    await this.assertUnitAllowed(createScheduleDto.sectorId, createScheduleDto.unitId ?? undefined);
+
     const schedule = await this.prisma.uploadedSchedule.create({
       data: createScheduleDto,
       include: {
@@ -75,6 +77,8 @@ export class UploadedSchedulesService {
     companyId?: string,
     filters?: {
       sectorId?: string;
+      unitId?: string;
+      unitIds?: string[];
       categoryId?: string;
       isPublic?: boolean;
       audience?: ContentAudience;
@@ -82,6 +86,36 @@ export class UploadedSchedulesService {
     },
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+    const unitFilter =
+      filters?.unitId !== undefined
+        ? {
+            OR: [
+              { unitId: null },
+              { unitId: filters.unitId },
+            ],
+          }
+        : filters?.unitIds !== undefined
+          ? {
+              OR: [
+                { unitId: null },
+                { unitId: { in: filters.unitIds } },
+              ],
+            }
+          : undefined;
+
+    const andFilters = [];
+    if (unitFilter) {
+      andFilters.push(unitFilter);
+    }
+    if (shouldFilterPublic) {
+      andFilters.push({
+        OR: [
+          { audience: ContentAudience.PUBLIC },
+          { isPublic: true },
+        ],
+      });
+    }
+
     const where = {
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
@@ -91,12 +125,7 @@ export class UploadedSchedulesService {
         filters?.audience && { audience: filters.audience }),
       ...(filters?.isPublic !== undefined &&
         !shouldFilterPublic && { isPublic: filters.isPublic }),
-      ...(shouldFilterPublic && {
-        OR: [
-          { audience: ContentAudience.PUBLIC },
-          { isPublic: true },
-        ],
-      }),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     console.log('SchedulesService.findAll - where clause:', JSON.stringify(where, null, 2));
@@ -173,6 +202,7 @@ export class UploadedSchedulesService {
       companyId,
       userId,
       sectorId: _sectorId,
+      unitId: _unitId,
       audience,
       isPublic,
       ...rest
@@ -181,14 +211,21 @@ export class UploadedSchedulesService {
       resolvedAudience === ContentAudience.SECTOR
         ? _sectorId ?? existingSchedule.sectorId ?? undefined
         : undefined;
+    const unitId =
+      resolvedAudience === ContentAudience.SECTOR
+        ? (_unitId !== undefined ? _unitId : existingSchedule.unitId) ?? undefined
+        : null;
 
     if (resolvedAudience === ContentAudience.SECTOR && !sectorId) {
       throw new ForbiddenException('Setor obrigatorio para documentos de setor.');
     }
 
+    await this.assertUnitAllowed(sectorId, unitId ?? undefined);
+
     const updateData: UpdateScheduleDto = {
       ...rest,
       sectorId,
+      unitId,
     };
 
     if (shouldUpdateAudience) {
@@ -561,6 +598,27 @@ export class UploadedSchedulesService {
     }
 
     return deactivated;
+  }
+
+  private async assertUnitAllowed(
+    sectorId?: string | null,
+    unitId?: string,
+  ) {
+    if (!unitId) return;
+    if (!sectorId) {
+      throw new ForbiddenException('Unidade requer setor.');
+    }
+
+    const relation = await this.prisma.sectorUnit.findFirst({
+      where: {
+        sectorId,
+        unitId,
+      },
+    });
+
+    if (!relation) {
+      throw new ForbiddenException('Unidade nao pertence ao setor.');
+    }
   }
 
   private assertCanMutate(

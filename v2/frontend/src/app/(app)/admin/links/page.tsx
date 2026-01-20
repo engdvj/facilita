@@ -8,7 +8,7 @@ import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
-import { Category, Company, ContentAudience, Link, Sector } from '@/types';
+import { Category, Company, ContentAudience, Link, Sector, Unit } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 const pageSize = 8;
@@ -19,12 +19,16 @@ const emptyFormData = {
   description: '',
   categoryId: '',
   sectorId: '',
+  unitId: '',
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
   audience: 'COMPANY' as ContentAudience,
   order: 0,
 };
+
+const sectorMatchesUnit = (sector: Sector, unitId: string) =>
+  Boolean(sector.sectorUnits?.some((unit) => unit.unitId === unitId));
 
 export default function LinksPage() {
   const user = useAuthStore((state) => state.user);
@@ -33,12 +37,14 @@ export default function LinksPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [filterSectorId, setFilterSectorId] = useState('');
+  const [filterUnitId, setFilterUnitId] = useState('');
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Link | null>(null);
@@ -107,6 +113,25 @@ export default function LinksPage() {
     visibleSectors,
   ]);
 
+  const formUnits = useMemo(() => {
+    let scoped = units;
+    if (formResolvedCompanyId) {
+      scoped = scoped.filter((unit) => unit.companyId === formResolvedCompanyId);
+    }
+    if (!formData.sectorId) {
+      return scoped;
+    }
+    const sector = formSectors.find((item) => item.id === formData.sectorId);
+    if (!sector) return [];
+    const unitIds = new Set(sector.sectorUnits?.map((unit) => unit.unitId));
+    return scoped.filter((unit) => unitIds.has(unit.id));
+  }, [formData.sectorId, formResolvedCompanyId, formSectors, units]);
+
+  const filterUnits = useMemo(() => {
+    if (!resolvedCompanyId) return units;
+    return units.filter((unit) => unit.companyId === resolvedCompanyId);
+  }, [resolvedCompanyId, units]);
+
   const getAudience = (link: Link): ContentAudience => {
     if (link.isPublic) return 'PUBLIC';
     if (link.audience) return link.audience;
@@ -131,6 +156,13 @@ export default function LinksPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
+  const matchesUnit = (unitId?: string | null) => {
+    if (!unitId) return true;
+    if (!user) return false;
+    if (isAdmin || isSuperAdmin) return true;
+    return Boolean(user.unitId && user.unitId === unitId);
+  };
+
   const canViewLink = (link: Link) => {
     const audience = getAudience(link);
     if (audience === 'PUBLIC') return true;
@@ -140,7 +172,9 @@ export default function LinksPage() {
     if (audience === 'ADMIN') return isAdmin;
     if (audience === 'PRIVATE') return link.userId === user.id;
     if (audience === 'SECTOR') {
-      return isAdmin ? true : link.sectorId === user.sectorId;
+      if (isAdmin) return true;
+      if (!matchesUnit(link.unitId)) return false;
+      return link.sectorId === user.sectorId;
     }
     if (audience === 'COMPANY') {
       return isAdmin;
@@ -172,7 +206,7 @@ export default function LinksPage() {
     if (!resolvedCompanyId && !isSuperAdmin) return;
     const linksPath = isAdmin || isSuperAdmin ? '/links/admin/list' : '/links';
     const linksQuery = resolvedCompanyId ? `?companyId=${resolvedCompanyId}` : '';
-    const [linksRes, catsRes, sectorsRes] = await Promise.all([
+    const [linksRes, catsRes, sectorsRes, unitsRes] = await Promise.all([
       api.get(`${linksPath}${linksQuery}`),
       resolvedCompanyId
         ? api.get(`/categories?companyId=${resolvedCompanyId}`)
@@ -186,10 +220,12 @@ export default function LinksPage() {
             ? api.get('/sectors')
             : Promise.resolve({ data: [] })
         : Promise.resolve({ data: [] }),
+      api.get('/units'),
     ]);
     setLinks(linksRes.data);
     setCategories(catsRes.data);
     setSectors(sectorsRes.data);
+    setUnits(unitsRes.data);
   };
 
   const loadCompanies = async () => {
@@ -270,11 +306,15 @@ export default function LinksPage() {
       if (filterSectorId && link.sectorId !== filterSectorId) {
         return false;
       }
+      if (filterUnitId && link.unitId && link.unitId !== filterUnitId) {
+        return false;
+      }
       return true;
     });
   }, [
     filterCategoryId,
     filterSectorId,
+    filterUnitId,
     filterStatus,
     search,
     visibleLinks,
@@ -283,7 +323,8 @@ export default function LinksPage() {
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId));
+    Number(Boolean(filterSectorId)) +
+    Number(Boolean(filterUnitId));
 
   const totalPages = Math.max(1, Math.ceil(filteredLinks.length / pageSize));
   const paginatedLinks = filteredLinks.slice(
@@ -320,6 +361,7 @@ export default function LinksPage() {
       description: link.description || '',
       categoryId: link.categoryId || '',
       sectorId: link.sectorId || '',
+      unitId: link.unitId || '',
       imageUrl: link.imageUrl || '',
       imagePosition: normalizeImagePosition(link.imagePosition),
       imageScale: link.imageScale || 1,
@@ -389,6 +431,7 @@ export default function LinksPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
+        unitId: normalizedAudience === 'SECTOR' ? formData.unitId || null : null,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -486,6 +529,7 @@ export default function LinksPage() {
     setFilterStatus('ALL');
     setFilterCategoryId('');
     setFilterSectorId('');
+    setFilterUnitId('');
     setPage(1);
   };
 
@@ -502,6 +546,7 @@ export default function LinksPage() {
       ...prev,
       audience: value,
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
+      unitId: value === 'SECTOR' ? prev.unitId : '',
     }));
   };
 
@@ -514,6 +559,7 @@ export default function LinksPage() {
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
   const shouldShowSectorField = formData.audience === 'SECTOR';
+  const shouldShowUnitField = shouldShowSectorField;
 
   return (
     <div className="space-y-6">
@@ -586,6 +632,26 @@ export default function LinksPage() {
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Unidade
+                </label>
+                <select
+                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                  value={filterUnitId}
+                  onChange={(event) => {
+                    setFilterUnitId(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Todas</option>
+                  {filterUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
                     </option>
                   ))}
                 </select>
@@ -965,6 +1031,7 @@ export default function LinksPage() {
                       setFormData((prev) => ({
                         ...prev,
                         sectorId: event.target.value,
+                        unitId: '',
                       }))
                     }
                     disabled={isSuperAdmin && !formCompanyId}
@@ -977,6 +1044,35 @@ export default function LinksPage() {
                     ))}
                   </select>
                 </AdminField>
+              )}
+              {shouldShowUnitField && (
+                <div className="md:col-span-2">
+                  <AdminField
+                    label="Unidade"
+                    htmlFor="link-unit"
+                    hint={!formData.sectorId ? 'Selecione um setor primeiro.' : undefined}
+                  >
+                    <select
+                      id="link-unit"
+                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
+                      value={formData.unitId}
+                      onChange={(event) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          unitId: event.target.value,
+                        }))
+                      }
+                      disabled={!formData.sectorId}
+                    >
+                      <option value="">Todas as unidades</option>
+                      {formUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </option>
+                      ))}
+                    </select>
+                  </AdminField>
+                </div>
               )}
             </div>
           </div>

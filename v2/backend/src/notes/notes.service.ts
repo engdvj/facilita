@@ -21,6 +21,8 @@ export class NotesService {
   ) {}
 
   async create(createNoteDto: CreateNoteDto) {
+    await this.assertUnitAllowed(createNoteDto.sectorId, createNoteDto.unitId ?? undefined);
+
     const note = await this.prisma.note.create({
       data: createNoteDto,
       include: {
@@ -75,6 +77,8 @@ export class NotesService {
     companyId?: string,
     filters?: {
       sectorId?: string;
+      unitId?: string;
+      unitIds?: string[];
       categoryId?: string;
       isPublic?: boolean;
       audience?: ContentAudience;
@@ -82,6 +86,36 @@ export class NotesService {
     },
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+    const unitFilter =
+      filters?.unitId !== undefined
+        ? {
+            OR: [
+              { unitId: null },
+              { unitId: filters.unitId },
+            ],
+          }
+        : filters?.unitIds !== undefined
+          ? {
+              OR: [
+                { unitId: null },
+                { unitId: { in: filters.unitIds } },
+              ],
+            }
+          : undefined;
+
+    const andFilters = [];
+    if (unitFilter) {
+      andFilters.push(unitFilter);
+    }
+    if (shouldFilterPublic) {
+      andFilters.push({
+        OR: [
+          { audience: ContentAudience.PUBLIC },
+          { isPublic: true },
+        ],
+      });
+    }
+
     const where = {
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
@@ -91,12 +125,7 @@ export class NotesService {
         filters?.audience && { audience: filters.audience }),
       ...(filters?.isPublic !== undefined &&
         !shouldFilterPublic && { isPublic: filters.isPublic }),
-      ...(shouldFilterPublic && {
-        OR: [
-          { audience: ContentAudience.PUBLIC },
-          { isPublic: true },
-        ],
-      }),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     return this.prisma.note.findMany({
@@ -116,6 +145,17 @@ export class NotesService {
         createdAt: 'desc',
       },
     });
+  }
+
+  async userHasSector(userId: string, sectorId: string) {
+    const count = await this.prisma.userSector.count({
+      where: {
+        userId,
+        sectorId,
+      },
+    });
+
+    return count > 0;
   }
 
   async findOne(id: string) {
@@ -164,6 +204,7 @@ export class NotesService {
       companyId,
       userId,
       sectorId: _sectorId,
+      unitId: _unitId,
       audience,
       isPublic,
       ...rest
@@ -172,14 +213,21 @@ export class NotesService {
       resolvedAudience === ContentAudience.SECTOR
         ? _sectorId ?? existingNote.sectorId ?? undefined
         : undefined;
+    const unitId =
+      resolvedAudience === ContentAudience.SECTOR
+        ? (_unitId !== undefined ? _unitId : existingNote.unitId) ?? undefined
+        : null;
 
     if (resolvedAudience === ContentAudience.SECTOR && !sectorId) {
       throw new ForbiddenException('Setor obrigatorio para notas de setor.');
     }
 
+    await this.assertUnitAllowed(sectorId, unitId ?? undefined);
+
     const updateData: UpdateNoteDto = {
       ...rest,
       sectorId,
+      unitId,
     };
 
     if (shouldUpdateAudience) {
@@ -552,6 +600,27 @@ export class NotesService {
     }
 
     return deactivated;
+  }
+
+  private async assertUnitAllowed(
+    sectorId?: string | null,
+    unitId?: string,
+  ) {
+    if (!unitId) return;
+    if (!sectorId) {
+      throw new ForbiddenException('Unidade requer setor.');
+    }
+
+    const relation = await this.prisma.sectorUnit.findFirst({
+      where: {
+        sectorId,
+        unitId,
+      },
+    });
+
+    if (!relation) {
+      throw new ForbiddenException('Unidade nao pertence ao setor.');
+    }
   }
 
   private assertCanMutate(
