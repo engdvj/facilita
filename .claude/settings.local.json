@@ -37,7 +37,8 @@
       "Bash(find:*)",
       "Bash(npm run fix:image-names:*)",
       "Bash(tree:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(docker compose build:*)"
     ]
   }
 }

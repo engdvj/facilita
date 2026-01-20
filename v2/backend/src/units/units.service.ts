@@ -48,8 +48,16 @@ export class UnitsService {
 
   async getDependencies(id: string) {
     const [sectors, users] = await Promise.all([
-      this.prisma.sector.count({ where: { unitId: id } }),
-      this.prisma.user.count({ where: { unitId: id } }),
+      this.prisma.sectorUnit.count({ where: { unitId: id } }),
+      this.prisma.userSector.count({
+        where: {
+          sector: {
+            sectorUnits: {
+              some: { unitId: id },
+            },
+          },
+        },
+      }),
     ]);
 
     return {
@@ -62,36 +70,34 @@ export class UnitsService {
   async remove(id: string) {
     await this.findById(id);
     return this.prisma.$transaction(async (tx) => {
-      // Desassocia usuários e setores da unidade
-      await tx.user.updateMany({
-        data: { unitId: null, sectorId: null },
+      // Get all sectors linked to this unit via SectorUnit
+      const sectorUnits = await tx.sectorUnit.findMany({
         where: { unitId: id },
+        select: { sectorId: true },
       });
 
-      // Deleta setores da unidade (que desassociará conteúdos)
-      const sectors = await tx.sector.findMany({
-        where: { unitId: id },
-        select: { id: true },
-      });
+      const sectorIds = sectorUnits.map((su) => su.sectorId);
 
-      for (const sector of sectors) {
+      // Unlink content from sectors before deleting SectorUnit relationships
+      if (sectorIds.length > 0) {
         await tx.link.updateMany({
           data: { sectorId: null },
-          where: { sectorId: sector.id },
+          where: { sectorId: { in: sectorIds } },
         });
         await tx.uploadedSchedule.updateMany({
           data: { sectorId: null },
-          where: { sectorId: sector.id },
+          where: { sectorId: { in: sectorIds } },
         });
         await tx.note.updateMany({
           data: { sectorId: null },
-          where: { sectorId: sector.id },
+          where: { sectorId: { in: sectorIds } },
         });
       }
 
-      await tx.sector.deleteMany({ where: { unitId: id } });
+      // Delete SectorUnit relationships (cascade will handle UserSector via sector deletion if needed)
+      await tx.sectorUnit.deleteMany({ where: { unitId: id } });
 
-      // Finalmente remove a unidade
+      // Finally remove the unit
       return tx.unit.delete({
         where: { id },
         include: { company: true },

@@ -101,19 +101,8 @@ export class ResetsService {
       });
     }
 
-    if (selection.has('sectors') && !selection.has('users')) {
-      await tx.user.updateMany({
-        data: { sectorId: null },
-        where: { sectorId: { not: null } },
-      });
-    }
-
-    if (selection.has('units') && !selection.has('users')) {
-      await tx.user.updateMany({
-        data: { unitId: null },
-        where: { unitId: { not: null } },
-      });
-    }
+    // UserSector and SectorUnit relationships will be deleted via cascade
+    // when sectors or units are deleted, no need to manually update users
 
     if (selection.has('companies') && !selection.has('users')) {
       await tx.user.updateMany({
