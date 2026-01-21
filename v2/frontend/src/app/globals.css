@@ -49,8 +49,8 @@
 
 :root {
   --radius: 0.5rem;
-  --font-sans: var(--font-onest);
-  --font-display: var(--font-fraunces);
+  --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Georgia", "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 
