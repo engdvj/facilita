@@ -10,12 +10,16 @@ Portal corporativo multi-empresa para links, documentos e notas, com permissões
 ## Inicio rapido (Docker)
 ```bash
 cd v2
-cp .env.example .env
-# Ajuste SUPERADMIN_* e secrets
+# Windows:
+#   init.bat
+# Linux/macOS:
+#   cp .env.example .env
+#   # Ajuste SUPERADMIN_* e secrets
 ```
 
 Windows:
 ```bat
+init.bat
 start.bat up
 ```
 
