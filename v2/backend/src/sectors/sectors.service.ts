@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
@@ -120,7 +121,7 @@ export class SectorsService {
 
   async remove(id: string) {
     await this.findById(id);
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Remove relacionamentos com unidades (cascade já configurado no schema)
       // Remove relacionamentos com usuários (cascade já configurado no schema)
 

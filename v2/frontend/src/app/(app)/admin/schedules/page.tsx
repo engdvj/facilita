@@ -12,6 +12,7 @@ import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Sector, Unit, UploadedSchedule } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 const pageSize = 8;
 
@@ -64,8 +65,9 @@ export default function SchedulesPage() {
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
   const [formTab, setFormTab] = useState<'basic' | 'category' | 'visual'>('basic');
-  const isAdmin = user?.role === 'ADMIN';
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isSuperAdmin = user?.role === 'SUPERADMIN' && !isUserMode;
+  const isAdmin =
+    user?.role === 'ADMIN' || (user?.role === 'SUPERADMIN' && isUserMode);
   const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
   const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const resolvedCompanyId =
@@ -156,20 +158,23 @@ export default function SchedulesPage() {
   }, [resolvedCompanyId, units]);
 
   const audienceOptions = useMemo(() => {
-    if (isAdmin) {
-      return [
-        { value: 'COMPANY', label: 'Empresa' },
-        { value: 'SECTOR', label: 'Setor' },
-      ];
-    }
-    return [
-      { value: 'PUBLIC', label: 'Publico' },
-      { value: 'COMPANY', label: 'Empresa' },
-      { value: 'SECTOR', label: 'Setor' },
-      { value: 'ADMIN', label: 'Somente admins' },
-      { value: 'SUPERADMIN', label: 'Somente superadmins' },
-      { value: 'PRIVATE', label: 'Privado (apenas voce)' },
-    ];
+    const options = isAdmin
+      ? [
+          { value: 'COMPANY', label: 'Empresa' },
+          { value: 'SECTOR', label: 'Setor' },
+        ]
+      : [
+          { value: 'PUBLIC', label: 'Publico' },
+          { value: 'COMPANY', label: 'Empresa' },
+          { value: 'SECTOR', label: 'Setor' },
+          { value: 'ADMIN', label: 'Somente admins' },
+          { value: 'SUPERADMIN', label: 'Somente superadmins' },
+          { value: 'PRIVATE', label: 'Privado (apenas voce)' },
+        ];
+
+    return isUserMode
+      ? options.filter((option) => option.value !== 'SECTOR')
+      : options;
   }, [isAdmin]);
 
   const loadData = async () => {
@@ -183,12 +188,14 @@ export default function SchedulesPage() {
         : isSuperAdmin
           ? api.get('/categories')
           : Promise.resolve({ data: [] }),
-      resolvedCompanyId
-        ? api.get(`/sectors?companyId=${resolvedCompanyId}`)
-        : isSuperAdmin
-          ? api.get('/sectors')
-          : Promise.resolve({ data: [] }),
-      api.get('/units'),
+      !isUserMode
+        ? resolvedCompanyId
+          ? api.get(`/sectors?companyId=${resolvedCompanyId}`)
+          : isSuperAdmin
+            ? api.get('/sectors')
+            : Promise.resolve({ data: [] })
+        : Promise.resolve({ data: [] }),
+      !isUserMode ? api.get('/units') : Promise.resolve({ data: [] }),
     ]);
     setSchedules(schedulesRes.data);
     setCategories(catsRes.data);
@@ -285,11 +292,12 @@ export default function SchedulesPage() {
       if (filterCategoryId && schedule.categoryId !== filterCategoryId) {
         return false;
       }
-      if (filterSectorId && schedule.sectorId !== filterSectorId) {
+      if (!isUserMode && filterSectorId && schedule.sectorId !== filterSectorId) {
         return false;
       }
       const scheduleUnitIds = getScheduleUnitIds(schedule);
       if (
+        !isUserMode &&
         filterUnitId &&
         scheduleUnitIds.length > 0 &&
         !scheduleUnitIds.includes(filterUnitId)
@@ -307,11 +315,14 @@ export default function SchedulesPage() {
     visibleSchedules,
   ]);
 
+  const scopeFilters = isUserMode
+    ? 0
+    : Number(Boolean(filterSectorId)) + Number(Boolean(filterUnitId));
+
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId)) +
-    Number(Boolean(filterUnitId));
+    scopeFilters;
 
   const totalPages = Math.max(1, Math.ceil(filteredSchedules.length / pageSize));
   const paginatedSchedules = filteredSchedules.slice(
@@ -580,8 +591,8 @@ export default function SchedulesPage() {
     : '';
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
-  const shouldShowSectorField = formData.audience === 'SECTOR';
-  const shouldShowUnitField = shouldShowSectorField;
+  const shouldShowSectorField = formData.audience === 'SECTOR' && !isUserMode;
+  const shouldShowUnitField = shouldShowSectorField && !isUserMode;
 
   return (
     <div className="space-y-6">
@@ -660,46 +671,50 @@ export default function SchedulesPage() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Unidade
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterUnitId}
-                  onChange={(event) => {
-                    setFilterUnitId(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todas</option>
-                  {filterUnits.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Setor
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterSectorId}
-                  onChange={(event) => {
-                    setFilterSectorId(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todos</option>
-                  {sectors.map((sector) => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!isUserMode && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Unidade
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterUnitId}
+                      onChange={(event) => {
+                        setFilterUnitId(event.target.value);
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todas</option>
+                      {filterUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Setor
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterSectorId}
+                      onChange={(event) => {
+                        setFilterSectorId(event.target.value);
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todos</option>
+                      {sectors.map((sector) => (
+                        <option key={sector.id} value={sector.id}>
+                          {sector.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               <button
                 type="button"
                 className="rounded-md border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/60"

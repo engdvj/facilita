@@ -20,6 +20,7 @@ import { imageMulterConfig, documentMulterConfig } from './config/multer.config'
 import { imageFileFilter, documentFileFilter } from './filters/file-type.filter';
 import { QueryImagesDto } from './dto/query-images.dto';
 import { UpdateImageDto } from './dto/update-image.dto';
+import { isCompanyMode, isUserMode } from '../common/app-mode';
 
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
@@ -43,10 +44,13 @@ export class UploadsController {
     }
 
     // Superadmins can specify companyId, others use their own
-    const isSuperAdmin = req.user.role === 'SUPERADMIN';
-    const companyId = isSuperAdmin && companyIdParam
-      ? companyIdParam
-      : req.user.companyId;
+    const isCompanySuperAdmin = req.user.role === 'SUPERADMIN' && isCompanyMode();
+    const isUserSuperAdmin = req.user.role === 'SUPERADMIN' && isUserMode();
+    const companyId = isUserMode()
+      ? (isUserSuperAdmin && companyIdParam ? companyIdParam : req.user.id)
+      : isCompanySuperAdmin && companyIdParam
+        ? companyIdParam
+        : req.user.companyId;
 
     const url = this.uploadsService.getFileUrl(file.filename, 'images');
 
@@ -66,7 +70,7 @@ export class UploadsController {
   @Get('images')
   async listImages(@Query() query: QueryImagesDto, @Req() req: any) {
     if (!query.companyId) {
-      query.companyId = req.user.companyId;
+      query.companyId = isUserMode() ? req.user.id : req.user.companyId;
     }
     return this.uploadsService.listImages(query);
   }

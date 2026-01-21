@@ -22,6 +22,10 @@ if not exist "backend\uploads\images" mkdir "backend\uploads\images"
 if not exist "backend\uploads\documents" mkdir "backend\uploads\documents"
 if not exist "backend\backups\auto" mkdir "backend\backups\auto"
 if not exist "backend\backups\tmp" mkdir "backend\backups\tmp"
+if not exist "backend\uploads-user\images" mkdir "backend\uploads-user\images"
+if not exist "backend\uploads-user\documents" mkdir "backend\uploads-user\documents"
+if not exist "backend\backups-user\auto" mkdir "backend\backups-user\auto"
+if not exist "backend\backups-user\tmp" mkdir "backend\backups-user\tmp"
 
 :: Parse command line arguments
 set ACTION=%1

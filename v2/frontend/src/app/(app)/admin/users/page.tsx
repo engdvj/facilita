@@ -8,6 +8,7 @@ import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 type User = {
   id: string;
@@ -104,7 +105,7 @@ export default function UsersPage() {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('COLLABORATOR');
+  const [role, setRole] = useState(isUserMode ? 'ADMIN' : 'COLLABORATOR');
   const [status, setStatus] = useState('ACTIVE');
   const [companyId, setCompanyId] = useState('');
   const [sectorUnitFilterId, setSectorUnitFilterId] = useState('');
@@ -117,6 +118,14 @@ export default function UsersPage() {
   useNotifyOnChange(formError);
 
   const loadUsers = async () => {
+    if (isUserMode) {
+      const usersResponse = await api.get('/users');
+      setUsers(usersResponse.data);
+      setCompanies([]);
+      setUnits([]);
+      setSectors([]);
+      return;
+    }
     const [usersResponse, companiesResponse, unitsResponse, sectorsResponse] =
       await Promise.all([
         api.get('/users'),
@@ -183,13 +192,13 @@ export default function UsersPage() {
       if (filterRole !== 'ALL' && user.role !== filterRole) {
         return false;
       }
-      if (filterCompanyId && user.companyId !== filterCompanyId) {
+      if (!isUserMode && filterCompanyId && user.companyId !== filterCompanyId) {
         return false;
       }
-      if (filterUnitId && !userMatchesUnit(user, filterUnitId)) {
+      if (!isUserMode && filterUnitId && !userMatchesUnit(user, filterUnitId)) {
         return false;
       }
-      if (filterSectorId && !userMatchesSector(user, filterSectorId)) {
+      if (!isUserMode && filterSectorId && !userMatchesSector(user, filterSectorId)) {
         return false;
       }
       return true;
@@ -204,12 +213,14 @@ export default function UsersPage() {
     users,
   ]);
 
+  const scopeFilters = isUserMode
+    ? 0
+    : Number(Boolean(filterCompanyId)) +
+      Number(Boolean(filterUnitId)) +
+      Number(Boolean(filterSectorId));
+
   const activeFilters =
-    Number(filterStatus !== 'ALL') +
-    Number(filterRole !== 'ALL') +
-    Number(Boolean(filterCompanyId)) +
-    Number(Boolean(filterUnitId)) +
-    Number(Boolean(filterSectorId));
+    Number(filterStatus !== 'ALL') + Number(filterRole !== 'ALL') + scopeFilters;
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const paginatedUsers = filteredUsers.slice(
@@ -332,7 +343,7 @@ export default function UsersPage() {
     setName('');
     setUsername('');
     setPassword('');
-    setRole('COLLABORATOR');
+    setRole(isUserMode ? 'ADMIN' : 'COLLABORATOR');
     setStatus('ACTIVE');
     setCompanyId('');
     setSectorUnitFilterId('');
@@ -363,9 +374,11 @@ export default function UsersPage() {
     setPassword('');
     setRole(user.role);
     setStatus(user.status);
-    setCompanyId(user.companyId || '');
-    setSectorUnitFilterId(primarySectorUnit?.unitId || '');
-    setSectorSelections(normalizedSelections);
+    setCompanyId(isUserMode ? '' : user.companyId || '');
+    setSectorUnitFilterId(
+      isUserMode ? '' : primarySectorUnit?.unitId || '',
+    );
+    setSectorSelections(isUserMode ? [] : normalizedSelections);
     setFormError(null);
     setModalOpen(true);
   };
@@ -379,13 +392,16 @@ export default function UsersPage() {
         username,
         role,
         status,
-        companyId: companyId || undefined,
-        sectors: sectorSelections.map((selection) => ({
+      };
+
+      if (!isUserMode) {
+        payload.companyId = companyId || undefined;
+        payload.sectors = sectorSelections.map((selection) => ({
           sectorId: selection.sectorId,
           isPrimary: selection.isPrimary,
           role: selection.role,
-        })),
-      };
+        }));
+      }
 
       if (!editing || password.trim()) {
         payload.password = password;
@@ -526,72 +542,78 @@ export default function UsersPage() {
                   <option value="ALL">Todos</option>
                   <option value="SUPERADMIN">Superadmin</option>
                   <option value="ADMIN">Admin</option>
-                  <option value="COLLABORATOR">Colaborador</option>
+                  {!isUserMode && (
+                    <option value="COLLABORATOR">Colaborador</option>
+                  )}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Empresa
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterCompanyId}
-                  onChange={(event) => {
-                    setFilterCompanyId(event.target.value);
-                    setFilterUnitId('');
-                    setFilterSectorId('');
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todas</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Unidade
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterUnitId}
-                  onChange={(event) => {
-                    setFilterUnitId(event.target.value);
-                    setFilterSectorId('');
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todas</option>
-                  {filteredFilterUnits.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Setor
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterSectorId}
-                  onChange={(event) => {
-                    setFilterSectorId(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todos</option>
-                  {filteredFilterSectors.map((sector) => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!isUserMode && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Empresa
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterCompanyId}
+                      onChange={(event) => {
+                        setFilterCompanyId(event.target.value);
+                        setFilterUnitId('');
+                        setFilterSectorId('');
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todas</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Unidade
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterUnitId}
+                      onChange={(event) => {
+                        setFilterUnitId(event.target.value);
+                        setFilterSectorId('');
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todas</option>
+                      {filteredFilterUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Setor
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterSectorId}
+                      onChange={(event) => {
+                        setFilterSectorId(event.target.value);
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todos</option>
+                      {filteredFilterSectors.map((sector) => (
+                        <option key={sector.id} value={sector.id}>
+                          {sector.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               <button
                 type="button"
                 className="rounded-md border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/60"
@@ -738,7 +760,8 @@ export default function UsersPage() {
         }
       >
         <div className="space-y-6">
-          <div className="rounded-xl border border-border/70 bg-card/60 p-4">
+          {!isUserMode && (
+            <div className="rounded-xl border border-border/70 bg-card/60 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               Identidade
             </p>
@@ -773,7 +796,8 @@ export default function UsersPage() {
                 />
               </AdminField>
             </div>
-          </div>
+            </div>
+          )}
 
           <div className="rounded-xl border border-border/70 bg-card/60 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -926,7 +950,9 @@ export default function UsersPage() {
                 >
                   <option value="SUPERADMIN">SUPERADMIN</option>
                   <option value="ADMIN">ADMIN</option>
-                  <option value="COLLABORATOR">COLLABORATOR</option>
+                  {!isUserMode && (
+                    <option value="COLLABORATOR">COLLABORATOR</option>
+                  )}
                 </select>
               </AdminField>
               <AdminField label="Status" htmlFor="user-status">

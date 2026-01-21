@@ -3,18 +3,28 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/auth-store';
 import { useNotificationStore } from '@/stores/notification-store';
+import { AppMode, getAppMode } from '@/lib/app-mode';
 
 const getDefaultHost = () =>
   typeof window !== 'undefined' ? window.location.hostname : 'localhost';
 
-const getBaseURL = (): string => {
+const getModeApiUrl = (mode: AppMode): string | undefined => {
+  if (mode === 'user') {
+    return process.env.NEXT_PUBLIC_API_URL_USER;
+  }
+  return process.env.NEXT_PUBLIC_API_URL_COMPANY;
+};
+
+const getBaseURL = (mode: AppMode): string => {
+  const modeUrl = getModeApiUrl(mode);
+  if (modeUrl) return modeUrl;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (apiUrl) return apiUrl;
   return `http://${getDefaultHost()}:3001/api`;
 };
 
-const getServerURL = (): string => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const getServerURL = (mode: AppMode): string => {
+  const apiUrl = getBaseURL(mode);
 
   // If API URL is relative (e.g., /api), use current origin
   if (apiUrl?.startsWith('/')) {
@@ -29,18 +39,19 @@ const getServerURL = (): string => {
   return `http://${getDefaultHost()}:3001`;
 };
 
-const baseURL = getBaseURL();
+const resolveBaseURL = () => getBaseURL(getAppMode());
 
 // Base URL do servidor (sem /api) para acesso a arquivos estáticos
-export const serverURL = getServerURL();
+export const serverURL = getServerURL(getAppMode());
+export const getServerURLForMode = () => getServerURL(getAppMode());
 
 const api = axios.create({
-  baseURL,
+  baseURL: resolveBaseURL(),
   withCredentials: true,
 });
 
 const refreshClient = axios.create({
-  baseURL,
+  baseURL: resolveBaseURL(),
   withCredentials: true,
 });
 
@@ -117,6 +128,7 @@ const parseErrorMessage = (error: AxiosError) => {
 };
 
 api.interceptors.request.use((config) => {
+  config.baseURL = resolveBaseURL();
   const token = useAuthStore.getState().accessToken;
   if (token) {
     config.headers.set('Authorization', `Bearer ${token}`);
@@ -125,6 +137,7 @@ api.interceptors.request.use((config) => {
 });
 
 const refreshAccessToken = async () => {
+  refreshClient.defaults.baseURL = resolveBaseURL();
   const response = await refreshClient.post('/auth/refresh');
   const user = response.data?.user;
   if (user) {

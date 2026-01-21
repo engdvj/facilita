@@ -8,6 +8,7 @@ type BackupArchive = {
 export declare class BackupsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
+    private filterEntities;
     export(entities: BackupEntity[]): Promise<BackupPayload>;
     exportArchive(entities: BackupEntity[]): Promise<BackupArchive>;
     exportArchiveToFile(entities: BackupEntity[], targetDir: string, prefix?: string): Promise<{

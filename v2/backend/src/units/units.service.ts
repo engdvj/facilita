@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
@@ -69,14 +70,16 @@ export class UnitsService {
 
   async remove(id: string) {
     await this.findById(id);
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get all sectors linked to this unit via SectorUnit
       const sectorUnits = await tx.sectorUnit.findMany({
         where: { unitId: id },
         select: { sectorId: true },
       });
 
-      const sectorIds = sectorUnits.map((su) => su.sectorId);
+      const sectorIds = sectorUnits.map(
+        (su: { sectorId: string }) => su.sectorId,
+      );
 
       // Unlink content from sectors before deleting SectorUnit relationships
       if (sectorIds.length > 0) {

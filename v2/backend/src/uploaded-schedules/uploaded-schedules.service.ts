@@ -5,6 +5,7 @@ import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { ContentAudience, EntityStatus, UserRole, NotificationType, EntityType, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { isUserMode } from '../common/app-mode';
 
 type ScheduleActor = {
   id: string;
@@ -20,33 +21,10 @@ export class UploadedSchedulesService {
     private notificationsGateway: NotificationsGateway,
   ) {}
 
-  async create(createScheduleDto: CreateScheduleDto) {
-    const { unitIds, unitId, ...data } = createScheduleDto;
-    const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-
-    await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-
-    const schedule = await this.prisma.uploadedSchedule.create({
-      data: {
-        ...data,
-        unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-        scheduleUnits:
-          normalizedUnitIds.length > 0
-            ? {
-                create: normalizedUnitIds.map((itemUnitId) => ({
-                  unitId: itemUnitId,
-                })),
-              }
-            : undefined,
-      },
-      include: {
+  private getBaseInclude() {
+    if (isUserMode()) {
+      return {
         category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
         user: {
           select: {
             id: true,
@@ -54,7 +32,65 @@ export class UploadedSchedulesService {
             email: true,
           },
         },
+      };
+    }
+    return {
+      category: true,
+      sector: true,
+      scheduleUnits: {
+        include: {
+          unit: true,
+        },
       },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    };
+  }
+
+  private normalizeAudienceForUserMode(audience: ContentAudience) {
+    if (!isUserMode()) return audience;
+    if (audience === ContentAudience.COMPANY || audience === ContentAudience.SECTOR) {
+      return ContentAudience.PRIVATE;
+    }
+    return audience;
+  }
+
+  async create(createScheduleDto: CreateScheduleDto) {
+    const { unitIds, unitId, ...data } = createScheduleDto;
+    const normalizedUnitIds = isUserMode()
+      ? []
+      : this.normalizeUnitIds(unitIds, unitId);
+
+    await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
+    if (data.audience) {
+      data.audience = this.normalizeAudienceForUserMode(data.audience);
+      data.isPublic = data.audience === ContentAudience.PUBLIC;
+    }
+
+    const schedule = await this.prisma.uploadedSchedule.create({
+      data: {
+        ...data,
+        unitId: isUserMode()
+          ? null
+          : normalizedUnitIds.length === 1
+            ? normalizedUnitIds[0]
+            : null,
+        scheduleUnits: isUserMode()
+          ? undefined
+          : normalizedUnitIds.length > 0
+            ? {
+                create: normalizedUnitIds.map((itemUnitId) => ({
+                  unitId: itemUnitId,
+                })),
+              }
+            : undefined,
+      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre novo conteúdo
@@ -105,10 +141,13 @@ export class UploadedSchedulesService {
     },
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+    const canUseSectorFilters = !isUserMode();
     const filterUnitIds =
-      filters?.unitId !== undefined
-        ? this.normalizeUnitIds(undefined, filters.unitId)
-        : filters?.unitIds;
+      !canUseSectorFilters
+        ? undefined
+        : filters?.unitId !== undefined
+          ? this.normalizeUnitIds(undefined, filters.unitId)
+          : filters?.unitIds;
     const unitFilter =
       filterUnitIds !== undefined
         ? filterUnitIds.length > 0
@@ -138,7 +177,8 @@ export class UploadedSchedulesService {
     const where = {
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
-      ...(filters?.sectorId && { sectorId: filters.sectorId }),
+      ...(canUseSectorFilters &&
+        filters?.sectorId && { sectorId: filters.sectorId }),
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
       ...(!shouldFilterPublic &&
         filters?.audience && { audience: filters.audience }),
@@ -151,22 +191,7 @@ export class UploadedSchedulesService {
 
     const schedules = await this.prisma.uploadedSchedule.findMany({
       where,
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
       orderBy: {
         createdAt: 'desc',
       },
@@ -179,22 +204,7 @@ export class UploadedSchedulesService {
   async findOne(id: string) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!schedule || schedule.deletedAt) {
@@ -212,12 +222,16 @@ export class UploadedSchedulesService {
     const existingSchedule = await this.findOne(id);
     this.assertCanMutate(existingSchedule, actor);
 
-    const existingAudience = this.resolveAudienceFromExisting(existingSchedule);
+    const existingAudience = this.normalizeAudienceForUserMode(
+      this.resolveAudienceFromExisting(existingSchedule),
+    );
     const shouldUpdateAudience =
       updateScheduleDto.audience !== undefined ||
       updateScheduleDto.isPublic !== undefined;
     const resolvedAudience = shouldUpdateAudience
-      ? this.resolveAudienceForUpdate(existingAudience, updateScheduleDto)
+      ? this.normalizeAudienceForUserMode(
+          this.resolveAudienceForUpdate(existingAudience, updateScheduleDto),
+        )
       : existingAudience;
 
     if (shouldUpdateAudience && actor?.role) {
@@ -226,6 +240,43 @@ export class UploadedSchedulesService {
 
     const hasChanges =
       updateScheduleDto.title !== existingSchedule.title;
+
+    if (isUserMode()) {
+      const {
+        categoryId: _categoryId,
+        companyId: _companyId,
+        userId: _userId,
+        sectorId: _sectorId,
+        unitId: _unitId,
+        unitIds: _unitIds,
+        audience: _audience,
+        isPublic: _isPublic,
+        ...rest
+      } = updateScheduleDto;
+
+      const updateData: Prisma.UploadedScheduleUpdateInput = {
+        ...rest,
+      };
+
+      if (_categoryId !== undefined) {
+        updateData.category = _categoryId
+          ? { connect: { id: _categoryId } }
+          : { disconnect: true };
+      }
+
+      if (shouldUpdateAudience) {
+        updateData.audience = resolvedAudience;
+        updateData.isPublic = resolvedAudience === ContentAudience.PUBLIC;
+      }
+
+      const updated = await this.prisma.uploadedSchedule.update({
+        where: { id },
+        data: updateData,
+        include: this.getBaseInclude(),
+      });
+
+      return updated;
+    }
 
     const {
       categoryId: _categoryId,
@@ -244,7 +295,9 @@ export class UploadedSchedulesService {
         : undefined;
     const existingUnitIds =
       existingSchedule.scheduleUnits?.length
-        ? existingSchedule.scheduleUnits.map((unit) => unit.unitId)
+        ? existingSchedule.scheduleUnits.map(
+            (unit: { unitId: string }) => unit.unitId,
+          )
         : this.normalizeUnitIds(undefined, existingSchedule.unitId ?? undefined);
     const unitIdsPayload =
       _unitIds !== undefined
@@ -301,7 +354,7 @@ export class UploadedSchedulesService {
         deleteMany: {},
         ...(nextUnitIds.length > 0
           ? {
-              create: nextUnitIds.map((itemUnitId) => ({
+              create: nextUnitIds.map((itemUnitId: string) => ({
                 unitId: itemUnitId,
               })),
             }
@@ -317,22 +370,7 @@ export class UploadedSchedulesService {
     const updated = await this.prisma.uploadedSchedule.update({
       where: { id },
       data: updateData,
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários que favoritaram
@@ -453,22 +491,7 @@ export class UploadedSchedulesService {
   async restore(id: string) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!schedule) {
@@ -481,22 +504,7 @@ export class UploadedSchedulesService {
         deletedAt: null,
         status: EntityStatus.ACTIVE,
       },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre restauração
@@ -538,22 +546,7 @@ export class UploadedSchedulesService {
   async activate(id: string, actor?: ScheduleActor) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!schedule) {
@@ -570,22 +563,7 @@ export class UploadedSchedulesService {
       data: {
         status: EntityStatus.ACTIVE,
       },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre ativação (se feito por admin/superadmin)
@@ -629,22 +607,7 @@ export class UploadedSchedulesService {
   async deactivate(id: string, actor?: ScheduleActor) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!schedule) {
@@ -661,22 +624,7 @@ export class UploadedSchedulesService {
       data: {
         status: EntityStatus.INACTIVE,
       },
-      include: {
-        category: true,
-        sector: true,
-        scheduleUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre desativação (se feito por admin/superadmin)
@@ -728,6 +676,9 @@ export class UploadedSchedulesService {
     sectorId?: string | null,
     unitIds?: string[],
   ) {
+    if (isUserMode()) {
+      return;
+    }
     const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
     if (normalizedUnitIds.length === 0) return;
     if (!sectorId) {
@@ -789,6 +740,21 @@ export class UploadedSchedulesService {
   }
 
   private assertAudienceAllowed(role: UserRole, audience: ContentAudience) {
+    if (isUserMode()) {
+      const userModeAllowedAudiences: ContentAudience[] = [
+        ContentAudience.PUBLIC,
+        ContentAudience.PRIVATE,
+        ContentAudience.ADMIN,
+        ContentAudience.SUPERADMIN,
+      ];
+      if (role === UserRole.SUPERADMIN) return;
+      if (role === UserRole.ADMIN) {
+        if (!userModeAllowedAudiences.includes(audience)) {
+          throw new ForbiddenException('Visibilidade nao autorizada.');
+        }
+        return;
+      }
+    }
     if (role === UserRole.SUPERADMIN) return;
     if (role === UserRole.ADMIN) {
       if (

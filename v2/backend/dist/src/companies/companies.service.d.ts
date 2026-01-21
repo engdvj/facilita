@@ -6,60 +6,20 @@ export declare class CompaniesService {
     constructor(prisma: PrismaService);
     findAll(options?: {
         excludeInternal?: boolean;
-    }): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
-        cnpj: string | null;
-        name: string;
-        logoUrl: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-    }[]>;
-    findById(id: string): Promise<{
-        id: string;
-        cnpj: string | null;
-        name: string;
-        logoUrl: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-    }>;
-    create(data: CreateCompanyDto): import(".prisma/client").Prisma.Prisma__CompanyClient<{
-        id: string;
-        cnpj: string | null;
-        name: string;
-        logoUrl: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-    }, never, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
-    update(id: string, data: UpdateCompanyDto): Promise<{
-        id: string;
-        cnpj: string | null;
-        name: string;
-        logoUrl: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-    }>;
+    }): any;
+    findById(id: string): Promise<any>;
+    create(data: CreateCompanyDto): any;
+    update(id: string, data: UpdateCompanyDto): Promise<any>;
     getDependencies(id: string): Promise<{
-        units: number;
-        sectors: number;
-        users: number;
-        categories: number;
-        links: number;
-        schedules: number;
-        notes: number;
-        uploadedImages: number;
+        units: any;
+        sectors: any;
+        users: any;
+        categories: any;
+        links: any;
+        schedules: any;
+        notes: any;
+        uploadedImages: any;
         hasAny: boolean;
     }>;
-    remove(id: string): Promise<{
-        id: string;
-        cnpj: string | null;
-        name: string;
-        logoUrl: string | null;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-    }>;
+    remove(id: string): Promise<any>;
 }

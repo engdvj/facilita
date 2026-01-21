@@ -10,6 +10,7 @@ import * as unzipper from 'unzipper';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveConfigPath } from '../system-config/system-config.store';
 import { BackupEntity, BackupPayload, backupEntities } from './backups.types';
+import { isUserMode } from '../common/app-mode';
 
 const restoreOrder: BackupEntity[] = [
   'companies',
@@ -33,10 +34,19 @@ type BackupArchive = {
 export class BackupsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private filterEntities(entities: BackupEntity[]) {
+    if (!isUserMode()) return entities;
+    return entities.filter(
+      (entity) =>
+        entity !== 'companies' && entity !== 'units' && entity !== 'sectors',
+    );
+  }
+
   async export(entities: BackupEntity[]): Promise<BackupPayload> {
     const data: BackupPayload['data'] = {};
+    const resolvedEntities = this.filterEntities(entities);
 
-    for (const entity of entities) {
+    for (const entity of resolvedEntities) {
       switch (entity) {
         case 'companies':
           data.companies = await this.prisma.company.findMany();
@@ -77,7 +87,7 @@ export class BackupsService {
       meta: {
         version: 1,
         createdAt: new Date().toISOString(),
-        entities,
+        entities: resolvedEntities,
       },
       data,
     };
@@ -146,14 +156,16 @@ export class BackupsService {
       return { restored: {}, skipped: backupEntities };
     }
 
-    const selectedEntities = this.resolveSelectedEntities(payload, entities);
+    const selectedEntities = this.filterEntities(
+      this.resolveSelectedEntities(payload, entities),
+    );
     const restoreTargets = restoreOrder.filter((entity) =>
       selectedEntities.includes(entity),
     );
 
     const results: Record<string, number> = {};
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await this.reconcileUniqueIds(tx, payload);
       for (const entity of restoreTargets) {
         const raw = payload.data?.[entity];

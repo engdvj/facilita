@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 type ResetEntity =
   | 'companies'
@@ -52,6 +53,19 @@ const resetOptions: {
   },
 ];
 
+const userModeHiddenKeys: ResetEntity[] = [
+  'companies',
+  'units',
+  'sectors',
+];
+
+const getResetOptions = (mode: 'company' | 'user') =>
+  mode === 'user'
+    ? resetOptions.filter(
+        (option) => !userModeHiddenKeys.includes(option.key),
+      )
+    : resetOptions;
+
 const buildInitialSelection = () =>
   resetOptions.reduce<Record<ResetEntity, boolean>>((acc, option) => {
     acc[option.key] = false;
@@ -62,6 +76,7 @@ export default function ResetPage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [error, setError] = useState<string | null>(null);
+  const availableOptions = getResetOptions(isUserMode ? 'user' : 'company');
   const [selection, setSelection] = useState(buildInitialSelection);
   const [resetting, setResetting] = useState(false);
 
@@ -84,27 +99,29 @@ export default function ResetPage() {
   }, [hasHydrated, user]);
 
   const selectedEntities = useMemo(() => {
-    const base = resetOptions
+    const base = availableOptions
       .filter((option) => selection[option.key])
       .map((option) => option.key);
     return Array.from(new Set(base));
-  }, [selection]);
+  }, [availableOptions, selection]);
 
   const selectedCount = useMemo(
     () =>
-      resetOptions.reduce(
+      availableOptions.reduce(
         (total, option) => total + (selection[option.key] ? 1 : 0),
         0,
       ),
-    [selection],
+    [availableOptions, selection],
   );
-  const allSelected = resetOptions.every((option) => selection[option.key]);
+  const allSelected = availableOptions.every(
+    (option) => selection[option.key],
+  );
   const hasSelection = selectedCount > 0;
 
   const toggleAll = (value: boolean) => {
     setSelection((current) => {
       const next = { ...current };
-      resetOptions.forEach((option) => {
+      availableOptions.forEach((option) => {
         next[option.key] = value;
       });
       return next;
@@ -118,7 +135,9 @@ export default function ResetPage() {
     }
 
     const confirmMessage = allSelected
-      ? 'Isso vai apagar todo o sistema e recriar superadmin/superadmin e a empresa ADM. Deseja continuar?'
+      ? isUserMode
+        ? 'Isso vai apagar todo o sistema e recriar o superadmin principal. Deseja continuar?'
+        : 'Isso vai apagar todo o sistema e recriar superadmin/superadmin e a empresa ADM. Deseja continuar?'
       : 'Deseja resetar os itens selecionados?';
 
     if (!window.confirm(confirmMessage)) {
@@ -191,7 +210,7 @@ export default function ResetPage() {
           </div>
 
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {resetOptions.map((option) => (
+            {availableOptions.map((option) => (
               <label
                 key={option.key}
                 className="flex items-start gap-2 rounded-lg border border-border/70 bg-white/80 px-2.5 py-2 text-foreground"
@@ -233,7 +252,9 @@ export default function ResetPage() {
           <div className="mt-3 space-y-2">
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               Reset remove dados permanentemente. Reset total executa o seed e
-              recria superadmin/superadmin e a empresa ADM.
+              {isUserMode
+                ? ' recria o superadmin principal.'
+                : ' recria superadmin/superadmin e a empresa ADM.'}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

@@ -21,21 +21,28 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/guards/roles.decorator");
 const client_1 = require("@prisma/client");
+const app_mode_1 = require("../common/app-mode");
 let CategoriesController = class CategoriesController {
     constructor(categoriesService) {
         this.categoriesService = categoriesService;
     }
-    create(createCategoryDto) {
+    create(createCategoryDto, req) {
+        if ((0, app_mode_1.isUserMode)()) {
+            createCategoryDto.companyId = req.user?.id;
+        }
         return this.categoriesService.create(createCategoryDto);
     }
     findAll(companyId, includeInactive, req) {
-        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
+        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN && (0, app_mode_1.isCompanyMode)();
         const isAdmin = req.user?.role === client_1.UserRole.ADMIN;
-        if (!companyId && !isSuperAdmin) {
+        const resolvedCompanyId = (0, app_mode_1.isUserMode)()
+            ? req.user?.id
+            : companyId?.trim() || undefined;
+        if (!resolvedCompanyId && !isSuperAdmin) {
             throw new common_1.ForbiddenException('Empresa obrigatoria.');
         }
         const canViewInactive = includeInactive === 'true' && (isAdmin || isSuperAdmin);
-        return this.categoriesService.findAll(companyId, canViewInactive);
+        return this.categoriesService.findAll(resolvedCompanyId, canViewInactive);
     }
     findOne(id) {
         return this.categoriesService.findOne(id);
@@ -52,8 +59,9 @@ __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_category_dto_1.CreateCategoryDto]),
+    __metadata("design:paramtypes", [create_category_dto_1.CreateCategoryDto, Object]),
     __metadata("design:returntype", void 0)
 ], CategoriesController.prototype, "create", null);
 __decorate([

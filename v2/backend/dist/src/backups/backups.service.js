@@ -21,6 +21,7 @@ const unzipper = require("unzipper");
 const prisma_service_1 = require("../prisma/prisma.service");
 const system_config_store_1 = require("../system-config/system-config.store");
 const backups_types_1 = require("./backups.types");
+const app_mode_1 = require("../common/app-mode");
 const restoreOrder = [
     'companies',
     'units',
@@ -37,9 +38,15 @@ let BackupsService = class BackupsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    filterEntities(entities) {
+        if (!(0, app_mode_1.isUserMode)())
+            return entities;
+        return entities.filter((entity) => entity !== 'companies' && entity !== 'units' && entity !== 'sectors');
+    }
     async export(entities) {
         const data = {};
-        for (const entity of entities) {
+        const resolvedEntities = this.filterEntities(entities);
+        for (const entity of resolvedEntities) {
             switch (entity) {
                 case 'companies':
                     data.companies = await this.prisma.company.findMany();
@@ -79,7 +86,7 @@ let BackupsService = class BackupsService {
             meta: {
                 version: 1,
                 createdAt: new Date().toISOString(),
-                entities,
+                entities: resolvedEntities,
             },
             data,
         };
@@ -126,7 +133,7 @@ let BackupsService = class BackupsService {
         if (mode !== 'merge') {
             return { restored: {}, skipped: backups_types_1.backupEntities };
         }
-        const selectedEntities = this.resolveSelectedEntities(payload, entities);
+        const selectedEntities = this.filterEntities(this.resolveSelectedEntities(payload, entities));
         const restoreTargets = restoreOrder.filter((entity) => selectedEntities.includes(entity));
         const results = {};
         await this.prisma.$transaction(async (tx) => {

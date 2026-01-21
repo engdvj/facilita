@@ -4,6 +4,7 @@ const client_1 = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const prisma_adapter_1 = require("../src/prisma/prisma-adapter");
 const system_config_defaults_1 = require("../src/system-config/system-config.defaults");
+const app_mode_1 = require("../src/common/app-mode");
 const prisma = new client_1.PrismaClient({ adapter: (0, prisma_adapter_1.createPrismaAdapter)() });
 const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
 async function seedAdmCompany() {
@@ -79,6 +80,42 @@ async function seedSuperAdmin() {
     const password = 'superadmin';
     const name = 'Superadmin';
     const passwordHash = await bcrypt.hash(password, 12);
+    if ((0, app_mode_1.isUserMode)()) {
+        const existing = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+        });
+        if (existing) {
+            await seedPersonalCompany(existing.id, name);
+            await prisma.user.update({
+                where: { id: existing.id },
+                data: {
+                    name,
+                    passwordHash,
+                    role: client_1.UserRole.SUPERADMIN,
+                    status: client_1.UserStatus.ACTIVE,
+                    companyId: existing.id,
+                },
+            });
+            return;
+        }
+        const created = await prisma.user.create({
+            data: {
+                name,
+                email,
+                passwordHash,
+                role: client_1.UserRole.SUPERADMIN,
+                status: client_1.UserStatus.ACTIVE,
+            },
+            select: { id: true },
+        });
+        await seedPersonalCompany(created.id, name);
+        await prisma.user.update({
+            where: { id: created.id },
+            data: { companyId: created.id },
+        });
+        return;
+    }
     await prisma.user.upsert({
         where: { email },
         update: {
@@ -112,8 +149,22 @@ async function seedSystemConfig() {
         });
     }
 }
+async function seedPersonalCompany(userId, userName) {
+    const companyName = userName?.trim() ? `Usuario ${userName}` : 'Usuario';
+    await prisma.company.upsert({
+        where: { id: userId },
+        update: { name: companyName, status: client_1.EntityStatus.ACTIVE },
+        create: {
+            id: userId,
+            name: companyName,
+            status: client_1.EntityStatus.ACTIVE,
+        },
+    });
+}
 async function main() {
-    await seedAdmCompany();
+    if (!(0, app_mode_1.isUserMode)()) {
+        await seedAdmCompany();
+    }
     await seedRolePermissions();
     await seedSuperAdmin();
     await seedSystemConfig();

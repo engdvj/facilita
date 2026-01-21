@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { isCompanyMode, isUserMode } from '../common/app-mode';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,7 +27,10 @@ export class CategoriesController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  create(@Body() createCategoryDto: CreateCategoryDto) {
+  create(@Body() createCategoryDto: CreateCategoryDto, @Request() req: any) {
+    if (isUserMode()) {
+      createCategoryDto.companyId = req.user?.id;
+    }
     return this.categoriesService.create(createCategoryDto);
   }
 
@@ -36,14 +40,17 @@ export class CategoriesController {
     @Query('includeInactive') includeInactive: string | undefined,
     @Request() req: any,
   ) {
-    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN && isCompanyMode();
     const isAdmin = req.user?.role === UserRole.ADMIN;
-    if (!companyId && !isSuperAdmin) {
+    const resolvedCompanyId = isUserMode()
+      ? req.user?.id
+      : companyId?.trim() || undefined;
+    if (!resolvedCompanyId && !isSuperAdmin) {
       throw new ForbiddenException('Empresa obrigatoria.');
     }
     const canViewInactive =
       includeInactive === 'true' && (isAdmin || isSuperAdmin);
-    return this.categoriesService.findAll(companyId, canViewInactive);
+    return this.categoriesService.findAll(resolvedCompanyId, canViewInactive);
   }
 
   @Get(':id')

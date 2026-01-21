@@ -7,10 +7,13 @@ const cookieParser = require("cookie-parser");
 const express = require("express");
 const path_1 = require("path");
 const promises_1 = require("fs/promises");
-const app_module_1 = require("./app.module");
+const app_company_module_1 = require("./app-company.module");
+const app_user_module_1 = require("./app-user.module");
+const app_mode_1 = require("./common/app-mode");
 const system_config_service_1 = require("./system-config/system-config.service");
 async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const RootModule = app_mode_1.APP_MODE === 'user' ? app_user_module_1.AppUserModule : app_company_module_1.AppCompanyModule;
+    const app = await core_1.NestFactory.create(RootModule);
     const config = app.get(config_1.ConfigService);
     const systemConfigService = app.get(system_config_service_1.SystemConfigService);
     await systemConfigService.syncStore();
@@ -51,7 +54,7 @@ async function bootstrap() {
     });
     const port = config.get('PORT') ?? 3001;
     await app.listen(port);
-    console.log(`🚀 Application is running on: http://localhost:${port}`);
+    console.log(`Modo ${app_mode_1.APP_MODE} ativo. API: http://localhost:${port}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

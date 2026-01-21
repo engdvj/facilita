@@ -11,6 +11,7 @@ import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company, ContentAudience, Note, Sector, Unit } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 const pageSize = 8;
 
@@ -60,8 +61,9 @@ export default function NotesPage() {
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
   const [formTab, setFormTab] = useState<'basic' | 'category' | 'visual'>('basic');
-  const isAdmin = user?.role === 'ADMIN';
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isSuperAdmin = user?.role === 'SUPERADMIN' && !isUserMode;
+  const isAdmin =
+    user?.role === 'ADMIN' || (user?.role === 'SUPERADMIN' && isUserMode);
   const isCollaborator = user?.role === 'COLLABORATOR';
   const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
   const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
@@ -190,23 +192,25 @@ export default function NotesPage() {
     return false;
   };
   const audienceOptions = useMemo(() => {
-    if (isCollaborator) {
-      return [{ value: 'PRIVATE', label: 'Privado (apenas voce)' }];
-    }
-    if (isAdmin) {
-      return [
-        { value: 'COMPANY', label: 'Empresa' },
-        { value: 'SECTOR', label: 'Setor' },
-      ];
-    }
-    return [
-      { value: 'PUBLIC', label: 'Publico' },
-      { value: 'COMPANY', label: 'Empresa' },
-      { value: 'SECTOR', label: 'Setor' },
-      { value: 'ADMIN', label: 'Somente admins' },
-      { value: 'SUPERADMIN', label: 'Somente superadmins' },
-      { value: 'PRIVATE', label: 'Privado (apenas voce)' },
-    ];
+    const options = isCollaborator
+      ? [{ value: 'PRIVATE', label: 'Privado (apenas voce)' }]
+      : isAdmin
+        ? [
+            { value: 'COMPANY', label: 'Empresa' },
+            { value: 'SECTOR', label: 'Setor' },
+          ]
+        : [
+            { value: 'PUBLIC', label: 'Publico' },
+            { value: 'COMPANY', label: 'Empresa' },
+            { value: 'SECTOR', label: 'Setor' },
+            { value: 'ADMIN', label: 'Somente admins' },
+            { value: 'SUPERADMIN', label: 'Somente superadmins' },
+            { value: 'PRIVATE', label: 'Privado (apenas voce)' },
+          ];
+
+    return isUserMode
+      ? options.filter((option) => option.value !== 'SECTOR')
+      : options;
   }, [isAdmin, isCollaborator]);
 
   const loadData = async () => {
@@ -220,14 +224,14 @@ export default function NotesPage() {
         : isSuperAdmin
           ? api.get('/categories')
           : Promise.resolve({ data: [] }),
-      !isCollaborator
+      !isCollaborator && !isUserMode
         ? resolvedCompanyId
           ? api.get(`/sectors?companyId=${resolvedCompanyId}`)
           : isSuperAdmin
             ? api.get('/sectors')
             : Promise.resolve({ data: [] })
         : Promise.resolve({ data: [] }),
-      !isCollaborator ? api.get('/units') : Promise.resolve({ data: [] }),
+      !isCollaborator && !isUserMode ? api.get('/units') : Promise.resolve({ data: [] }),
     ]);
     setNotes(notesRes.data);
     setCategories(catsRes.data);
@@ -331,11 +335,12 @@ export default function NotesPage() {
       if (filterCategoryId && note.categoryId !== filterCategoryId) {
         return false;
       }
-      if (filterSectorId && note.sectorId !== filterSectorId) {
+      if (!isUserMode && filterSectorId && note.sectorId !== filterSectorId) {
         return false;
       }
       const noteUnitIds = getNoteUnitIds(note);
       if (
+        !isUserMode &&
         filterUnitId &&
         noteUnitIds.length > 0 &&
         !noteUnitIds.includes(filterUnitId)
@@ -353,11 +358,14 @@ export default function NotesPage() {
     visibleNotes,
   ]);
 
+  const scopeFilters = isUserMode
+    ? 0
+    : Number(Boolean(filterSectorId)) + Number(Boolean(filterUnitId));
+
   const activeFilters =
     Number(filterStatus !== 'ALL') +
     Number(Boolean(filterCategoryId)) +
-    Number(Boolean(filterSectorId)) +
-    Number(Boolean(filterUnitId));
+    scopeFilters;
 
   const totalPages = Math.max(1, Math.ceil(filteredNotes.length / pageSize));
   const paginatedNotes = filteredNotes.slice(
@@ -588,8 +596,8 @@ export default function NotesPage() {
     : '';
   const previewImagePosition = normalizeImagePosition(formData.imagePosition);
   const [previewPosX, previewPosY] = previewImagePosition.split(' ');
-  const shouldShowSectorField = formData.audience === 'SECTOR';
-  const shouldShowUnitField = shouldShowSectorField;
+  const shouldShowSectorField = formData.audience === 'SECTOR' && !isUserMode;
+  const shouldShowUnitField = shouldShowSectorField && !isUserMode;
 
   const pageTitle = isCollaborator ? 'Minhas notas' : 'Notas';
   const pageDescription = isCollaborator
@@ -673,46 +681,50 @@ export default function NotesPage() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Unidade
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterUnitId}
-                  onChange={(event) => {
-                    setFilterUnitId(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todas</option>
-                  {filterUnits.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Setor
-                </label>
-                <select
-                  className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
-                  value={filterSectorId}
-                  onChange={(event) => {
-                    setFilterSectorId(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">Todos</option>
-                  {visibleSectors.map((sector) => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!isUserMode && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Unidade
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterUnitId}
+                      onChange={(event) => {
+                        setFilterUnitId(event.target.value);
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todas</option>
+                      {filterUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Setor
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground"
+                      value={filterSectorId}
+                      onChange={(event) => {
+                        setFilterSectorId(event.target.value);
+                        setPage(1);
+                      }}
+                    >
+                      <option value="">Todos</option>
+                      {visibleSectors.map((sector) => (
+                        <option key={sector.id} value={sector.id}>
+                          {sector.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               <button
                 type="button"
                 className="rounded-md border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/60"

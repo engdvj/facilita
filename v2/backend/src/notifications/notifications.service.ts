@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType, EntityType, ContentAudience } from '@prisma/client';
+import { isUserMode } from '../common/app-mode';
 
 interface CreateNotificationDto {
   userId: string;
@@ -97,6 +98,38 @@ export class NotificationsService {
     audience: ContentAudience,
     excludeUserId?: string,
   ): Promise<string[]> {
+    if (isUserMode()) {
+      const where: any = {
+        status: 'ACTIVE',
+        ...(excludeUserId && { id: { not: excludeUserId } }),
+      };
+
+      switch (audience) {
+        case ContentAudience.PUBLIC:
+          break;
+        case ContentAudience.ADMIN:
+          where.role = { in: ['ADMIN', 'SUPERADMIN'] };
+          break;
+        case ContentAudience.SUPERADMIN:
+          where.role = 'SUPERADMIN';
+          break;
+        case ContentAudience.PRIVATE:
+          return [];
+        case ContentAudience.COMPANY:
+        case ContentAudience.SECTOR:
+        default:
+          if (!companyId) return [];
+          where.id = companyId;
+      }
+
+      const users = await this.prisma.user.findMany({
+        where,
+        select: { id: true },
+      });
+
+      return users.map((user: { id: string }) => user.id);
+    }
+
     const where: any = {
       status: 'ACTIVE',
       ...(excludeUserId && { id: { not: excludeUserId } }),
@@ -146,7 +179,7 @@ export class NotificationsService {
       select: { id: true },
     });
 
-    return users.map((u) => u.id);
+    return users.map((user: { id: string }) => user.id);
   }
 
   // Get users who favorited an item
@@ -169,6 +202,6 @@ export class NotificationsService {
       select: { userId: true },
     });
 
-    return favorites.map((f) => f.userId);
+    return favorites.map((favorite: { userId: string }) => favorite.userId);
   }
 }

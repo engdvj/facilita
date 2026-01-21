@@ -30,6 +30,10 @@ mkdir -p backend/uploads/images
 mkdir -p backend/uploads/documents
 mkdir -p backend/backups/auto
 mkdir -p backend/backups/tmp
+mkdir -p backend/uploads-user/images
+mkdir -p backend/uploads-user/documents
+mkdir -p backend/backups-user/auto
+mkdir -p backend/backups-user/tmp
 
 # Parse command line arguments
 ACTION=${1:-up}

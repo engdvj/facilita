@@ -3,14 +3,15 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
   areAllOptionsSelected,
-  backupOptions,
   countSelectedOptions,
+  type BackupOption,
   type BackupSelection,
 } from '@/lib/backup';
 
 type BackupSelectionPanelProps = {
   title: string;
   subtitle: string;
+  options: readonly BackupOption[];
   selection: BackupSelection;
   setSelection: Dispatch<SetStateAction<BackupSelection>>;
 };
@@ -18,17 +19,18 @@ type BackupSelectionPanelProps = {
 export default function BackupSelectionPanel({
   title,
   subtitle,
+  options,
   selection,
   setSelection,
 }: BackupSelectionPanelProps) {
-  const selectedCount = countSelectedOptions(selection);
-  const allSelected = areAllOptionsSelected(selection);
+  const selectedCount = countSelectedOptions(selection, options);
+  const allSelected = areAllOptionsSelected(selection, options);
   const hasSelection = selectedCount > 0;
 
   const toggleAll = (value: boolean) => {
     setSelection((current) => {
       const next = { ...current };
-      backupOptions.forEach((option) => {
+      options.forEach((option) => {
         next[option.key] = value;
       });
       return next;
@@ -68,7 +70,7 @@ export default function BackupSelectionPanel({
       </div>
 
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        {backupOptions.map((option) => (
+        {options.map((option) => (
           <label
             key={option.key}
             className="flex items-start gap-2 rounded-lg border border-border/70 bg-white/80 px-2.5 py-2 text-foreground"

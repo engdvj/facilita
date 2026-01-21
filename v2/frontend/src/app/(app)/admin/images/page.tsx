@@ -6,6 +6,7 @@ import api, { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { useImageGallery } from '@/hooks/useImageGallery';
 import { Company } from '@/types';
+import { isUserMode } from '@/lib/app-mode';
 
 export default function ImagesPage() {
   const user = useAuthStore((state) => state.user);
@@ -18,7 +19,7 @@ export default function ImagesPage() {
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [mounted, setMounted] = useState(false);
 
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const isSuperAdmin = user?.role === 'SUPERADMIN' && !isUserMode;
   const companyId = isSuperAdmin ? selectedCompanyId : (user?.companyId || '');
 
   useEffect(() => {
@@ -131,7 +132,9 @@ export default function ImagesPage() {
           Galeria de Imagens
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Visualize e gerencie as imagens da empresa
+          {isUserMode
+            ? 'Visualize e gerencie as imagens do portal'
+            : 'Visualize e gerencie as imagens da empresa'}
         </p>
       </div>
 

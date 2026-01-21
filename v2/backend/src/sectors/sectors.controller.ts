@@ -12,12 +12,14 @@ import {
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CompanyModeGuard } from '../common/guards/company-mode.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { SectorsService } from './sectors.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
 
 @Controller('sectors')
+@UseGuards(CompanyModeGuard)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class SectorsController {

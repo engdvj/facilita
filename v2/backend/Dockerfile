@@ -45,6 +45,7 @@ RUN npm ci --only=production
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/prisma/generated ./dist/src/prisma/generated
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create directories for uploads and backups
@@ -54,4 +55,4 @@ RUN mkdir -p uploads/images uploads/documents backups/auto backups/tmp
 EXPOSE 3001
 
 # Start application
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+CMD ["sh", "-c", "if [ \"$APP_MODE\" = \"user\" ]; then npx prisma migrate deploy --schema prisma/user/schema.prisma; else npx prisma migrate deploy --schema prisma/schema.prisma; fi && node dist/src/main.js"]

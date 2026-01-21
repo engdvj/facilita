@@ -6,6 +6,7 @@ import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 type ContentAudience =
   | 'PUBLIC'
@@ -266,6 +267,10 @@ export default function HierarquiaPage() {
     let active = true;
 
     const load = async () => {
+      if (isUserMode) {
+        setLoading(false);
+        return;
+      }
       if (!accessToken) {
         setLoading(false);
         setError('Faca login para acessar a hierarquia.');
@@ -504,6 +509,14 @@ export default function HierarquiaPage() {
             Esta visualizacao e exclusiva para superadmin.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (isUserMode) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-card/60 p-6 text-sm text-muted-foreground">
+        Modo usuario ativo. A hierarquia fica disponivel apenas no modo empresa.
       </div>
     );
   }

@@ -9,6 +9,7 @@ import AdminPager from '@/components/admin/pager';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Company } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 const pageSize = 8;
 
@@ -35,17 +36,18 @@ export default function CategoriesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [companyId, setCompanyId] = useState('');
   const [formCompanyId, setFormCompanyId] = useState('');
-  const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
-  const resolvedCompanyId = isSuperAdmin ? companyId || undefined : user?.companyId;
+  const isAdmin = user?.role === 'ADMIN' || isSuperAdmin;
+  const canSelectCompany = isSuperAdmin && !isUserMode;
+  const resolvedCompanyId = canSelectCompany ? companyId || undefined : user?.companyId;
 
   useNotifyOnChange(error);
   useNotifyOnChange(formError);
 
   const loadCategories = async () => {
-    if (!resolvedCompanyId && !isSuperAdmin) return;
+    if (!resolvedCompanyId && !isSuperAdmin && !isUserMode) return;
     const params = new URLSearchParams();
-    if (resolvedCompanyId) {
+    if (resolvedCompanyId && !isUserMode) {
       params.set('companyId', resolvedCompanyId);
     }
     if (isAdmin || isSuperAdmin) {
@@ -58,7 +60,7 @@ export default function CategoriesPage() {
   };
 
   const loadCompanies = async () => {
-    if (!isSuperAdmin) return;
+    if (!canSelectCompany) return;
     const response = await api.get('/companies');
     setCompanies(response.data);
   };
@@ -69,7 +71,7 @@ export default function CategoriesPage() {
     const load = async () => {
       if (!hasHydrated) return;
 
-      if (!user?.companyId && !isSuperAdmin) {
+      if (!user?.companyId && !isSuperAdmin && !isUserMode) {
         setError(
           'Usuario sem empresa associada. Entre em contato com o administrador.',
         );
@@ -78,7 +80,7 @@ export default function CategoriesPage() {
       }
 
       try {
-        if (isSuperAdmin) {
+        if (canSelectCompany) {
           await loadCompanies();
         }
         await loadCategories();
@@ -104,7 +106,7 @@ export default function CategoriesPage() {
     return () => {
       active = false;
     };
-  }, [companyId, hasHydrated, isSuperAdmin, user?.companyId]);
+  }, [companyId, hasHydrated, canSelectCompany, isSuperAdmin, user?.companyId]);
 
   const filteredCategories = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -161,7 +163,7 @@ export default function CategoriesPage() {
     setName('');
     setColor('#3b82f6');
     setAdminOnly(false);
-    setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
+    setFormCompanyId(canSelectCompany ? companyId : '');
     setFormError(null);
     setModalOpen(true);
   };
@@ -171,17 +173,19 @@ export default function CategoriesPage() {
     setName(category.name);
     setColor(category.color || '#3b82f6');
     setAdminOnly(Boolean(category.adminOnly));
-    setFormCompanyId(category.companyId || '');
+    setFormCompanyId(canSelectCompany ? category.companyId || '' : '');
     setFormError(null);
     setModalOpen(true);
   };
 
   const handleSave = async () => {
-    const resolvedCompanyId = isSuperAdmin
-      ? formCompanyId
-      : user?.companyId;
+    const resolvedCompanyId = canSelectCompany ? formCompanyId : user?.companyId;
     if (!resolvedCompanyId) {
-      setFormError('Selecione uma empresa.');
+      setFormError(
+        isUserMode
+          ? 'Nao foi possivel identificar o usuario.'
+          : 'Selecione uma empresa.',
+      );
       return;
     }
 
@@ -294,7 +298,7 @@ export default function CategoriesPage() {
             placeholder="Buscar categoria"
             className="w-full min-w-0 rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
           />
-          {isSuperAdmin && (
+          {canSelectCompany && (
             <select
               value={companyId}
               onChange={(event) => {
@@ -523,7 +527,7 @@ export default function CategoriesPage() {
               Detalhes
             </p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {isSuperAdmin && (
+              {canSelectCompany && (
                 <div className="md:col-span-2">
                   <AdminField label="Empresa" htmlFor="category-company">
                     <select

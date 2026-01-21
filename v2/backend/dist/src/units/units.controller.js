@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
+const company_mode_guard_1 = require("../common/guards/company-mode.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const units_service_1 = require("./units.service");
 const create_unit_dto_1 = require("./dto/create-unit.dto");
@@ -89,6 +90,7 @@ __decorate([
 ], UnitsController.prototype, "remove", null);
 exports.UnitsController = UnitsController = __decorate([
     (0, common_1.Controller)('units'),
+    (0, common_1.UseGuards)(company_mode_guard_1.CompanyModeGuard),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
     __metadata("design:paramtypes", [units_service_1.UnitsService])

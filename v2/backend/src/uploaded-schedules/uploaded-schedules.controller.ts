@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { ContentAudience, UserRole } from '@prisma/client';
+import { isCompanyMode, isUserMode } from '../common/app-mode';
 
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
@@ -38,6 +39,13 @@ const audienceOptionsByRole: Record<UserRole, ContentAudience[]> = {
   [UserRole.COLLABORATOR]: [ContentAudience.PRIVATE],
 };
 
+const userModeAudienceOptions: ContentAudience[] = [
+  ContentAudience.PUBLIC,
+  ContentAudience.PRIVATE,
+  ContentAudience.ADMIN,
+  ContentAudience.SUPERADMIN,
+];
+
 const resolveAudience = (
   role: UserRole,
   payload: { audience?: ContentAudience; isPublic?: boolean },
@@ -51,7 +59,25 @@ const resolveAudience = (
   return defaultAudienceByRole[role];
 };
 
+const normalizeAudience = (audience: ContentAudience) => {
+  if (
+    isUserMode() &&
+    (audience === ContentAudience.COMPANY ||
+      audience === ContentAudience.SECTOR)
+  ) {
+    return ContentAudience.PRIVATE;
+  }
+  return audience;
+};
+
 const isAllowedAudience = (role: UserRole, audience: ContentAudience) => {
+  if (isUserMode()) {
+    if (role === UserRole.SUPERADMIN) return true;
+    if (role === UserRole.ADMIN) {
+      return userModeAudienceOptions.includes(audience);
+    }
+    return audience === ContentAudience.PRIVATE;
+  }
   return audienceOptionsByRole[role]?.includes(audience);
 };
 
@@ -70,9 +96,15 @@ export class UploadedSchedulesController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   create(@Body() createScheduleDto: CreateScheduleDto, @Request() req: any) {
     const user = req.user;
-    const isSuperAdmin = user?.role === UserRole.SUPERADMIN;
-    const companyId = isSuperAdmin ? createScheduleDto.companyId : user?.companyId;
-    const audience = resolveAudience(user?.role, createScheduleDto);
+    const isSuperAdmin = user?.role === UserRole.SUPERADMIN && isCompanyMode();
+    const companyId = isUserMode()
+      ? user?.id
+      : isSuperAdmin
+        ? createScheduleDto.companyId
+        : user?.companyId;
+    const audience = normalizeAudience(
+      resolveAudience(user?.role, createScheduleDto),
+    );
 
     if (!companyId) {
       throw new ForbiddenException('Empresa obrigatoria.');
@@ -84,6 +116,15 @@ export class UploadedSchedulesController {
 
     if (!isAllowedAudience(user?.role, audience)) {
       throw new ForbiddenException('Visibilidade nao autorizada.');
+    }
+
+    if (
+      isUserMode() &&
+      (createScheduleDto.sectorId ||
+        createScheduleDto.unitId ||
+        (createScheduleDto.unitIds?.length ?? 0) > 0)
+    ) {
+      throw new ForbiddenException('Setores e unidades nao disponiveis no modo usuario.');
     }
 
     if (audience === ContentAudience.SECTOR && !createScheduleDto.sectorId) {
@@ -120,20 +161,26 @@ export class UploadedSchedulesController {
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
   ) {
-    const normalizedCompanyId = companyId?.trim() || undefined;
+    const normalizedCompanyId = isUserMode()
+      ? undefined
+      : companyId?.trim() || undefined;
     const parsedAudience = parseAudienceParam(audience);
+    const fallbackAudience =
+      parsedAudience ??
+      (isPublic
+        ? isPublic === 'true'
+          ? ContentAudience.PUBLIC
+          : undefined
+        : undefined) ??
+      (normalizedCompanyId ? undefined : ContentAudience.PUBLIC);
+    const normalizedAudience = fallbackAudience
+      ? normalizeAudience(fallbackAudience)
+      : undefined;
     const filters = {
-      sectorId,
-      unitId,
+      sectorId: isUserMode() ? undefined : sectorId,
+      unitId: isUserMode() ? undefined : unitId,
       categoryId,
-      audience:
-        parsedAudience ||
-        (isPublic
-          ? isPublic === 'true'
-            ? ContentAudience.PUBLIC
-            : undefined
-          : undefined) ||
-        (normalizedCompanyId ? undefined : ContentAudience.PUBLIC),
+      audience: normalizedAudience,
       isPublic:
         isPublic && isPublic === 'false'
           ? false
@@ -165,8 +212,10 @@ export class UploadedSchedulesController {
     @Query('audience') audience?: string,
   ) {
     const normalizedCompanyId = companyId?.trim() || undefined;
-    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
-    const resolvedCompanyId = normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN && isCompanyMode();
+    const resolvedCompanyId = isUserMode()
+      ? req.user?.id
+      : normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
 
     if (!resolvedCompanyId && !isSuperAdmin) {
       throw new ForbiddenException('Empresa obrigatoria.');
@@ -174,10 +223,10 @@ export class UploadedSchedulesController {
 
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
-      sectorId,
-      unitId,
+      sectorId: isUserMode() ? undefined : sectorId,
+      unitId: isUserMode() ? undefined : unitId,
       categoryId,
-      audience: parsedAudience,
+      audience: parsedAudience ? normalizeAudience(parsedAudience) : undefined,
       isPublic: isPublic ? isPublic === 'true' : undefined,
       includeInactive: true,
     };
@@ -226,7 +275,7 @@ export class UploadedSchedulesController {
     return this.schedulesService.update(id, updateScheduleDto, {
       id: req.user.id,
       role: req.user.role,
-      companyId: req.user.companyId,
+      companyId: isUserMode() ? req.user.id : req.user.companyId,
     });
   }
 
@@ -243,7 +292,7 @@ export class UploadedSchedulesController {
       {
         id: req.user.id,
         role: req.user.role,
-        companyId: req.user.companyId,
+        companyId: isUserMode() ? req.user.id : req.user.companyId,
       },
       body?.adminMessage,
     );
@@ -266,7 +315,7 @@ export class UploadedSchedulesController {
     return this.schedulesService.activate(id, {
       id: req.user.id,
       role: req.user.role,
-      companyId: req.user.companyId,
+      companyId: isUserMode() ? req.user.id : req.user.companyId,
     });
   }
 
@@ -280,7 +329,7 @@ export class UploadedSchedulesController {
     return this.schedulesService.deactivate(id, {
       id: req.user.id,
       role: req.user.role,
-      companyId: req.user.companyId,
+      companyId: isUserMode() ? req.user.id : req.user.companyId,
     });
   }
 }

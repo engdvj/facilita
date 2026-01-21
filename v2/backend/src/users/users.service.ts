@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, UserStatus } from '@prisma/client';
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { isUserMode } from '../common/app-mode';
 
-const userSelect = {
+const baseUserSelect = {
   id: true,
   name: true,
   email: true,
@@ -16,24 +17,35 @@ const userSelect = {
   theme: true,
   createdAt: true,
   updatedAt: true,
-  userSectors: {
-    include: {
-      sector: {
+};
+
+const userSelect = isUserMode()
+  ? baseUserSelect
+  : {
+      ...baseUserSelect,
+      userSectors: {
         include: {
-          sectorUnits: {
+          sector: {
             include: {
-              unit: true,
+              sectorUnits: {
+                include: {
+                  unit: true,
+                },
+              },
             },
           },
         },
       },
-    },
-  },
-};
+    };
 
 type UserProfile = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+type UserProfileWithSectors = UserProfile & {
+  userSectors?: Array<{
+    sector?: { companyId?: string | null } | null;
+  }>;
+};
 
-const resolveCompanyIdFromSectors = (user: UserProfile) => {
+const resolveCompanyIdFromSectors = (user: UserProfileWithSectors) => {
   if (user.companyId) {
     return user.companyId;
   }
@@ -68,7 +80,9 @@ export class UsersService {
         where: { id, status: UserStatus.ACTIVE },
         select: userSelect,
       })
-      .then((user) => (user ? this.ensureCompanyId(user) : null));
+      .then((user: UserProfile | null) =>
+        user ? this.ensureCompanyId(user) : null,
+      );
   }
 
   findAll() {
@@ -97,13 +111,39 @@ export class UsersService {
     const theme = data.theme
       ? (data.theme as Prisma.InputJsonValue)
       : undefined;
+    const role = data.role ?? (isUserMode() ? UserRole.ADMIN : undefined);
+
+    if (isUserMode()) {
+      return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const createdUser = await tx.user.create({
+          data: {
+            name: data.name,
+            email: data.username,
+            passwordHash,
+            role,
+            status: data.status,
+            avatarUrl: data.avatarUrl,
+            theme,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        return tx.user.update({
+          where: { id: createdUser.id },
+          data: { companyId: createdUser.id },
+          select: userSelect,
+        });
+      });
+    }
 
     return this.prisma.user.create({
       data: {
         name: data.name,
         email: data.username,
         passwordHash,
-        role: data.role,
+        role,
         status: data.status,
         companyId: data.companyId,
         avatarUrl: data.avatarUrl,
@@ -130,19 +170,22 @@ export class UsersService {
       email: data.username,
       role: data.role,
       status: data.status,
-      companyId: data.companyId,
       avatarUrl: data.avatarUrl,
       theme: data.theme
         ? (data.theme as Prisma.InputJsonValue)
         : undefined,
     };
 
+    if (!isUserMode()) {
+      updateData.companyId = data.companyId;
+    }
+
     if (data.password) {
       updateData.passwordHash = await bcrypt.hash(data.password, 12);
     }
 
     // Se sectors foi fornecido, atualiza os relacionamentos
-    if (data.sectors) {
+    if (data.sectors && !isUserMode()) {
       updateData.userSectors = {
         deleteMany: {}, // Remove todos os relacionamentos antigos
         create: data.sectors.map((sector) => ({
@@ -212,7 +255,7 @@ export class UsersService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Remove relacionamentos com setores (cascade já configurado no schema)
 
       // Desassocia conteúdos criados pelo usuário
@@ -252,6 +295,13 @@ export class UsersService {
     if (user.companyId) {
       return user;
     }
+    if (isUserMode()) {
+      return this.prisma.user.update({
+        where: { id: user.id },
+        data: { companyId: user.id },
+        select: userSelect,
+      });
+    }
     const resolvedCompanyId = resolveCompanyIdFromSectors(user);
     if (!resolvedCompanyId) {
       return user;
@@ -262,4 +312,5 @@ export class UsersService {
       select: userSelect,
     });
   }
+
 }

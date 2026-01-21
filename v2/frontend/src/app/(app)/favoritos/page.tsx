@@ -6,6 +6,7 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { useFavorites } from '@/hooks/useFavorites';
+import { isUserMode } from '@/lib/app-mode';
 import {
   Category,
   ContentAudience,
@@ -97,25 +98,40 @@ export default function FavoritosPage() {
     [favorites],
   );
 
+  const normalizeAudience = (audience: ContentAudience): ContentAudience => {
+    if (!isUserMode) return audience;
+    if (audience === 'COMPANY' || audience === 'SECTOR') return 'PRIVATE';
+    return audience;
+  };
+
   const getAudience = (link: LinkType): ContentAudience => {
     if (link.isPublic) return 'PUBLIC';
-    if (link.audience) return link.audience;
-    if (link.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = link.audience
+      ? link.audience
+      : link.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const getDocumentAudience = (document: UploadedSchedule): ContentAudience => {
     if (document.isPublic) return 'PUBLIC';
-    if (document.audience) return document.audience;
-    if (document.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = document.audience
+      ? document.audience
+      : document.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const getNoteAudience = (note: Note): ContentAudience => {
     if (note.isPublic) return 'PUBLIC';
-    if (note.audience) return note.audience;
-    if (note.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = note.audience
+      ? note.audience
+      : note.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const matchesTypeFilter = (type: 'link' | 'document' | 'note') => {

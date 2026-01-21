@@ -21,6 +21,7 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/guards/roles.decorator");
 const client_1 = require("@prisma/client");
+const app_mode_1 = require("../common/app-mode");
 const defaultAudienceByRole = {
     [client_1.UserRole.SUPERADMIN]: client_1.ContentAudience.COMPANY,
     [client_1.UserRole.ADMIN]: client_1.ContentAudience.COMPANY,
@@ -38,6 +39,12 @@ const audienceOptionsByRole = {
     [client_1.UserRole.ADMIN]: [client_1.ContentAudience.COMPANY, client_1.ContentAudience.SECTOR],
     [client_1.UserRole.COLLABORATOR]: [client_1.ContentAudience.PRIVATE],
 };
+const userModeAudienceOptions = [
+    client_1.ContentAudience.PUBLIC,
+    client_1.ContentAudience.PRIVATE,
+    client_1.ContentAudience.ADMIN,
+    client_1.ContentAudience.SUPERADMIN,
+];
 const resolveAudience = (role, payload) => {
     if (payload.audience)
         return payload.audience;
@@ -48,7 +55,23 @@ const resolveAudience = (role, payload) => {
     }
     return defaultAudienceByRole[role];
 };
+const normalizeAudience = (audience) => {
+    if ((0, app_mode_1.isUserMode)() &&
+        (audience === client_1.ContentAudience.COMPANY ||
+            audience === client_1.ContentAudience.SECTOR)) {
+        return client_1.ContentAudience.PRIVATE;
+    }
+    return audience;
+};
 const isAllowedAudience = (role, audience) => {
+    if ((0, app_mode_1.isUserMode)()) {
+        if (role === client_1.UserRole.SUPERADMIN)
+            return true;
+        if (role === client_1.UserRole.ADMIN) {
+            return userModeAudienceOptions.includes(audience);
+        }
+        return audience === client_1.ContentAudience.PRIVATE;
+    }
     return audienceOptionsByRole[role]?.includes(audience);
 };
 const parseAudienceParam = (value) => {
@@ -63,9 +86,13 @@ let UploadedSchedulesController = class UploadedSchedulesController {
     }
     create(createScheduleDto, req) {
         const user = req.user;
-        const isSuperAdmin = user?.role === client_1.UserRole.SUPERADMIN;
-        const companyId = isSuperAdmin ? createScheduleDto.companyId : user?.companyId;
-        const audience = resolveAudience(user?.role, createScheduleDto);
+        const isSuperAdmin = user?.role === client_1.UserRole.SUPERADMIN && (0, app_mode_1.isCompanyMode)();
+        const companyId = (0, app_mode_1.isUserMode)()
+            ? user?.id
+            : isSuperAdmin
+                ? createScheduleDto.companyId
+                : user?.companyId;
+        const audience = normalizeAudience(resolveAudience(user?.role, createScheduleDto));
         if (!companyId) {
             throw new common_1.ForbiddenException('Empresa obrigatoria.');
         }
@@ -74,6 +101,12 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         }
         if (!isAllowedAudience(user?.role, audience)) {
             throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+        }
+        if ((0, app_mode_1.isUserMode)() &&
+            (createScheduleDto.sectorId ||
+                createScheduleDto.unitId ||
+                (createScheduleDto.unitIds?.length ?? 0) > 0)) {
+            throw new common_1.ForbiddenException('Setores e unidades nao disponiveis no modo usuario.');
         }
         if (audience === client_1.ContentAudience.SECTOR && !createScheduleDto.sectorId) {
             throw new common_1.ForbiddenException('Setor obrigatorio para documentos de setor.');
@@ -96,19 +129,25 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         });
     }
     async findAll(companyId, sectorId, unitId, categoryId, isPublic, audience) {
-        const normalizedCompanyId = companyId?.trim() || undefined;
+        const normalizedCompanyId = (0, app_mode_1.isUserMode)()
+            ? undefined
+            : companyId?.trim() || undefined;
         const parsedAudience = parseAudienceParam(audience);
+        const fallbackAudience = parsedAudience ??
+            (isPublic
+                ? isPublic === 'true'
+                    ? client_1.ContentAudience.PUBLIC
+                    : undefined
+                : undefined) ??
+            (normalizedCompanyId ? undefined : client_1.ContentAudience.PUBLIC);
+        const normalizedAudience = fallbackAudience
+            ? normalizeAudience(fallbackAudience)
+            : undefined;
         const filters = {
-            sectorId,
-            unitId,
+            sectorId: (0, app_mode_1.isUserMode)() ? undefined : sectorId,
+            unitId: (0, app_mode_1.isUserMode)() ? undefined : unitId,
             categoryId,
-            audience: parsedAudience ||
-                (isPublic
-                    ? isPublic === 'true'
-                        ? client_1.ContentAudience.PUBLIC
-                        : undefined
-                    : undefined) ||
-                (normalizedCompanyId ? undefined : client_1.ContentAudience.PUBLIC),
+            audience: normalizedAudience,
             isPublic: isPublic && isPublic === 'false'
                 ? false
                 : normalizedCompanyId
@@ -122,17 +161,19 @@ let UploadedSchedulesController = class UploadedSchedulesController {
     }
     async findAllAdmin(req, companyId, sectorId, unitId, categoryId, isPublic, audience) {
         const normalizedCompanyId = companyId?.trim() || undefined;
-        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
-        const resolvedCompanyId = normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
+        const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN && (0, app_mode_1.isCompanyMode)();
+        const resolvedCompanyId = (0, app_mode_1.isUserMode)()
+            ? req.user?.id
+            : normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
         if (!resolvedCompanyId && !isSuperAdmin) {
             throw new common_1.ForbiddenException('Empresa obrigatoria.');
         }
         const parsedAudience = parseAudienceParam(audience);
         const filters = {
-            sectorId,
-            unitId,
+            sectorId: (0, app_mode_1.isUserMode)() ? undefined : sectorId,
+            unitId: (0, app_mode_1.isUserMode)() ? undefined : unitId,
             categoryId,
-            audience: parsedAudience,
+            audience: parsedAudience ? normalizeAudience(parsedAudience) : undefined,
             isPublic: isPublic ? isPublic === 'true' : undefined,
             includeInactive: true,
         };
@@ -150,14 +191,14 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         return this.schedulesService.update(id, updateScheduleDto, {
             id: req.user.id,
             role: req.user.role,
-            companyId: req.user.companyId,
+            companyId: (0, app_mode_1.isUserMode)() ? req.user.id : req.user.companyId,
         });
     }
     remove(id, body, req) {
         return this.schedulesService.remove(id, {
             id: req.user.id,
             role: req.user.role,
-            companyId: req.user.companyId,
+            companyId: (0, app_mode_1.isUserMode)() ? req.user.id : req.user.companyId,
         }, body?.adminMessage);
     }
     restore(id) {
@@ -167,14 +208,14 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         return this.schedulesService.activate(id, {
             id: req.user.id,
             role: req.user.role,
-            companyId: req.user.companyId,
+            companyId: (0, app_mode_1.isUserMode)() ? req.user.id : req.user.companyId,
         });
     }
     deactivate(id, req) {
         return this.schedulesService.deactivate(id, {
             id: req.user.id,
             role: req.user.role,
-            companyId: req.user.companyId,
+            companyId: (0, app_mode_1.isUserMode)() ? req.user.id : req.user.companyId,
         });
     }
 };

@@ -15,36 +15,17 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const notifications_service_1 = require("../notifications/notifications.service");
 const notifications_gateway_1 = require("../notifications/notifications.gateway");
+const app_mode_1 = require("../common/app-mode");
 let UploadedSchedulesService = class UploadedSchedulesService {
     constructor(prisma, notificationsService, notificationsGateway) {
         this.prisma = prisma;
         this.notificationsService = notificationsService;
         this.notificationsGateway = notificationsGateway;
     }
-    async create(createScheduleDto) {
-        const { unitIds, unitId, ...data } = createScheduleDto;
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-        const schedule = await this.prisma.uploadedSchedule.create({
-            data: {
-                ...data,
-                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-                scheduleUnits: normalizedUnitIds.length > 0
-                    ? {
-                        create: normalizedUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : undefined,
-            },
-            include: {
+    getBaseInclude() {
+        if ((0, app_mode_1.isUserMode)()) {
+            return {
                 category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
                 user: {
                     select: {
                         id: true,
@@ -52,7 +33,62 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                         email: true,
                     },
                 },
+            };
+        }
+        return {
+            category: true,
+            sector: true,
+            scheduleUnits: {
+                include: {
+                    unit: true,
+                },
             },
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        };
+    }
+    normalizeAudienceForUserMode(audience) {
+        if (!(0, app_mode_1.isUserMode)())
+            return audience;
+        if (audience === client_1.ContentAudience.COMPANY || audience === client_1.ContentAudience.SECTOR) {
+            return client_1.ContentAudience.PRIVATE;
+        }
+        return audience;
+    }
+    async create(createScheduleDto) {
+        const { unitIds, unitId, ...data } = createScheduleDto;
+        const normalizedUnitIds = (0, app_mode_1.isUserMode)()
+            ? []
+            : this.normalizeUnitIds(unitIds, unitId);
+        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
+        if (data.audience) {
+            data.audience = this.normalizeAudienceForUserMode(data.audience);
+            data.isPublic = data.audience === client_1.ContentAudience.PUBLIC;
+        }
+        const schedule = await this.prisma.uploadedSchedule.create({
+            data: {
+                ...data,
+                unitId: (0, app_mode_1.isUserMode)()
+                    ? null
+                    : normalizedUnitIds.length === 1
+                        ? normalizedUnitIds[0]
+                        : null,
+                scheduleUnits: (0, app_mode_1.isUserMode)()
+                    ? undefined
+                    : normalizedUnitIds.length > 0
+                        ? {
+                            create: normalizedUnitIds.map((itemUnitId) => ({
+                                unitId: itemUnitId,
+                            })),
+                        }
+                        : undefined,
+            },
+            include: this.getBaseInclude(),
         });
         try {
             const recipients = await this.notificationsService.getRecipientsByAudience(schedule.companyId, schedule.sectorId, schedule.audience, schedule.userId || undefined);
@@ -82,9 +118,12 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
+        const canUseSectorFilters = !(0, app_mode_1.isUserMode)();
+        const filterUnitIds = !canUseSectorFilters
+            ? undefined
+            : filters?.unitId !== undefined
+                ? this.normalizeUnitIds(undefined, filters.unitId)
+                : filters?.unitIds;
         const unitFilter = filterUnitIds !== undefined
             ? filterUnitIds.length > 0
                 ? {
@@ -111,7 +150,8 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         const where = {
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
+            ...(canUseSectorFilters &&
+                filters?.sectorId && { sectorId: filters.sectorId }),
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
             ...(!shouldFilterPublic &&
                 filters?.audience && { audience: filters.audience }),
@@ -122,22 +162,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         console.log('SchedulesService.findAll - where clause:', JSON.stringify(where, null, 2));
         const schedules = await this.prisma.uploadedSchedule.findMany({
             where,
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
             orderBy: {
                 createdAt: 'desc',
             },
@@ -148,22 +173,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     async findOne(id) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!schedule || schedule.deletedAt) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
@@ -173,17 +183,38 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     async update(id, updateScheduleDto, actor) {
         const existingSchedule = await this.findOne(id);
         this.assertCanMutate(existingSchedule, actor);
-        const existingAudience = this.resolveAudienceFromExisting(existingSchedule);
+        const existingAudience = this.normalizeAudienceForUserMode(this.resolveAudienceFromExisting(existingSchedule));
         const shouldUpdateAudience = updateScheduleDto.audience !== undefined ||
             updateScheduleDto.isPublic !== undefined;
         const resolvedAudience = shouldUpdateAudience
-            ? this.resolveAudienceForUpdate(existingAudience, updateScheduleDto)
+            ? this.normalizeAudienceForUserMode(this.resolveAudienceForUpdate(existingAudience, updateScheduleDto))
             : existingAudience;
         if (shouldUpdateAudience && actor?.role) {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
         }
         const hasChanges = updateScheduleDto.title !== existingSchedule.title;
-        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateScheduleDto;
+        if ((0, app_mode_1.isUserMode)()) {
+            const { categoryId: _categoryId, companyId: _companyId, userId: _userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience: _audience, isPublic: _isPublic, ...rest } = updateScheduleDto;
+            const updateData = {
+                ...rest,
+            };
+            if (_categoryId !== undefined) {
+                updateData.category = _categoryId
+                    ? { connect: { id: _categoryId } }
+                    : { disconnect: true };
+            }
+            if (shouldUpdateAudience) {
+                updateData.audience = resolvedAudience;
+                updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
+            }
+            const updated = await this.prisma.uploadedSchedule.update({
+                where: { id },
+                data: updateData,
+                include: this.getBaseInclude(),
+            });
+            return updated;
+        }
+        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateScheduleDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingSchedule.sectorId ?? undefined
             : undefined;
@@ -222,6 +253,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 ? { connect: { id: unitId } }
                 : { disconnect: true },
         };
+        if (_categoryId !== undefined) {
+            updateData.category = _categoryId
+                ? { connect: { id: _categoryId } }
+                : { disconnect: true };
+        }
         const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
         if (shouldUpdateUnits) {
             updateData.scheduleUnits = {
@@ -242,22 +278,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         const updated = await this.prisma.uploadedSchedule.update({
             where: { id },
             data: updateData,
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (hasChanges && actor?.id) {
             try {
@@ -354,22 +375,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     async restore(id) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!schedule) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
@@ -380,22 +386,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         try {
             const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
@@ -427,22 +418,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     async activate(id, actor) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!schedule) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
@@ -455,22 +431,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             data: {
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
             try {
@@ -504,22 +465,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     async deactivate(id, actor) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!schedule) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
@@ -532,22 +478,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             data: {
                 status: client_1.EntityStatus.INACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
             try {
@@ -585,6 +516,9 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         return Array.from(new Set(combined));
     }
     async assertUnitsAllowed(sectorId, unitIds) {
+        if ((0, app_mode_1.isUserMode)()) {
+            return;
+        }
         const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
         if (normalizedUnitIds.length === 0)
             return;
@@ -633,6 +567,22 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         return existing;
     }
     assertAudienceAllowed(role, audience) {
+        if ((0, app_mode_1.isUserMode)()) {
+            const userModeAllowedAudiences = [
+                client_1.ContentAudience.PUBLIC,
+                client_1.ContentAudience.PRIVATE,
+                client_1.ContentAudience.ADMIN,
+                client_1.ContentAudience.SUPERADMIN,
+            ];
+            if (role === client_1.UserRole.SUPERADMIN)
+                return;
+            if (role === client_1.UserRole.ADMIN) {
+                if (!userModeAllowedAudiences.includes(audience)) {
+                    throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+                }
+                return;
+            }
+        }
         if (role === client_1.UserRole.SUPERADMIN)
             return;
         if (role === client_1.UserRole.ADMIN) {

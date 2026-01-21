@@ -1,7 +1,8 @@
-import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
+import { EntityStatus, PrismaClient, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createPrismaAdapter } from '../src/prisma/prisma-adapter';
 import { SYSTEM_CONFIG_DEFAULTS } from '../src/system-config/system-config.defaults';
+import { isUserMode } from '../src/common/app-mode';
 
 const prisma = new PrismaClient({ adapter: createPrismaAdapter() });
 const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
@@ -84,6 +85,46 @@ async function seedSuperAdmin() {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  if (isUserMode()) {
+    const existing = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (existing) {
+      await seedPersonalCompany(existing.id, name);
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name,
+          passwordHash,
+          role: UserRole.SUPERADMIN,
+          status: UserStatus.ACTIVE,
+          companyId: existing.id,
+        },
+      });
+      return;
+    }
+
+    const created = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        role: UserRole.SUPERADMIN,
+        status: UserStatus.ACTIVE,
+      },
+      select: { id: true },
+    });
+
+    await seedPersonalCompany(created.id, name);
+    await prisma.user.update({
+      where: { id: created.id },
+      data: { companyId: created.id },
+    });
+    return;
+  }
+
   await prisma.user.upsert({
     where: { email },
     update: {
@@ -119,8 +160,23 @@ async function seedSystemConfig() {
   }
 }
 
+async function seedPersonalCompany(userId: string, userName: string) {
+  const companyName = userName?.trim() ? `Usuario ${userName}` : 'Usuario';
+  await prisma.company.upsert({
+    where: { id: userId },
+    update: { name: companyName, status: EntityStatus.ACTIVE },
+    create: {
+      id: userId,
+      name: companyName,
+      status: EntityStatus.ACTIVE,
+    },
+  });
+}
+
 async function main() {
-  await seedAdmCompany();
+  if (!isUserMode()) {
+    await seedAdmCompany();
+  }
   await seedRolePermissions();
   await seedSuperAdmin();
   await seedSystemConfig();

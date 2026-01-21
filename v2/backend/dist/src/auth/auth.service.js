@@ -34,8 +34,8 @@ let AuthService = class AuthService {
         if (!passwordMatches) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        const tokens = await this.issueTokens(user);
         const profile = await this.usersService.findOne(user.id);
+        const tokens = await this.issueTokens(profile);
         return {
             user: this.sanitizeUser(profile),
             tokens,
@@ -65,8 +65,8 @@ let AuthService = class AuthService {
         if (!user) {
             throw new common_1.UnauthorizedException('User not found');
         }
-        const tokens = await this.issueTokens(user);
         const profile = await this.usersService.findOne(user.id);
+        const tokens = await this.issueTokens(profile);
         return {
             user: this.sanitizeUser(profile),
             tokens,

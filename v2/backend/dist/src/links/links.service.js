@@ -15,37 +15,17 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const notifications_service_1 = require("../notifications/notifications.service");
 const notifications_gateway_1 = require("../notifications/notifications.gateway");
+const app_mode_1 = require("../common/app-mode");
 let LinksService = class LinksService {
     constructor(prisma, notificationsService, notificationsGateway) {
         this.prisma = prisma;
         this.notificationsService = notificationsService;
         this.notificationsGateway = notificationsGateway;
     }
-    async create(createLinkDto) {
-        console.log('[LinksService.create] Criando link com dados:', createLinkDto);
-        const { unitIds, unitId, ...data } = createLinkDto;
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-        const link = await this.prisma.link.create({
-            data: {
-                ...data,
-                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-                linkUnits: normalizedUnitIds.length > 0
-                    ? {
-                        create: normalizedUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : undefined,
-            },
-            include: {
+    getBaseInclude() {
+        if ((0, app_mode_1.isUserMode)()) {
+            return {
                 category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
                 user: {
                     select: {
                         id: true,
@@ -53,7 +33,81 @@ let LinksService = class LinksService {
                         email: true,
                     },
                 },
+            };
+        }
+        return {
+            category: true,
+            sector: true,
+            linkUnits: {
+                include: {
+                    unit: true,
+                },
             },
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        };
+    }
+    getIncludeWithVersions() {
+        return {
+            ...this.getBaseInclude(),
+            versions: {
+                take: 10,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    changedByUser: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+            },
+        };
+    }
+    normalizeAudienceForUserMode(audience) {
+        if (!(0, app_mode_1.isUserMode)())
+            return audience;
+        if (audience === client_1.ContentAudience.COMPANY || audience === client_1.ContentAudience.SECTOR) {
+            return client_1.ContentAudience.PRIVATE;
+        }
+        return audience;
+    }
+    async create(createLinkDto) {
+        console.log('[LinksService.create] Criando link com dados:', createLinkDto);
+        const { unitIds, unitId, ...data } = createLinkDto;
+        const normalizedUnitIds = (0, app_mode_1.isUserMode)()
+            ? []
+            : this.normalizeUnitIds(unitIds, unitId);
+        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
+        if (data.audience) {
+            data.audience = this.normalizeAudienceForUserMode(data.audience);
+            data.isPublic = data.audience === client_1.ContentAudience.PUBLIC;
+        }
+        const link = await this.prisma.link.create({
+            data: {
+                ...data,
+                unitId: (0, app_mode_1.isUserMode)()
+                    ? null
+                    : normalizedUnitIds.length === 1
+                        ? normalizedUnitIds[0]
+                        : null,
+                linkUnits: (0, app_mode_1.isUserMode)()
+                    ? undefined
+                    : normalizedUnitIds.length > 0
+                        ? {
+                            create: normalizedUnitIds.map((itemUnitId) => ({
+                                unitId: itemUnitId,
+                            })),
+                        }
+                        : undefined,
+            },
+            include: this.getBaseInclude(),
         });
         console.log('[LinksService.create] Link criado:', {
             id: link.id,
@@ -89,14 +143,19 @@ let LinksService = class LinksService {
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const sectorFilter = filters?.sectorIds
-            ? { sectorId: { in: filters.sectorIds } }
-            : filters?.sectorId
-                ? { sectorId: filters.sectorId }
-                : {};
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
+        const canUseSectorFilters = !(0, app_mode_1.isUserMode)();
+        const sectorFilter = canUseSectorFilters
+            ? filters?.sectorIds
+                ? { sectorId: { in: filters.sectorIds } }
+                : filters?.sectorId
+                    ? { sectorId: filters.sectorId }
+                    : {}
+            : {};
+        const filterUnitIds = !canUseSectorFilters
+            ? undefined
+            : filters?.unitId !== undefined
+                ? this.normalizeUnitIds(undefined, filters.unitId)
+                : filters?.unitIds;
         const unitFilter = filterUnitIds !== undefined
             ? filterUnitIds.length > 0
                 ? {
@@ -134,22 +193,7 @@ let LinksService = class LinksService {
         console.log('LinksService.findAll - where clause:', JSON.stringify(where, null, 2));
         const links = await this.prisma.link.findMany({
             where,
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
             orderBy: [
                 { order: 'asc' },
                 { createdAt: 'desc' },
@@ -159,6 +203,9 @@ let LinksService = class LinksService {
         return links;
     }
     async findAllByUser(userId, companyId) {
+        if ((0, app_mode_1.isUserMode)()) {
+            return this.findAll(companyId);
+        }
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             include: {
@@ -182,13 +229,16 @@ let LinksService = class LinksService {
             return [];
         }
         const sectorIds = user.userSectors.map((us) => us.sectorId);
-        const unitIds = Array.from(new Set(user.userSectors.flatMap((userSector) => userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || [])));
+        const unitIds = Array.from(new Set(user.userSectors.flatMap((userSector) => userSector.sector?.sectorUnits?.map((unit) => unit.unitId) ?? [])));
         return this.findAll(companyId, {
             sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
             unitIds,
         });
     }
     async userHasSector(userId, sectorId) {
+        if ((0, app_mode_1.isUserMode)()) {
+            return false;
+        }
         const count = await this.prisma.userSector.count({
             where: {
                 userId,
@@ -200,35 +250,7 @@ let LinksService = class LinksService {
     async findOne(id) {
         const link = await this.prisma.link.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-                versions: {
-                    take: 10,
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        changedByUser: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true,
-                            },
-                        },
-                    },
-                },
-            },
+            include: this.getIncludeWithVersions(),
         });
         if (!link || link.deletedAt) {
             throw new common_1.NotFoundException(`Link with ID ${id} not found`);
@@ -238,10 +260,10 @@ let LinksService = class LinksService {
     async update(id, updateLinkDto, actor) {
         const existingLink = await this.findOne(id);
         this.assertCanMutate(existingLink, actor);
-        const existingAudience = this.resolveAudienceFromExisting(existingLink);
+        const existingAudience = this.normalizeAudienceForUserMode(this.resolveAudienceFromExisting(existingLink));
         const shouldUpdateAudience = updateLinkDto.audience !== undefined || updateLinkDto.isPublic !== undefined;
         const resolvedAudience = shouldUpdateAudience
-            ? this.resolveAudienceForUpdate(existingAudience, updateLinkDto)
+            ? this.normalizeAudienceForUserMode(this.resolveAudienceForUpdate(existingAudience, updateLinkDto))
             : existingAudience;
         if (shouldUpdateAudience && actor?.role) {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
@@ -260,7 +282,27 @@ let LinksService = class LinksService {
                 },
             });
         }
-        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateLinkDto;
+        if ((0, app_mode_1.isUserMode)()) {
+            const { categoryId: _categoryId, companyId: _companyId, userId: _userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience: _audience, isPublic: _isPublic, ...rest } = updateLinkDto;
+            const updateData = {
+                ...rest,
+            };
+            if (_categoryId !== undefined) {
+                updateData.category = _categoryId
+                    ? { connect: { id: _categoryId } }
+                    : { disconnect: true };
+            }
+            if (shouldUpdateAudience) {
+                updateData.audience = resolvedAudience;
+                updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
+            }
+            return this.prisma.link.update({
+                where: { id },
+                data: updateData,
+                include: this.getBaseInclude(),
+            });
+        }
+        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateLinkDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingLink.sectorId ?? undefined
             : undefined;
@@ -299,6 +341,11 @@ let LinksService = class LinksService {
                 ? { connect: { id: unitId } }
                 : { disconnect: true },
         };
+        if (_categoryId !== undefined) {
+            updateData.category = _categoryId
+                ? { connect: { id: _categoryId } }
+                : { disconnect: true };
+        }
         const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
         if (shouldUpdateUnits) {
             updateData.linkUnits = {
@@ -319,22 +366,7 @@ let LinksService = class LinksService {
         const updated = await this.prisma.link.update({
             where: { id },
             data: updateData,
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (hasChanges && actor?.id) {
             try {
@@ -437,6 +469,9 @@ let LinksService = class LinksService {
         return Array.from(new Set(combined));
     }
     async assertUnitsAllowed(sectorId, unitIds) {
+        if ((0, app_mode_1.isUserMode)()) {
+            return;
+        }
         const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
         if (normalizedUnitIds.length === 0)
             return;
@@ -491,6 +526,28 @@ let LinksService = class LinksService {
         return existing;
     }
     assertAudienceAllowed(role, audience) {
+        if ((0, app_mode_1.isUserMode)()) {
+            const userModeAllowedAudiences = [
+                client_1.ContentAudience.PUBLIC,
+                client_1.ContentAudience.PRIVATE,
+                client_1.ContentAudience.ADMIN,
+                client_1.ContentAudience.SUPERADMIN,
+            ];
+            if (role === client_1.UserRole.SUPERADMIN)
+                return;
+            if (role === client_1.UserRole.ADMIN) {
+                if (!userModeAllowedAudiences.includes(audience)) {
+                    throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+                }
+                return;
+            }
+            if (role === client_1.UserRole.COLLABORATOR) {
+                if (audience !== client_1.ContentAudience.PRIVATE) {
+                    throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+                }
+                return;
+            }
+        }
         if (role === client_1.UserRole.SUPERADMIN)
             return;
         if (role === client_1.UserRole.ADMIN) {
@@ -510,22 +567,7 @@ let LinksService = class LinksService {
     async restore(id) {
         const link = await this.prisma.link.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!link) {
             throw new common_1.NotFoundException(`Link with ID ${id} not found`);
@@ -536,22 +578,7 @@ let LinksService = class LinksService {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         try {
             const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
@@ -582,22 +609,7 @@ let LinksService = class LinksService {
     async activate(id, actor) {
         const link = await this.prisma.link.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!link) {
             throw new common_1.NotFoundException(`Link with ID ${id} not found`);
@@ -610,22 +622,7 @@ let LinksService = class LinksService {
             data: {
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
             try {
@@ -659,22 +656,7 @@ let LinksService = class LinksService {
     async deactivate(id, actor) {
         const link = await this.prisma.link.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!link) {
             throw new common_1.NotFoundException(`Link with ID ${id} not found`);
@@ -687,22 +669,7 @@ let LinksService = class LinksService {
             data: {
                 status: client_1.EntityStatus.INACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                linkUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
             try {

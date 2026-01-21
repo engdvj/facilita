@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import type { RolePermission, UserRole } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 type PermissionKey = Exclude<
   keyof RolePermission,
@@ -23,7 +24,7 @@ type PermissionGroup = {
   items: PermissionItem[];
 };
 
-const permissionGroups: PermissionGroup[] = [
+const basePermissionGroups: PermissionGroup[] = [
   {
     title: 'Acesso basico',
     description: 'Controle quem pode entrar nas areas principais.',
@@ -141,8 +142,8 @@ const permissionGroups: PermissionGroup[] = [
   },
 ];
 
-const permissionKeys: PermissionKey[] = permissionGroups.flatMap((group) =>
-  group.items.map((item) => item.key),
+const basePermissionKeys: PermissionKey[] = basePermissionGroups.flatMap(
+  (group) => group.items.map((item) => item.key),
 );
 
 const roleLabels: Record<UserRole, string> = {
@@ -157,8 +158,11 @@ const roleDescriptions: Record<UserRole, string> = {
   COLLABORATOR: 'Acesso operativo do dia a dia.',
 };
 
-const countActivePermissions = (rolePermission: RolePermission) =>
-  permissionKeys.reduce(
+const countActivePermissions = (
+  rolePermission: RolePermission,
+  keys: PermissionKey[],
+) =>
+  keys.reduce(
     (total, key) => total + Number(rolePermission[key]),
     0,
   );
@@ -172,12 +176,37 @@ const formatDate = (value: string) => {
 const isPermissionDirty = (
   draft: RolePermission | null,
   baseline: RolePermission | undefined,
+  keys: PermissionKey[],
 ) => {
   if (!draft || !baseline) return false;
-  return permissionKeys.some((key) => draft[key] !== baseline[key]);
+  return keys.some((key) => draft[key] !== baseline[key]);
 };
 
 export default function PermissionsPage() {
+  const permissionGroups = useMemo(() => {
+    if (!isUserMode) return basePermissionGroups;
+    const hiddenKeys = new Set<PermissionKey>([
+      'restrictToOwnSector',
+      'canViewSectors',
+      'canManageSectors',
+    ]);
+    return basePermissionGroups
+      .map((group) => {
+        const items = group.items.filter(
+          (item) => !hiddenKeys.has(item.key),
+        );
+        if (items.length === 0) return null;
+        return { ...group, items };
+      })
+      .filter((group): group is PermissionGroup => Boolean(group));
+  }, [isUserMode]);
+  const permissionKeys = useMemo(
+    () =>
+      permissionGroups.flatMap((group) =>
+        group.items.map((item) => item.key),
+      ),
+    [permissionGroups],
+  );
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [activeRole, setActiveRole] = useState<UserRole>('SUPERADMIN');
   const [search, setSearch] = useState('');
@@ -271,7 +300,7 @@ export default function PermissionsPage() {
         return items.length > 0 ? { ...group, items } : null;
       })
       .filter((group): group is PermissionGroup => Boolean(group));
-  }, [normalizedSearch]);
+  }, [normalizedSearch, permissionGroups]);
 
   useEffect(() => {
     if (!permissions.length) return;
@@ -286,9 +315,9 @@ export default function PermissionsPage() {
   const totalPermissions = permissionKeys.length;
   const displayPermission = draft ?? activePermission;
   const activeCount = displayPermission
-    ? countActivePermissions(displayPermission)
+    ? countActivePermissions(displayPermission, permissionKeys)
     : 0;
-  const isDirty = isPermissionDirty(draft, activePermission);
+  const isDirty = isPermissionDirty(draft, activePermission, permissionKeys);
   const isReadOnly = loading || saving || Boolean(error);
 
   useEffect(() => {
@@ -305,7 +334,7 @@ export default function PermissionsPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const payload = permissionKeys.reduce<Record<string, boolean>>(
+      const payload = basePermissionKeys.reduce<Record<string, boolean>>(
         (acc, key) => {
           acc[key] = Boolean(draft[key]);
           return acc;
@@ -378,7 +407,10 @@ export default function PermissionsPage() {
               const isActive = rolePermission.role === activeRole;
               const previewPermission =
                 isActive && draft ? draft : rolePermission;
-              const roleCount = countActivePermissions(previewPermission);
+              const roleCount = countActivePermissions(
+                previewPermission,
+                permissionKeys,
+              );
               return (
                 <button
                   key={rolePermission.role}
@@ -411,11 +443,13 @@ export default function PermissionsPage() {
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                      {previewPermission.restrictToOwnSector
-                        ? 'Setor'
-                        : 'Global'}
-                    </span>
+                    {!isUserMode && (
+                      <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
+                        {previewPermission.restrictToOwnSector
+                          ? 'Setor'
+                          : 'Global'}
+                      </span>
+                    )}
                     <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
                       {previewPermission.canAccessAdmin ? 'Admin' : 'Sem admin'}
                     </span>
@@ -464,11 +498,13 @@ export default function PermissionsPage() {
                   <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
                     {activeCount} de {totalPermissions} ativas
                   </span>
-                  <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                    {displayPermission.restrictToOwnSector
-                      ? 'Restrito ao setor'
-                      : 'Acesso global'}
-                  </span>
+                  {!isUserMode && (
+                    <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
+                      {displayPermission.restrictToOwnSector
+                        ? 'Restrito ao setor'
+                        : 'Acesso global'}
+                    </span>
+                  )}
                   {activePermission && (
                     <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
                       Atualizado em {formatDate(activePermission.updatedAt)}

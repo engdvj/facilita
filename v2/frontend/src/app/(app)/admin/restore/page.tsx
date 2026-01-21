@@ -7,16 +7,21 @@ import BackupSelectionPanel from '@/components/admin/backup-selection';
 import {
   buildInitialSelection,
   countSelectedOptions,
+  getBackupOptions,
   getSelectedEntities,
 } from '@/lib/backup';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 export default function RestorePage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [error, setError] = useState<string | null>(null);
-  const [selection, setSelection] = useState(buildInitialSelection);
+  const availableOptions = getBackupOptions(isUserMode ? 'user' : 'company');
+  const [selection, setSelection] = useState(() =>
+    buildInitialSelection(availableOptions),
+  );
   const [restoring, setRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -41,12 +46,12 @@ export default function RestorePage() {
   }, [hasHydrated, user]);
 
   const selectedEntities = useMemo(
-    () => getSelectedEntities(selection),
-    [selection],
+    () => getSelectedEntities(selection, availableOptions),
+    [availableOptions, selection],
   );
   const selectedCount = useMemo(
-    () => countSelectedOptions(selection),
-    [selection],
+    () => countSelectedOptions(selection, availableOptions),
+    [availableOptions, selection],
   );
   const hasSelection = selectedCount > 0;
 
@@ -110,6 +115,7 @@ export default function RestorePage() {
         <BackupSelectionPanel
           title="Itens da restauracao"
           subtitle="Escolha o que deve ser restaurado."
+          options={availableOptions}
           selection={selection}
           setSelection={setSelection}
         />

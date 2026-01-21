@@ -8,6 +8,7 @@ import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 type Sector = {
   id: string;
@@ -77,6 +78,10 @@ export default function SectorsPage() {
     let active = true;
 
     const load = async () => {
+      if (isUserMode) {
+        setLoading(false);
+        return;
+      }
       if (!accessToken) {
         setLoading(false);
         setError('Faca login para acessar os setores.');
@@ -320,6 +325,14 @@ export default function SectorsPage() {
     setFilterUnitId('');
     setPage(1);
   };
+
+  if (isUserMode) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-card/60 p-6 text-sm text-muted-foreground">
+        Modo usuario ativo. Cadastros de setores ficam disponiveis apenas no modo empresa.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

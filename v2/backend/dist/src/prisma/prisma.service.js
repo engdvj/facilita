@@ -12,16 +12,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
+const user_1 = require("./generated/user");
 const prisma_adapter_1 = require("./prisma-adapter");
-let PrismaService = class PrismaService extends client_1.PrismaClient {
+const app_mode_1 = require("../common/app-mode");
+let PrismaService = class PrismaService {
     constructor() {
-        super({ adapter: (0, prisma_adapter_1.createPrismaAdapter)() });
+        const adapter = (0, prisma_adapter_1.createPrismaAdapter)();
+        this.client =
+            app_mode_1.APP_MODE === 'user'
+                ? new user_1.PrismaClient({ adapter })
+                : new client_1.PrismaClient({ adapter });
+        Object.assign(this, this.client);
     }
     async onModuleInit() {
-        await this.$connect();
+        await this.client.$connect();
     }
     async onModuleDestroy() {
-        await this.$disconnect();
+        await this.client.$disconnect();
     }
 };
 exports.PrismaService = PrismaService;

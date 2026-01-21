@@ -21,6 +21,7 @@ const multer_config_1 = require("./config/multer.config");
 const file_type_filter_1 = require("./filters/file-type.filter");
 const query_images_dto_1 = require("./dto/query-images.dto");
 const update_image_dto_1 = require("./dto/update-image.dto");
+const app_mode_1 = require("../common/app-mode");
 let UploadsController = class UploadsController {
     constructor(uploadsService) {
         this.uploadsService = uploadsService;
@@ -29,10 +30,13 @@ let UploadsController = class UploadsController {
         if (!file) {
             throw new common_1.BadRequestException('No file uploaded');
         }
-        const isSuperAdmin = req.user.role === 'SUPERADMIN';
-        const companyId = isSuperAdmin && companyIdParam
-            ? companyIdParam
-            : req.user.companyId;
+        const isCompanySuperAdmin = req.user.role === 'SUPERADMIN' && (0, app_mode_1.isCompanyMode)();
+        const isUserSuperAdmin = req.user.role === 'SUPERADMIN' && (0, app_mode_1.isUserMode)();
+        const companyId = (0, app_mode_1.isUserMode)()
+            ? (isUserSuperAdmin && companyIdParam ? companyIdParam : req.user.id)
+            : isCompanySuperAdmin && companyIdParam
+                ? companyIdParam
+                : req.user.companyId;
         const url = this.uploadsService.getFileUrl(file.filename, 'images');
         const image = await this.uploadsService.createImageRecord({
             companyId,
@@ -47,7 +51,7 @@ let UploadsController = class UploadsController {
     }
     async listImages(query, req) {
         if (!query.companyId) {
-            query.companyId = req.user.companyId;
+            query.companyId = (0, app_mode_1.isUserMode)() ? req.user.id : req.user.companyId;
         }
         return this.uploadsService.listImages(query);
     }

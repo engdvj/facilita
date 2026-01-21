@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { ContentAudience, UserRole } from '@prisma/client';
+import { isCompanyMode, isUserMode } from '../common/app-mode';
 
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
@@ -38,6 +39,13 @@ const audienceOptionsByRole: Record<UserRole, ContentAudience[]> = {
   [UserRole.COLLABORATOR]: [ContentAudience.PRIVATE],
 };
 
+const userModeAudienceOptions: ContentAudience[] = [
+  ContentAudience.PUBLIC,
+  ContentAudience.PRIVATE,
+  ContentAudience.ADMIN,
+  ContentAudience.SUPERADMIN,
+];
+
 const resolveAudience = (
   role: UserRole,
   payload: { audience?: ContentAudience; isPublic?: boolean },
@@ -51,7 +59,25 @@ const resolveAudience = (
   return defaultAudienceByRole[role];
 };
 
+const normalizeAudience = (audience: ContentAudience) => {
+  if (
+    isUserMode() &&
+    (audience === ContentAudience.COMPANY ||
+      audience === ContentAudience.SECTOR)
+  ) {
+    return ContentAudience.PRIVATE;
+  }
+  return audience;
+};
+
 const isAllowedAudience = (role: UserRole, audience: ContentAudience) => {
+  if (isUserMode()) {
+    if (role === UserRole.SUPERADMIN) return true;
+    if (role === UserRole.ADMIN) {
+      return userModeAudienceOptions.includes(audience);
+    }
+    return audience === ContentAudience.PRIVATE;
+  }
   return audienceOptionsByRole[role]?.includes(audience);
 };
 
@@ -72,9 +98,15 @@ export class NotesController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
   async create(@Body() createNoteDto: CreateNoteDto, @Request() req: any) {
     const user = req.user;
-    const isSuperAdmin = user?.role === UserRole.SUPERADMIN;
-    const companyId = isSuperAdmin ? createNoteDto.companyId : user?.companyId;
-    const audience = resolveAudience(user?.role, createNoteDto);
+    const isSuperAdmin = user?.role === UserRole.SUPERADMIN && isCompanyMode();
+    const companyId = isUserMode()
+      ? user?.id
+      : isSuperAdmin
+        ? createNoteDto.companyId
+        : user?.companyId;
+    const audience = normalizeAudience(
+      resolveAudience(user?.role, createNoteDto),
+    );
 
     if (!companyId) {
       throw new ForbiddenException('Empresa obrigatoria.');
@@ -86,6 +118,15 @@ export class NotesController {
 
     if (!isAllowedAudience(user?.role, audience)) {
       throw new ForbiddenException('Visibilidade nao autorizada.');
+    }
+
+    if (
+      isUserMode() &&
+      (createNoteDto.sectorId ||
+        createNoteDto.unitId ||
+        (createNoteDto.unitIds?.length ?? 0) > 0)
+    ) {
+      throw new ForbiddenException('Setores e unidades nao disponiveis no modo usuario.');
     }
 
     if (
@@ -130,13 +171,21 @@ export class NotesController {
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
   ) {
-    const normalizedCompanyId = companyId?.trim() || undefined;
+    const normalizedCompanyId = isUserMode()
+      ? undefined
+      : companyId?.trim() || undefined;
     const parsedAudience = parseAudienceParam(audience);
+    const fallbackAudience =
+      parsedAudience ??
+      (isPublic === 'true' ? ContentAudience.PUBLIC : undefined);
+    const normalizedAudience = fallbackAudience
+      ? normalizeAudience(fallbackAudience)
+      : undefined;
     const filters = {
-      sectorId,
-      unitId,
+      sectorId: isUserMode() ? undefined : sectorId,
+      unitId: isUserMode() ? undefined : unitId,
       categoryId,
-      audience: parsedAudience || (isPublic === 'true' ? ContentAudience.PUBLIC : undefined),
+      audience: normalizedAudience,
       isPublic: isPublic === 'true' ? true : isPublic === 'false' ? false : undefined,
     };
     return this.notesService.findAll(normalizedCompanyId, filters);
@@ -155,9 +204,10 @@ export class NotesController {
     @Query('audience') audience?: string,
   ) {
     const normalizedCompanyId = companyId?.trim() || undefined;
-    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
-    const resolvedCompanyId =
-      normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN && isCompanyMode();
+    const resolvedCompanyId = isUserMode()
+      ? req.user?.id
+      : normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
 
     if (!resolvedCompanyId && !isSuperAdmin) {
       throw new ForbiddenException('Empresa obrigatoria.');
@@ -165,10 +215,10 @@ export class NotesController {
 
     const parsedAudience = parseAudienceParam(audience);
     const filters = {
-      sectorId,
-      unitId,
+      sectorId: isUserMode() ? undefined : sectorId,
+      unitId: isUserMode() ? undefined : unitId,
       categoryId,
-      audience: parsedAudience,
+      audience: parsedAudience ? normalizeAudience(parsedAudience) : undefined,
       isPublic: isPublic ? isPublic === 'true' : undefined,
       includeInactive: true,
     };
@@ -215,7 +265,7 @@ export class NotesController {
     return this.notesService.update(id, updateNoteDto, {
       id: req.user.id,
       role: req.user.role,
-      companyId: req.user.companyId,
+      companyId: isUserMode() ? req.user.id : req.user.companyId,
     });
   }
 
@@ -232,7 +282,7 @@ export class NotesController {
       {
         id: req.user.id,
         role: req.user.role,
-        companyId: req.user.companyId,
+        companyId: isUserMode() ? req.user.id : req.user.companyId,
       },
       body?.adminMessage,
     );
@@ -255,7 +305,7 @@ export class NotesController {
     return this.notesService.activate(id, {
       id: req.user.id,
       role: req.user.role,
-      companyId: req.user.companyId,
+      companyId: isUserMode() ? req.user.id : req.user.companyId,
     });
   }
 
@@ -269,7 +319,7 @@ export class NotesController {
     return this.notesService.deactivate(id, {
       id: req.user.id,
       role: req.user.role,
-      companyId: req.user.companyId,
+      companyId: isUserMode() ? req.user.id : req.user.companyId,
     });
   }
 }

@@ -14,7 +14,8 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const bcrypt = require("bcrypt");
-const userSelect = {
+const app_mode_1 = require("../common/app-mode");
+const baseUserSelect = {
     id: true,
     name: true,
     email: true,
@@ -25,19 +26,36 @@ const userSelect = {
     theme: true,
     createdAt: true,
     updatedAt: true,
-    userSectors: {
-        include: {
-            sector: {
-                include: {
-                    sectorUnits: {
-                        include: {
-                            unit: true,
+};
+const userSelect = (0, app_mode_1.isUserMode)()
+    ? baseUserSelect
+    : {
+        ...baseUserSelect,
+        userSectors: {
+            include: {
+                sector: {
+                    include: {
+                        sectorUnits: {
+                            include: {
+                                unit: true,
+                            },
                         },
                     },
                 },
             },
         },
-    },
+    };
+const resolveCompanyIdFromSectors = (user) => {
+    if (user.companyId) {
+        return user.companyId;
+    }
+    for (const userSector of user.userSectors ?? []) {
+        const sectorCompanyId = userSector.sector?.companyId;
+        if (sectorCompanyId) {
+            return sectorCompanyId;
+        }
+    }
+    return null;
 };
 let UsersService = class UsersService {
     constructor(prisma) {
@@ -53,9 +71,12 @@ let UsersService = class UsersService {
         return this.prisma.user.findUnique({ where: { id } });
     }
     findActiveById(id) {
-        return this.prisma.user.findFirst({
+        return this.prisma.user
+            .findFirst({
             where: { id, status: client_1.UserStatus.ACTIVE },
-        });
+            select: userSelect,
+        })
+            .then((user) => user ? this.ensureCompanyId(user) : null);
     }
     findAll() {
         return this.prisma.user.findMany({
@@ -71,19 +92,43 @@ let UsersService = class UsersService {
         if (!user) {
             throw new common_1.NotFoundException('User not found');
         }
-        return user;
+        return this.ensureCompanyId(user);
     }
     async create(data) {
         const passwordHash = await bcrypt.hash(data.password, 12);
         const theme = data.theme
             ? data.theme
             : undefined;
+        const role = data.role ?? ((0, app_mode_1.isUserMode)() ? client_1.UserRole.ADMIN : undefined);
+        if ((0, app_mode_1.isUserMode)()) {
+            return this.prisma.$transaction(async (tx) => {
+                const createdUser = await tx.user.create({
+                    data: {
+                        name: data.name,
+                        email: data.username,
+                        passwordHash,
+                        role,
+                        status: data.status,
+                        avatarUrl: data.avatarUrl,
+                        theme,
+                    },
+                    select: {
+                        id: true,
+                    },
+                });
+                return tx.user.update({
+                    where: { id: createdUser.id },
+                    data: { companyId: createdUser.id },
+                    select: userSelect,
+                });
+            });
+        }
         return this.prisma.user.create({
             data: {
                 name: data.name,
                 email: data.username,
                 passwordHash,
-                role: data.role,
+                role,
                 status: data.status,
                 companyId: data.companyId,
                 avatarUrl: data.avatarUrl,
@@ -108,16 +153,18 @@ let UsersService = class UsersService {
             email: data.username,
             role: data.role,
             status: data.status,
-            companyId: data.companyId,
             avatarUrl: data.avatarUrl,
             theme: data.theme
                 ? data.theme
                 : undefined,
         };
+        if (!(0, app_mode_1.isUserMode)()) {
+            updateData.companyId = data.companyId;
+        }
         if (data.password) {
             updateData.passwordHash = await bcrypt.hash(data.password, 12);
         }
-        if (data.sectors) {
+        if (data.sectors && !(0, app_mode_1.isUserMode)()) {
             updateData.userSectors = {
                 deleteMany: {},
                 create: data.sectors.map((sector) => ({
@@ -197,6 +244,27 @@ let UsersService = class UsersService {
             await tx.favorite.deleteMany({ where: { userId: id } });
             await tx.linkVersion.deleteMany({ where: { changedBy: id } });
             return tx.user.delete({ where: { id }, select: userSelect });
+        });
+    }
+    async ensureCompanyId(user) {
+        if (user.companyId) {
+            return user;
+        }
+        if ((0, app_mode_1.isUserMode)()) {
+            return this.prisma.user.update({
+                where: { id: user.id },
+                data: { companyId: user.id },
+                select: userSelect,
+            });
+        }
+        const resolvedCompanyId = resolveCompanyIdFromSectors(user);
+        if (!resolvedCompanyId) {
+            return user;
+        }
+        return this.prisma.user.update({
+            where: { id: user.id },
+            data: { companyId: resolvedCompanyId },
+            select: userSelect,
         });
     }
 };

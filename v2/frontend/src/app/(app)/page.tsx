@@ -22,6 +22,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 import { FavoriteButton } from '@/components/FavoriteButton';
+import { isUserMode } from '@/lib/app-mode';
 
 type CategoryOption = Category;
 type ContentItem = {
@@ -76,25 +77,40 @@ function HomeContent() {
 
   useNotifyOnChange(error);
 
+  const normalizeAudience = (audience: ContentAudience): ContentAudience => {
+    if (!isUserMode) return audience;
+    if (audience === 'COMPANY' || audience === 'SECTOR') return 'PRIVATE';
+    return audience;
+  };
+
   const getAudience = (link: LinkType): ContentAudience => {
     if (link.isPublic) return 'PUBLIC';
-    if (link.audience) return link.audience;
-    if (link.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = link.audience
+      ? link.audience
+      : link.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const getDocumentAudience = (document: UploadedSchedule): ContentAudience => {
     if (document.isPublic) return 'PUBLIC';
-    if (document.audience) return document.audience;
-    if (document.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = document.audience
+      ? document.audience
+      : document.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const getNoteAudience = (note: Note): ContentAudience => {
     if (note.isPublic) return 'PUBLIC';
-    if (note.audience) return note.audience;
-    if (note.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = note.audience
+      ? note.audience
+      : note.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const matchesTypeFilter = (type: 'link' | 'document' | 'note') => {
@@ -154,6 +170,7 @@ function HomeContent() {
 
   const matchesUnit = (unitIds?: string[]) => {
     if (!unitIds || unitIds.length === 0) return true;
+    if (isUserMode) return true;
     if (!user) return false;
     if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return true;
     return unitIds.some((unitId) => userUnitIds.has(unitId));
@@ -162,8 +179,9 @@ function HomeContent() {
   useEffect(() => {
     let active = true;
     const isLoggedIn = Boolean(user);
+    const useAdminEndpoints = isLoggedIn && (isUserMode || isSuperAdmin);
     const companyId = isLoggedIn
-      ? isSuperAdmin
+      ? isUserMode || isSuperAdmin
         ? undefined
         : user?.companyId
       : publicCompanyId || undefined;
@@ -171,7 +189,7 @@ function HomeContent() {
 
     const load = async () => {
       if (!canLoad) return;
-      if (isLoggedIn && !companyId && !isSuperAdmin) {
+      if (isLoggedIn && !companyId && !isSuperAdmin && !isUserMode) {
         setError(
           'Usuario sem empresa associada. Entre em contato com o administrador.',
         );
@@ -187,10 +205,11 @@ function HomeContent() {
           params.set('isPublic', 'true');
         }
         const queryString = params.toString();
-        const linksEndpoint =
-          isLoggedIn && isSuperAdmin ? '/links/admin/list' : '/links';
-        const notesEndpoint =
-          isLoggedIn && isSuperAdmin ? '/notes/admin/list' : '/notes';
+        const linksEndpoint = useAdminEndpoints ? '/links/admin/list' : '/links';
+        const notesEndpoint = useAdminEndpoints ? '/notes/admin/list' : '/notes';
+        const schedulesEndpoint = useAdminEndpoints
+          ? '/schedules/admin/list'
+          : '/schedules';
 
         console.log('[HomePage] Carregando dados:', {
           isLoggedIn,
@@ -216,7 +235,9 @@ function HomeContent() {
 
         try {
           const documentsResponse = await api.get(
-            queryString ? `/schedules?${queryString}` : '/schedules',
+            queryString
+              ? `${schedulesEndpoint}?${queryString}`
+              : schedulesEndpoint,
           );
           if (!active) return;
           setDocuments(documentsResponse.data);

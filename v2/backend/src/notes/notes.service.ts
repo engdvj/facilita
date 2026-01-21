@@ -5,6 +5,7 @@ import { UpdateNoteDto } from './dto/update-note.dto';
 import { ContentAudience, EntityStatus, UserRole, NotificationType, EntityType, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { isUserMode } from '../common/app-mode';
 
 type NoteActor = {
   id: string;
@@ -20,33 +21,10 @@ export class NotesService {
     private notificationsGateway: NotificationsGateway,
   ) {}
 
-  async create(createNoteDto: CreateNoteDto) {
-    const { unitIds, unitId, ...data } = createNoteDto;
-    const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-
-    await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-
-    const note = await this.prisma.note.create({
-      data: {
-        ...data,
-        unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-        noteUnits:
-          normalizedUnitIds.length > 0
-            ? {
-                create: normalizedUnitIds.map((itemUnitId) => ({
-                  unitId: itemUnitId,
-                })),
-              }
-            : undefined,
-      },
-      include: {
+  private getBaseInclude() {
+    if (isUserMode()) {
+      return {
         category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
         user: {
           select: {
             id: true,
@@ -54,7 +32,65 @@ export class NotesService {
             email: true,
           },
         },
+      };
+    }
+    return {
+      category: true,
+      sector: true,
+      noteUnits: {
+        include: {
+          unit: true,
+        },
       },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    };
+  }
+
+  private normalizeAudienceForUserMode(audience: ContentAudience) {
+    if (!isUserMode()) return audience;
+    if (audience === ContentAudience.COMPANY || audience === ContentAudience.SECTOR) {
+      return ContentAudience.PRIVATE;
+    }
+    return audience;
+  }
+
+  async create(createNoteDto: CreateNoteDto) {
+    const { unitIds, unitId, ...data } = createNoteDto;
+    const normalizedUnitIds = isUserMode()
+      ? []
+      : this.normalizeUnitIds(unitIds, unitId);
+
+    await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
+    if (data.audience) {
+      data.audience = this.normalizeAudienceForUserMode(data.audience);
+      data.isPublic = data.audience === ContentAudience.PUBLIC;
+    }
+
+    const note = await this.prisma.note.create({
+      data: {
+        ...data,
+        unitId: isUserMode()
+          ? null
+          : normalizedUnitIds.length === 1
+            ? normalizedUnitIds[0]
+            : null,
+        noteUnits: isUserMode()
+          ? undefined
+          : normalizedUnitIds.length > 0
+            ? {
+                create: normalizedUnitIds.map((itemUnitId) => ({
+                  unitId: itemUnitId,
+                })),
+              }
+            : undefined,
+      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre novo conteúdo
@@ -105,10 +141,13 @@ export class NotesService {
     },
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+    const canUseSectorFilters = !isUserMode();
     const filterUnitIds =
-      filters?.unitId !== undefined
-        ? this.normalizeUnitIds(undefined, filters.unitId)
-        : filters?.unitIds;
+      !canUseSectorFilters
+        ? undefined
+        : filters?.unitId !== undefined
+          ? this.normalizeUnitIds(undefined, filters.unitId)
+          : filters?.unitIds;
     const unitFilter =
       filterUnitIds !== undefined
         ? filterUnitIds.length > 0
@@ -138,7 +177,8 @@ export class NotesService {
     const where = {
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
-      ...(filters?.sectorId && { sectorId: filters.sectorId }),
+      ...(canUseSectorFilters &&
+        filters?.sectorId && { sectorId: filters.sectorId }),
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
       ...(!shouldFilterPublic &&
         filters?.audience && { audience: filters.audience }),
@@ -149,22 +189,7 @@ export class NotesService {
 
     return this.prisma.note.findMany({
       where,
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
       orderBy: {
         createdAt: 'desc',
       },
@@ -172,6 +197,9 @@ export class NotesService {
   }
 
   async userHasSector(userId: string, sectorId: string) {
+    if (isUserMode()) {
+      return false;
+    }
     const count = await this.prisma.userSector.count({
       where: {
         userId,
@@ -185,22 +213,7 @@ export class NotesService {
   async findOne(id: string) {
     const note = await this.prisma.note.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!note || note.deletedAt) {
@@ -214,11 +227,15 @@ export class NotesService {
     const existingNote = await this.findOne(id);
     this.assertCanMutate(existingNote, actor);
 
-    const existingAudience = this.resolveAudienceFromExisting(existingNote);
+    const existingAudience = this.normalizeAudienceForUserMode(
+      this.resolveAudienceFromExisting(existingNote),
+    );
     const shouldUpdateAudience =
       updateNoteDto.audience !== undefined || updateNoteDto.isPublic !== undefined;
     const resolvedAudience = shouldUpdateAudience
-      ? this.resolveAudienceForUpdate(existingAudience, updateNoteDto)
+      ? this.normalizeAudienceForUserMode(
+          this.resolveAudienceForUpdate(existingAudience, updateNoteDto),
+        )
       : existingAudience;
 
     if (shouldUpdateAudience && actor?.role) {
@@ -228,6 +245,43 @@ export class NotesService {
     const hasChanges =
       updateNoteDto.title !== existingNote.title ||
       updateNoteDto.content !== existingNote.content;
+
+    if (isUserMode()) {
+      const {
+        categoryId: _categoryId,
+        companyId: _companyId,
+        userId: _userId,
+        sectorId: _sectorId,
+        unitId: _unitId,
+        unitIds: _unitIds,
+        audience: _audience,
+        isPublic: _isPublic,
+        ...rest
+      } = updateNoteDto;
+
+      const updateData: Prisma.NoteUpdateInput = {
+        ...rest,
+      };
+
+      if (_categoryId !== undefined) {
+        updateData.category = _categoryId
+          ? { connect: { id: _categoryId } }
+          : { disconnect: true };
+      }
+
+      if (shouldUpdateAudience) {
+        updateData.audience = resolvedAudience;
+        updateData.isPublic = resolvedAudience === ContentAudience.PUBLIC;
+      }
+
+      const updated = await this.prisma.note.update({
+        where: { id },
+        data: updateData,
+        include: this.getBaseInclude(),
+      });
+
+      return updated;
+    }
 
     const {
       categoryId: _categoryId,
@@ -246,7 +300,7 @@ export class NotesService {
         : undefined;
     const existingUnitIds =
       existingNote.noteUnits?.length
-        ? existingNote.noteUnits.map((unit) => unit.unitId)
+        ? existingNote.noteUnits.map((unit: { unitId: string }) => unit.unitId)
         : this.normalizeUnitIds(undefined, existingNote.unitId ?? undefined);
     const unitIdsPayload =
       _unitIds !== undefined
@@ -303,7 +357,7 @@ export class NotesService {
         deleteMany: {},
         ...(nextUnitIds.length > 0
           ? {
-              create: nextUnitIds.map((itemUnitId) => ({
+              create: nextUnitIds.map((itemUnitId: string) => ({
                 unitId: itemUnitId,
               })),
             }
@@ -319,22 +373,7 @@ export class NotesService {
     const updated = await this.prisma.note.update({
       where: { id },
       data: updateData,
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários que favoritaram
@@ -455,22 +494,7 @@ export class NotesService {
   async restore(id: string) {
     const note = await this.prisma.note.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!note) {
@@ -483,22 +507,7 @@ export class NotesService {
         deletedAt: null,
         status: EntityStatus.ACTIVE,
       },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre restauração
@@ -540,22 +549,7 @@ export class NotesService {
   async activate(id: string, actor?: NoteActor) {
     const note = await this.prisma.note.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!note) {
@@ -572,22 +566,7 @@ export class NotesService {
       data: {
         status: EntityStatus.ACTIVE,
       },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre ativação (se feito por admin/superadmin)
@@ -631,22 +610,7 @@ export class NotesService {
   async deactivate(id: string, actor?: NoteActor) {
     const note = await this.prisma.note.findUnique({
       where: { id },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     if (!note) {
@@ -663,22 +627,7 @@ export class NotesService {
       data: {
         status: EntityStatus.INACTIVE,
       },
-      include: {
-        category: true,
-        sector: true,
-        noteUnits: {
-          include: {
-            unit: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      include: this.getBaseInclude(),
     });
 
     // Notificar usuários sobre desativação (se feito por admin/superadmin)
@@ -730,6 +679,9 @@ export class NotesService {
     sectorId?: string | null,
     unitIds?: string[],
   ) {
+    if (isUserMode()) {
+      return;
+    }
     const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
     if (normalizedUnitIds.length === 0) return;
     if (!sectorId) {
@@ -798,6 +750,27 @@ export class NotesService {
   }
 
   private assertAudienceAllowed(role: UserRole, audience: ContentAudience) {
+    if (isUserMode()) {
+      const userModeAllowedAudiences: ContentAudience[] = [
+        ContentAudience.PUBLIC,
+        ContentAudience.PRIVATE,
+        ContentAudience.ADMIN,
+        ContentAudience.SUPERADMIN,
+      ];
+      if (role === UserRole.SUPERADMIN) return;
+      if (role === UserRole.ADMIN) {
+        if (!userModeAllowedAudiences.includes(audience)) {
+          throw new ForbiddenException('Visibilidade nao autorizada.');
+        }
+        return;
+      }
+      if (role === UserRole.COLLABORATOR) {
+        if (audience !== ContentAudience.PRIVATE) {
+          throw new ForbiddenException('Visibilidade nao autorizada.');
+        }
+        return;
+      }
+    }
     if (role === UserRole.SUPERADMIN) return;
     if (role === UserRole.ADMIN) {
       if (

@@ -4,8 +4,7 @@ import { UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SYSTEM_CONFIG_DEFAULTS } from '../system-config/system-config.defaults';
-
-const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
+import { isUserMode } from '../common/app-mode';
 
 @Injectable()
 export class BootstrapService implements OnModuleInit {
@@ -25,22 +24,9 @@ export class BootstrapService implements OnModuleInit {
   }
 
   private async ensureBootstrapData() {
-    await this.ensureAdmCompany();
     await this.ensureRolePermissions();
     await this.ensureSuperAdmin();
     await this.ensureSystemConfig();
-  }
-
-  private async ensureAdmCompany() {
-    await this.prisma.company.upsert({
-      where: { id: ADM_COMPANY_ID },
-      update: { name: 'ADM', status: 'ACTIVE' },
-      create: {
-        id: ADM_COMPANY_ID,
-        name: 'ADM',
-        status: 'ACTIVE',
-      },
-    });
   }
 
   private async ensureRolePermissions() {
@@ -49,7 +35,7 @@ export class BootstrapService implements OnModuleInit {
         role: UserRole.COLLABORATOR,
         canViewLinks: true,
         canManageLinks: true,
-        restrictToOwnSector: true,
+        restrictToOwnSector: !isUserMode(),
       },
       {
         role: UserRole.ADMIN,
@@ -59,8 +45,8 @@ export class BootstrapService implements OnModuleInit {
         canCreateUsers: true,
         canEditUsers: true,
         canDeleteUsers: true,
-        canViewSectors: true,
-        canManageSectors: true,
+        canViewSectors: !isUserMode(),
+        canManageSectors: !isUserMode(),
         canViewLinks: true,
         canManageLinks: true,
         canManageCategories: true,
@@ -79,8 +65,8 @@ export class BootstrapService implements OnModuleInit {
         canCreateUsers: true,
         canEditUsers: true,
         canDeleteUsers: true,
-        canViewSectors: true,
-        canManageSectors: true,
+        canViewSectors: !isUserMode(),
+        canManageSectors: !isUserMode(),
         canViewLinks: true,
         canManageLinks: true,
         canManageCategories: true,
@@ -103,12 +89,6 @@ export class BootstrapService implements OnModuleInit {
   }
 
   private async ensureSuperAdmin() {
-    const existing = await this.prisma.user.findFirst({
-      where: { role: UserRole.SUPERADMIN },
-      select: { id: true },
-    });
-    if (existing) return;
-
     const email =
       this.config.get<string>('SUPERADMIN_EMAIL')?.trim() || 'superadmin';
     const password =
@@ -117,24 +97,60 @@ export class BootstrapService implements OnModuleInit {
       this.config.get<string>('SUPERADMIN_NAME')?.trim() || 'Superadmin';
     const passwordHash = await bcrypt.hash(password, 12);
 
-    await this.prisma.user.upsert({
-      where: { email },
-      update: {
-        name,
-        passwordHash,
-        role: UserRole.SUPERADMIN,
-        status: UserStatus.ACTIVE,
-        companyId: ADM_COMPANY_ID,
-      },
-      create: {
-        name,
-        email,
-        passwordHash,
-        role: UserRole.SUPERADMIN,
-        status: UserStatus.ACTIVE,
-        companyId: ADM_COMPANY_ID,
-      },
-    });
+    if (isUserMode()) {
+      const existing = await this.prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            name,
+            passwordHash,
+            role: UserRole.SUPERADMIN,
+            status: UserStatus.ACTIVE,
+            companyId: existing.id,
+          },
+        });
+      } else {
+        const created = await this.prisma.user.create({
+          data: {
+            name,
+            email,
+            passwordHash,
+            role: UserRole.SUPERADMIN,
+            status: UserStatus.ACTIVE,
+          },
+          select: { id: true },
+        });
+
+        await this.prisma.user.update({
+          where: { id: created.id },
+          data: { companyId: created.id },
+        });
+      }
+    } else {
+      await this.prisma.user.upsert({
+        where: { email },
+        update: {
+          name,
+          passwordHash,
+          role: UserRole.SUPERADMIN,
+          status: UserStatus.ACTIVE,
+          companyId: '00000000-0000-4000-8000-000000000001',
+        },
+        create: {
+          name,
+          email,
+          passwordHash,
+          role: UserRole.SUPERADMIN,
+          status: UserStatus.ACTIVE,
+          companyId: '00000000-0000-4000-8000-000000000001',
+        },
+      });
+    }
 
     this.logger.log(`Superadmin created with email: ${email}`);
   }
@@ -153,4 +169,5 @@ export class BootstrapService implements OnModuleInit {
       });
     }
   }
+
 }

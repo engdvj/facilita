@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { isUserMode } from '@/lib/app-mode';
 
 type CategoryOption = Category;
 type DashboardItem = {
@@ -48,6 +49,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const showStructure = !isUserMode;
   const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
   const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const staggerStyle = (index: number) =>
@@ -56,25 +58,40 @@ export default function DashboardPage() {
 
   useNotifyOnChange(error);
 
+  const normalizeAudience = (audience: ContentAudience): ContentAudience => {
+    if (!isUserMode) return audience;
+    if (audience === 'COMPANY' || audience === 'SECTOR') return 'PRIVATE';
+    return audience;
+  };
+
   const getAudience = (link: LinkType): ContentAudience => {
     if (link.isPublic) return 'PUBLIC';
-    if (link.audience) return link.audience;
-    if (link.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = link.audience
+      ? link.audience
+      : link.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const getDocumentAudience = (document: UploadedSchedule): ContentAudience => {
     if (document.isPublic) return 'PUBLIC';
-    if (document.audience) return document.audience;
-    if (document.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = document.audience
+      ? document.audience
+      : document.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const getNoteAudience = (note: Note): ContentAudience => {
     if (note.isPublic) return 'PUBLIC';
-    if (note.audience) return note.audience;
-    if (note.sectorId) return 'SECTOR';
-    return 'COMPANY';
+    const candidate = note.audience
+      ? note.audience
+      : note.sectorId
+        ? 'SECTOR'
+        : 'COMPANY';
+    return normalizeAudience(candidate);
   };
 
   const matchesDashboardVisibility = (audience: ContentAudience) => {
@@ -113,6 +130,7 @@ export default function DashboardPage() {
 
   const matchesUnit = (unitIds?: string[]) => {
     if (!unitIds || unitIds.length === 0) return true;
+    if (isUserMode) return true;
     if (!user) return false;
     if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return true;
     return unitIds.some((unitId) => userUnitIds.has(unitId));
@@ -201,23 +219,28 @@ export default function DashboardPage() {
           setUsers([]);
         }
 
-        try {
-          const companiesResponse = await api.get('/companies');
-          if (!active) return;
-          setCompanies(companiesResponse.data);
-        } catch (companyError) {
-          console.error('Error loading companies:', companyError);
-          if (!active) return;
-          setCompanies([]);
-        }
+        if (showStructure) {
+          try {
+            const companiesResponse = await api.get('/companies');
+            if (!active) return;
+            setCompanies(companiesResponse.data);
+          } catch (companyError) {
+            console.error('Error loading companies:', companyError);
+            if (!active) return;
+            setCompanies([]);
+          }
 
-        try {
-          const sectorsResponse = await api.get('/sectors');
-          if (!active) return;
-          setSectors(sectorsResponse.data);
-        } catch (sectorError) {
-          console.error('Error loading sectors:', sectorError);
-          if (!active) return;
+          try {
+            const sectorsResponse = await api.get('/sectors');
+            if (!active) return;
+            setSectors(sectorsResponse.data);
+          } catch (sectorError) {
+            console.error('Error loading sectors:', sectorError);
+            if (!active) return;
+            setSectors([]);
+          }
+        } else if (active) {
+          setCompanies([]);
           setSectors([]);
         }
 
@@ -246,7 +269,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [hasHydrated, isSuperAdmin, user]);
+  }, [hasHydrated, isSuperAdmin, showStructure, user]);
 
   const visibleLinks = useMemo(() => {
     const canView = (link: LinkType) => {
@@ -960,10 +983,14 @@ export default function DashboardPage() {
             Cadastros do sistema
           </p>
           <h2 className="font-display text-xl text-foreground sm:text-2xl">
-            Usuarios, empresas e configuracoes
+            {showStructure
+              ? 'Usuarios, empresas e configuracoes'
+              : 'Usuarios e configuracoes'}
           </h2>
           <p className="text-[13px] text-muted-foreground">
-            Visao geral dos cadastros e configuracoes do portal.
+            {showStructure
+              ? 'Visao geral dos cadastros e configuracoes do portal.'
+              : 'Visao geral dos usuarios e configuracoes do portal.'}
           </p>
         </div>
 
@@ -977,7 +1004,11 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div
+              className={`mt-4 grid gap-3 ${
+                showStructure ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-2'
+              }`}
+            >
               <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   Usuarios
@@ -996,41 +1027,45 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Empresas
-                </p>
-                <div className="mt-2 text-3xl font-semibold text-foreground">
-                  {numberFormatter.format(companies.length)}
+              {showStructure && (
+                <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Empresas
+                  </p>
+                  <div className="mt-2 text-3xl font-semibold text-foreground">
+                    {numberFormatter.format(companies.length)}
+                  </div>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    Ativas:{' '}
+                    {numberFormatter.format(
+                      companies.filter((c) => c.status?.toUpperCase() === 'ACTIVE').length
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Total de empresas cadastradas
+                  </p>
                 </div>
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  Ativas:{' '}
-                  {numberFormatter.format(
-                    companies.filter((c) => c.status?.toUpperCase() === 'ACTIVE').length
-                  )}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Total de empresas cadastradas
-                </p>
-              </div>
+              )}
 
-              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Setores
-                </p>
-                <div className="mt-2 text-3xl font-semibold text-foreground">
-                  {numberFormatter.format(sectors.length)}
+              {showStructure && (
+                <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Setores
+                  </p>
+                  <div className="mt-2 text-3xl font-semibold text-foreground">
+                    {numberFormatter.format(sectors.length)}
+                  </div>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    Ativos:{' '}
+                    {numberFormatter.format(
+                      sectors.filter((s) => s.status?.toUpperCase() === 'ACTIVE').length
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Total de setores cadastrados
+                  </p>
                 </div>
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  Ativos:{' '}
-                  {numberFormatter.format(
-                    sectors.filter((s) => s.status?.toUpperCase() === 'ACTIVE').length
-                  )}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Total de setores cadastrados
-                </p>
-              </div>
+              )}
 
               <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -1051,59 +1086,65 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Usuarios por empresa
-                  </p>
-                  <span className="text-xs text-muted-foreground">
-                    Top 5
-                  </span>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {companies
-                    .map((company) => ({
-                      ...company,
-                      userCount: users.filter((u) => u.companyId === company.id).length,
-                    }))
-                    .sort((a, b) => b.userCount - a.userCount)
-                    .slice(0, 5)
-                    .map((company) => {
-                      const maxUsers = Math.max(
-                        ...companies.map((c) =>
-                          users.filter((u) => u.companyId === c.id).length
-                        ),
-                        1
-                      );
-                      return (
-                        <div key={company.id} className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between text-[12px] text-foreground">
-                              <span className="truncate">{company.name}</span>
-                              <span className="ml-2 text-muted-foreground">
-                                {numberFormatter.format(company.userCount)}
-                              </span>
-                            </div>
-                            <div className="mt-1 h-1.5 w-full rounded-full bg-border/60">
-                              <div
-                                className="h-full rounded-full bg-primary/70"
-                                style={{
-                                  width: `${(company.userCount / maxUsers) * 100}%`,
-                                }}
-                              />
+            <div
+              className={`mt-4 grid gap-3 ${
+                showStructure ? 'lg:grid-cols-2' : ''
+              }`}
+            >
+              {showStructure && (
+                <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Usuarios por empresa
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      Top 5
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {companies
+                      .map((company) => ({
+                        ...company,
+                        userCount: users.filter((u) => u.companyId === company.id).length,
+                      }))
+                      .sort((a, b) => b.userCount - a.userCount)
+                      .slice(0, 5)
+                      .map((company) => {
+                        const maxUsers = Math.max(
+                          ...companies.map((c) =>
+                            users.filter((u) => u.companyId === c.id).length
+                          ),
+                          1
+                        );
+                        return (
+                          <div key={company.id} className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between text-[12px] text-foreground">
+                                <span className="truncate">{company.name}</span>
+                                <span className="ml-2 text-muted-foreground">
+                                  {numberFormatter.format(company.userCount)}
+                                </span>
+                              </div>
+                              <div className="mt-1 h-1.5 w-full rounded-full bg-border/60">
+                                <div
+                                  className="h-full rounded-full bg-primary/70"
+                                  style={{
+                                    width: `${(company.userCount / maxUsers) * 100}%`,
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  {companies.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Nenhuma empresa cadastrada.
-                    </p>
-                  )}
+                        );
+                      })}
+                    {companies.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhuma empresa cadastrada.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="rounded-2xl border border-border/70 bg-white/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.08)]">
                 <div className="flex items-center justify-between">

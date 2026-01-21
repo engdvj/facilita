@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo, type CSSProperties } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
+import { isUserMode } from '@/lib/app-mode';
 
 function isActive(pathname: string, href: string) {
   if (href === '/') {
@@ -51,6 +52,39 @@ export default function AppNav() {
             { href: '/admin/schedules', label: 'Documentos' },
             { href: '/admin/notes', label: 'Notas' },
             { href: '/admin/images', label: 'Galeria' },
+          ],
+        },
+      ];
+    }
+
+    if (user.role === 'SUPERADMIN' && isUserMode) {
+      return [
+        {
+          label: 'Navegacao',
+          items: [
+            { href: '/', label: 'Inicio' },
+            { href: '/favoritos', label: 'Favoritos' },
+          ],
+        },
+        {
+          label: 'Portal',
+          items: [
+            { href: '/admin/categories', label: 'Categorias' },
+            { href: '/admin/links', label: 'Links' },
+            { href: '/admin/schedules', label: 'Documentos' },
+            { href: '/admin/notes', label: 'Notas' },
+            { href: '/admin/images', label: 'Galeria' },
+          ],
+        },
+        {
+          label: 'Administracao',
+          items: [
+            { href: '/admin/users', label: 'Usuarios' },
+            { href: '/admin/permissions', label: 'Permissoes' },
+            { href: '/admin/settings', label: 'Configuracoes' },
+            { href: '/admin/backup', label: 'Backup' },
+            { href: '/admin/restore', label: 'Restauracao' },
+            { href: '/admin/reset', label: 'Reset do sistema' },
           ],
         },
       ];

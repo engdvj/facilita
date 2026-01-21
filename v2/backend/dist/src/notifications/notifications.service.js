@@ -13,6 +13,7 @@ exports.NotificationsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
+const app_mode_1 = require("../common/app-mode");
 let NotificationsService = class NotificationsService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -73,6 +74,35 @@ let NotificationsService = class NotificationsService {
         });
     }
     async getRecipientsByAudience(companyId, sectorId, audience, excludeUserId) {
+        if ((0, app_mode_1.isUserMode)()) {
+            const where = {
+                status: 'ACTIVE',
+                ...(excludeUserId && { id: { not: excludeUserId } }),
+            };
+            switch (audience) {
+                case client_1.ContentAudience.PUBLIC:
+                    break;
+                case client_1.ContentAudience.ADMIN:
+                    where.role = { in: ['ADMIN', 'SUPERADMIN'] };
+                    break;
+                case client_1.ContentAudience.SUPERADMIN:
+                    where.role = 'SUPERADMIN';
+                    break;
+                case client_1.ContentAudience.PRIVATE:
+                    return [];
+                case client_1.ContentAudience.COMPANY:
+                case client_1.ContentAudience.SECTOR:
+                default:
+                    if (!companyId)
+                        return [];
+                    where.id = companyId;
+            }
+            const users = await this.prisma.user.findMany({
+                where,
+                select: { id: true },
+            });
+            return users.map((user) => user.id);
+        }
         const where = {
             status: 'ACTIVE',
             ...(excludeUserId && { id: { not: excludeUserId } }),
@@ -111,7 +141,7 @@ let NotificationsService = class NotificationsService {
             where,
             select: { id: true },
         });
-        return users.map((u) => u.id);
+        return users.map((user) => user.id);
     }
     async getUsersWhoFavorited(entityType, entityId) {
         const where = { entityType };
@@ -128,7 +158,7 @@ let NotificationsService = class NotificationsService {
             where,
             select: { userId: true },
         });
-        return favorites.map((f) => f.userId);
+        return favorites.map((favorite) => favorite.userId);
     }
 };
 exports.NotificationsService = NotificationsService;

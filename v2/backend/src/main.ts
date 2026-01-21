@@ -6,11 +6,14 @@ import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
-import { AppModule } from './app.module';
+import { AppCompanyModule } from './app-company.module';
+import { AppUserModule } from './app-user.module';
+import { APP_MODE } from './common/app-mode';
 import { SystemConfigService } from './system-config/system-config.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const RootModule = APP_MODE === 'user' ? AppUserModule : AppCompanyModule;
+  const app = await NestFactory.create<NestExpressApplication>(RootModule);
   const config = app.get(ConfigService);
   const systemConfigService = app.get(SystemConfigService);
 
@@ -71,7 +74,7 @@ async function bootstrap() {
   const port = config.get<number>('PORT') ?? 3001;
   await app.listen(port);
 
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  console.log(`Modo ${APP_MODE} ativo. API: http://localhost:${port}`);
 }
 
 bootstrap();

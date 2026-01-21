@@ -15,36 +15,17 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const notifications_service_1 = require("../notifications/notifications.service");
 const notifications_gateway_1 = require("../notifications/notifications.gateway");
+const app_mode_1 = require("../common/app-mode");
 let NotesService = class NotesService {
     constructor(prisma, notificationsService, notificationsGateway) {
         this.prisma = prisma;
         this.notificationsService = notificationsService;
         this.notificationsGateway = notificationsGateway;
     }
-    async create(createNoteDto) {
-        const { unitIds, unitId, ...data } = createNoteDto;
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-        const note = await this.prisma.note.create({
-            data: {
-                ...data,
-                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-                noteUnits: normalizedUnitIds.length > 0
-                    ? {
-                        create: normalizedUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : undefined,
-            },
-            include: {
+    getBaseInclude() {
+        if ((0, app_mode_1.isUserMode)()) {
+            return {
                 category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
                 user: {
                     select: {
                         id: true,
@@ -52,7 +33,62 @@ let NotesService = class NotesService {
                         email: true,
                     },
                 },
+            };
+        }
+        return {
+            category: true,
+            sector: true,
+            noteUnits: {
+                include: {
+                    unit: true,
+                },
             },
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        };
+    }
+    normalizeAudienceForUserMode(audience) {
+        if (!(0, app_mode_1.isUserMode)())
+            return audience;
+        if (audience === client_1.ContentAudience.COMPANY || audience === client_1.ContentAudience.SECTOR) {
+            return client_1.ContentAudience.PRIVATE;
+        }
+        return audience;
+    }
+    async create(createNoteDto) {
+        const { unitIds, unitId, ...data } = createNoteDto;
+        const normalizedUnitIds = (0, app_mode_1.isUserMode)()
+            ? []
+            : this.normalizeUnitIds(unitIds, unitId);
+        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
+        if (data.audience) {
+            data.audience = this.normalizeAudienceForUserMode(data.audience);
+            data.isPublic = data.audience === client_1.ContentAudience.PUBLIC;
+        }
+        const note = await this.prisma.note.create({
+            data: {
+                ...data,
+                unitId: (0, app_mode_1.isUserMode)()
+                    ? null
+                    : normalizedUnitIds.length === 1
+                        ? normalizedUnitIds[0]
+                        : null,
+                noteUnits: (0, app_mode_1.isUserMode)()
+                    ? undefined
+                    : normalizedUnitIds.length > 0
+                        ? {
+                            create: normalizedUnitIds.map((itemUnitId) => ({
+                                unitId: itemUnitId,
+                            })),
+                        }
+                        : undefined,
+            },
+            include: this.getBaseInclude(),
         });
         try {
             const recipients = await this.notificationsService.getRecipientsByAudience(note.companyId, note.sectorId, note.audience, note.userId || undefined);
@@ -82,9 +118,12 @@ let NotesService = class NotesService {
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
+        const canUseSectorFilters = !(0, app_mode_1.isUserMode)();
+        const filterUnitIds = !canUseSectorFilters
+            ? undefined
+            : filters?.unitId !== undefined
+                ? this.normalizeUnitIds(undefined, filters.unitId)
+                : filters?.unitIds;
         const unitFilter = filterUnitIds !== undefined
             ? filterUnitIds.length > 0
                 ? {
@@ -111,7 +150,8 @@ let NotesService = class NotesService {
         const where = {
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
+            ...(canUseSectorFilters &&
+                filters?.sectorId && { sectorId: filters.sectorId }),
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
             ...(!shouldFilterPublic &&
                 filters?.audience && { audience: filters.audience }),
@@ -121,28 +161,16 @@ let NotesService = class NotesService {
         };
         return this.prisma.note.findMany({
             where,
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
             orderBy: {
                 createdAt: 'desc',
             },
         });
     }
     async userHasSector(userId, sectorId) {
+        if ((0, app_mode_1.isUserMode)()) {
+            return false;
+        }
         const count = await this.prisma.userSector.count({
             where: {
                 userId,
@@ -154,22 +182,7 @@ let NotesService = class NotesService {
     async findOne(id) {
         const note = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!note || note.deletedAt) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
@@ -179,17 +192,38 @@ let NotesService = class NotesService {
     async update(id, updateNoteDto, actor) {
         const existingNote = await this.findOne(id);
         this.assertCanMutate(existingNote, actor);
-        const existingAudience = this.resolveAudienceFromExisting(existingNote);
+        const existingAudience = this.normalizeAudienceForUserMode(this.resolveAudienceFromExisting(existingNote));
         const shouldUpdateAudience = updateNoteDto.audience !== undefined || updateNoteDto.isPublic !== undefined;
         const resolvedAudience = shouldUpdateAudience
-            ? this.resolveAudienceForUpdate(existingAudience, updateNoteDto)
+            ? this.normalizeAudienceForUserMode(this.resolveAudienceForUpdate(existingAudience, updateNoteDto))
             : existingAudience;
         if (shouldUpdateAudience && actor?.role) {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
         }
         const hasChanges = updateNoteDto.title !== existingNote.title ||
             updateNoteDto.content !== existingNote.content;
-        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateNoteDto;
+        if ((0, app_mode_1.isUserMode)()) {
+            const { categoryId: _categoryId, companyId: _companyId, userId: _userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience: _audience, isPublic: _isPublic, ...rest } = updateNoteDto;
+            const updateData = {
+                ...rest,
+            };
+            if (_categoryId !== undefined) {
+                updateData.category = _categoryId
+                    ? { connect: { id: _categoryId } }
+                    : { disconnect: true };
+            }
+            if (shouldUpdateAudience) {
+                updateData.audience = resolvedAudience;
+                updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
+            }
+            const updated = await this.prisma.note.update({
+                where: { id },
+                data: updateData,
+                include: this.getBaseInclude(),
+            });
+            return updated;
+        }
+        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateNoteDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingNote.sectorId ?? undefined
             : undefined;
@@ -228,6 +262,11 @@ let NotesService = class NotesService {
                 ? { connect: { id: unitId } }
                 : { disconnect: true },
         };
+        if (_categoryId !== undefined) {
+            updateData.category = _categoryId
+                ? { connect: { id: _categoryId } }
+                : { disconnect: true };
+        }
         const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
         if (shouldUpdateUnits) {
             updateData.noteUnits = {
@@ -248,22 +287,7 @@ let NotesService = class NotesService {
         const updated = await this.prisma.note.update({
             where: { id },
             data: updateData,
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (hasChanges && actor?.id) {
             try {
@@ -360,22 +384,7 @@ let NotesService = class NotesService {
     async restore(id) {
         const note = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!note) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
@@ -386,22 +395,7 @@ let NotesService = class NotesService {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         try {
             const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
@@ -433,22 +427,7 @@ let NotesService = class NotesService {
     async activate(id, actor) {
         const note = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!note) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
@@ -461,22 +440,7 @@ let NotesService = class NotesService {
             data: {
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
             try {
@@ -510,22 +474,7 @@ let NotesService = class NotesService {
     async deactivate(id, actor) {
         const note = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (!note) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
@@ -538,22 +487,7 @@ let NotesService = class NotesService {
             data: {
                 status: client_1.EntityStatus.INACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.getBaseInclude(),
         });
         if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
             try {
@@ -591,6 +525,9 @@ let NotesService = class NotesService {
         return Array.from(new Set(combined));
     }
     async assertUnitsAllowed(sectorId, unitIds) {
+        if ((0, app_mode_1.isUserMode)()) {
+            return;
+        }
         const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
         if (normalizedUnitIds.length === 0)
             return;
@@ -645,6 +582,28 @@ let NotesService = class NotesService {
         return existing;
     }
     assertAudienceAllowed(role, audience) {
+        if ((0, app_mode_1.isUserMode)()) {
+            const userModeAllowedAudiences = [
+                client_1.ContentAudience.PUBLIC,
+                client_1.ContentAudience.PRIVATE,
+                client_1.ContentAudience.ADMIN,
+                client_1.ContentAudience.SUPERADMIN,
+            ];
+            if (role === client_1.UserRole.SUPERADMIN)
+                return;
+            if (role === client_1.UserRole.ADMIN) {
+                if (!userModeAllowedAudiences.includes(audience)) {
+                    throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+                }
+                return;
+            }
+            if (role === client_1.UserRole.COLLABORATOR) {
+                if (audience !== client_1.ContentAudience.PRIVATE) {
+                    throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
+                }
+                return;
+            }
+        }
         if (role === client_1.UserRole.SUPERADMIN)
             return;
         if (role === client_1.UserRole.ADMIN) {

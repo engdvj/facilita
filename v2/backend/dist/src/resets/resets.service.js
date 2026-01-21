@@ -15,17 +15,21 @@ const client_1 = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const backups_types_1 = require("../backups/backups.types");
 const prisma_service_1 = require("../prisma/prisma.service");
-const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
+const app_mode_1 = require("../common/app-mode");
 let ResetsService = class ResetsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
     async reset(entities) {
-        const selection = new Set(entities);
+        const selection = new Set((0, app_mode_1.isUserMode)()
+            ? entities.filter((entity) => entity !== 'companies' &&
+                entity !== 'units' &&
+                entity !== 'sectors')
+            : entities);
         if (selection.has('units')) {
             selection.add('sectors');
         }
-        if (selection.has('companies')) {
+        if (!(0, app_mode_1.isUserMode)() && selection.has('companies')) {
             selection.add('units');
             selection.add('sectors');
             selection.add('categories');
@@ -44,7 +48,9 @@ let ResetsService = class ResetsService {
             await this.clearDependents(tx, selection, deleted);
             await this.deleteEntities(tx, selection, deleted);
             if (shouldSeedUsers) {
-                await this.seedAdmCompany(tx);
+                if (!(0, app_mode_1.isUserMode)()) {
+                    await this.seedAdmCompany(tx);
+                }
                 await this.seedSuperAdmin(tx);
             }
             if (shouldSeedPermissions) {
@@ -94,7 +100,7 @@ let ResetsService = class ResetsService {
                 where: { sectorId: { not: null } },
             });
         }
-        if (selection.has('companies') && !selection.has('users')) {
+        if (!(0, app_mode_1.isUserMode)() && selection.has('companies') && !selection.has('users')) {
             await tx.user.updateMany({
                 data: { companyId: null },
                 where: { companyId: { not: null } },
@@ -174,11 +180,13 @@ let ResetsService = class ResetsService {
         if (selection.has('uploadedImages')) {
             deleted.uploadedImages = (await tx.uploadedImage.deleteMany()).count;
         }
-        if (selection.has('sectors')) {
-            deleted.sectors = (await tx.sector.deleteMany()).count;
-        }
-        if (selection.has('units')) {
-            deleted.units = (await tx.unit.deleteMany()).count;
+        if (!(0, app_mode_1.isUserMode)()) {
+            if (selection.has('sectors')) {
+                deleted.sectors = (await tx.sector.deleteMany()).count;
+            }
+            if (selection.has('units')) {
+                deleted.units = (await tx.unit.deleteMany()).count;
+            }
         }
         if (selection.has('users')) {
             deleted.users = (await tx.user.deleteMany()).count;
@@ -186,16 +194,16 @@ let ResetsService = class ResetsService {
         if (selection.has('rolePermissions')) {
             deleted.rolePermissions = (await tx.rolePermission.deleteMany()).count;
         }
-        if (selection.has('companies')) {
+        if (!(0, app_mode_1.isUserMode)() && selection.has('companies')) {
             deleted.companies = (await tx.company.deleteMany()).count;
         }
     }
     async seedAdmCompany(tx) {
         await tx.company.upsert({
-            where: { id: ADM_COMPANY_ID },
+            where: { id: '00000000-0000-4000-8000-000000000001' },
             update: { name: 'ADM', status: 'ACTIVE' },
             create: {
-                id: ADM_COMPANY_ID,
+                id: '00000000-0000-4000-8000-000000000001',
                 name: 'ADM',
                 status: 'ACTIVE',
             },
@@ -207,7 +215,7 @@ let ResetsService = class ResetsService {
                 role: client_1.UserRole.COLLABORATOR,
                 canViewLinks: true,
                 canManageLinks: true,
-                restrictToOwnSector: true,
+                restrictToOwnSector: !(0, app_mode_1.isUserMode)(),
             },
             {
                 role: client_1.UserRole.ADMIN,
@@ -217,8 +225,8 @@ let ResetsService = class ResetsService {
                 canCreateUsers: true,
                 canEditUsers: true,
                 canDeleteUsers: true,
-                canViewSectors: true,
-                canManageSectors: true,
+                canViewSectors: !(0, app_mode_1.isUserMode)(),
+                canManageSectors: !(0, app_mode_1.isUserMode)(),
                 canViewLinks: true,
                 canManageLinks: true,
                 canManageCategories: true,
@@ -237,8 +245,8 @@ let ResetsService = class ResetsService {
                 canCreateUsers: true,
                 canEditUsers: true,
                 canDeleteUsers: true,
-                canViewSectors: true,
-                canManageSectors: true,
+                canViewSectors: !(0, app_mode_1.isUserMode)(),
+                canManageSectors: !(0, app_mode_1.isUserMode)(),
                 canViewLinks: true,
                 canManageLinks: true,
                 canManageCategories: true,
@@ -263,6 +271,40 @@ let ResetsService = class ResetsService {
         const password = 'superadmin';
         const name = 'Superadmin';
         const passwordHash = await bcrypt.hash(password, 12);
+        if ((0, app_mode_1.isUserMode)()) {
+            const existing = await tx.user.findUnique({
+                where: { email },
+                select: { id: true },
+            });
+            if (existing) {
+                await tx.user.update({
+                    where: { id: existing.id },
+                    data: {
+                        name,
+                        passwordHash,
+                        role: client_1.UserRole.SUPERADMIN,
+                        status: client_1.UserStatus.ACTIVE,
+                        companyId: existing.id,
+                    },
+                });
+                return;
+            }
+            const created = await tx.user.create({
+                data: {
+                    name,
+                    email,
+                    passwordHash,
+                    role: client_1.UserRole.SUPERADMIN,
+                    status: client_1.UserStatus.ACTIVE,
+                },
+                select: { id: true },
+            });
+            await tx.user.update({
+                where: { id: created.id },
+                data: { companyId: created.id },
+            });
+            return;
+        }
         await tx.user.upsert({
             where: { email },
             update: {
@@ -270,7 +312,7 @@ let ResetsService = class ResetsService {
                 passwordHash,
                 role: client_1.UserRole.SUPERADMIN,
                 status: client_1.UserStatus.ACTIVE,
-                companyId: ADM_COMPANY_ID,
+                companyId: '00000000-0000-4000-8000-000000000001',
             },
             create: {
                 name,
@@ -278,7 +320,7 @@ let ResetsService = class ResetsService {
                 passwordHash,
                 role: client_1.UserRole.SUPERADMIN,
                 status: client_1.UserStatus.ACTIVE,
-                companyId: ADM_COMPANY_ID,
+                companyId: '00000000-0000-4000-8000-000000000001',
             },
         });
     }

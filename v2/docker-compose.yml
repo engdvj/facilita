@@ -39,12 +39,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: facilita-v2-backend
+    container_name: facilita-v2-backend-company
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-facilita_v2}?schema=public
+      DATABASE_URL_COMPANY: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-facilita_v2}?schema=public
+      DATABASE_URL_USER: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB_USER:-facilita_v2_user}?schema=public
+      APP_MODE: company
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-facilita-jwt-access-secret-change-me}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-facilita-jwt-refresh-secret-change-me}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
@@ -73,20 +76,69 @@ services:
     networks:
       - facilita-network
 
+  backend-user:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: facilita-v2-backend-user
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB_USER:-facilita_v2_user}?schema=public
+      DATABASE_URL_COMPANY: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-facilita_v2}?schema=public
+      DATABASE_URL_USER: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB_USER:-facilita_v2_user}?schema=public
+      APP_MODE: user
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-facilita-jwt-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-facilita-jwt-refresh-secret-change-me}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL_USER:-superadmin@facilita.local}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD_USER:-ChangeMe123!}
+      SUPERADMIN_NAME: ${SUPERADMIN_NAME_USER:-Super Admin}
+    ports:
+      - '${BACKEND_USER_PORT:-3012}:3002'
+    volumes:
+      - ./backend/uploads-user:/app/uploads
+      - ./backend/backups-user:/app/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:3002/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - facilita-network
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_API_URL_COMPANY: ${NEXT_PUBLIC_API_URL_COMPANY:-http://localhost:3001/api}
+        NEXT_PUBLIC_API_URL_USER: ${NEXT_PUBLIC_API_URL_USER:-http://localhost:${BACKEND_USER_PORT:-3012}/api}
+        NEXT_PUBLIC_APP_MODE: ${NEXT_PUBLIC_APP_MODE:-company}
     container_name: facilita-v2-frontend
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      NEXT_PUBLIC_API_URL_COMPANY: ${NEXT_PUBLIC_API_URL_COMPANY:-http://localhost:3001/api}
+      NEXT_PUBLIC_API_URL_USER: ${NEXT_PUBLIC_API_URL_USER:-http://localhost:${BACKEND_USER_PORT:-3012}/api}
+      NEXT_PUBLIC_APP_MODE: ${NEXT_PUBLIC_APP_MODE:-company}
     ports:
       - '3000:3000'
     depends_on:
       backend:
+        condition: service_healthy
+      backend-user:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://127.0.0.1:3000']
@@ -106,6 +158,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       backend:
+        condition: service_healthy
+      backend-user:
         condition: service_healthy
       frontend:
         condition: service_healthy
