@@ -8,6 +8,17 @@ export type UserRole =
   | 'ADMIN'
   | 'COLLABORATOR';
 
+type AuthUserSector = {
+  sectorId: string;
+  isPrimary?: boolean;
+  role?: string;
+  sector?: {
+    sectorUnits?: {
+      unitId: string;
+    }[] | null;
+  } | null;
+};
+
 export type AuthUser = {
   id: string;
   name: string;
@@ -16,6 +27,7 @@ export type AuthUser = {
   companyId?: string;
   unitId?: string;
   sectorId?: string;
+  userSectors?: AuthUserSector[];
 };
 
 type AuthState = {
@@ -23,6 +35,7 @@ type AuthState = {
   accessToken: string | null;
   hasHydrated: boolean;
   setAuth: (user: AuthUser, accessToken: string) => void;
+  setUser: (user: AuthUser | null) => void;
   setAccessToken: (accessToken: string | null) => void;
   setHasHydrated: (value: boolean) => void;
   clearAuth: () => void;
@@ -35,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       hasHydrated: false,
       setAuth: (user, accessToken) => set({ user, accessToken }),
+      setUser: (user) => set({ user }),
       setAccessToken: (accessToken) => set({ accessToken }),
       setHasHydrated: (value) => set({ hasHydrated: value }),
       clearAuth: () => set({ user: null, accessToken: null }),

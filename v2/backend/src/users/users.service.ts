@@ -31,6 +31,21 @@ const userSelect = {
   },
 };
 
+type UserProfile = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+
+const resolveCompanyIdFromSectors = (user: UserProfile) => {
+  if (user.companyId) {
+    return user.companyId;
+  }
+  for (const userSector of user.userSectors ?? []) {
+    const sectorCompanyId = userSector.sector?.companyId;
+    if (sectorCompanyId) {
+      return sectorCompanyId;
+    }
+  }
+  return null;
+};
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -48,9 +63,12 @@ export class UsersService {
   }
 
   findActiveById(id: string) {
-    return this.prisma.user.findFirst({
-      where: { id, status: UserStatus.ACTIVE },
-    });
+    return this.prisma.user
+      .findFirst({
+        where: { id, status: UserStatus.ACTIVE },
+        select: userSelect,
+      })
+      .then((user) => (user ? this.ensureCompanyId(user) : null));
   }
 
   findAll() {
@@ -70,7 +88,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return this.ensureCompanyId(user);
   }
 
   async create(data: CreateUserDto) {
@@ -227,6 +245,21 @@ export class UsersService {
 
       // Remove o usuário (relacionamentos UserSector serão removidos por cascade)
       return tx.user.delete({ where: { id }, select: userSelect });
+    });
+  }
+
+  private async ensureCompanyId(user: UserProfile) {
+    if (user.companyId) {
+      return user;
+    }
+    const resolvedCompanyId = resolveCompanyIdFromSectors(user);
+    if (!resolvedCompanyId) {
+      return user;
+    }
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { companyId: resolvedCompanyId },
+      select: userSelect,
     });
   }
 }

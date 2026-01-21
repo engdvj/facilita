@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
+import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
 import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
@@ -19,7 +20,7 @@ const emptyFormData = {
   description: '',
   categoryId: '',
   sectorId: '',
-  unitId: '',
+  unitIds: [] as string[],
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
@@ -29,6 +30,13 @@ const emptyFormData = {
 
 const sectorMatchesUnit = (sector: Sector, unitId: string) =>
   Boolean(sector.sectorUnits?.some((unit) => unit.unitId === unitId));
+
+const getLinkUnitIds = (link: Link) =>
+  link.linkUnits?.length
+    ? link.linkUnits.map((unit) => unit.unitId)
+    : link.unitId
+      ? [link.unitId]
+      : [];
 
 export default function LinksPage() {
   const user = useAuthStore((state) => state.user);
@@ -60,6 +68,8 @@ export default function LinksPage() {
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isCollaborator = user?.role === 'COLLABORATOR';
+  const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
+  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin
@@ -77,8 +87,8 @@ export default function LinksPage() {
     if (!user || isAdmin || isSuperAdmin) {
       return scopedSectors;
     }
-    return scopedSectors.filter((sector) => sector.id === user.sectorId);
-  }, [isAdmin, isSuperAdmin, resolvedCompanyId, sectors, user]);
+    return scopedSectors.filter((sector) => userSectorIds.has(sector.id));
+  }, [isAdmin, isSuperAdmin, resolvedCompanyId, sectors, userSectorIds, user]);
 
   const formCategories = useMemo(() => {
     if (isSuperAdmin && !formCompanyId) {
@@ -156,11 +166,11 @@ export default function LinksPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
-  const matchesUnit = (unitId?: string | null) => {
-    if (!unitId) return true;
+  const matchesUnit = (unitIds?: string[]) => {
+    if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (isAdmin || isSuperAdmin) return true;
-    return Boolean(user.unitId && user.unitId === unitId);
+    return unitIds.some((unitId) => userUnitIds.has(unitId));
   };
 
   const canViewLink = (link: Link) => {
@@ -173,8 +183,8 @@ export default function LinksPage() {
     if (audience === 'PRIVATE') return link.userId === user.id;
     if (audience === 'SECTOR') {
       if (isAdmin) return true;
-      if (!matchesUnit(link.unitId)) return false;
-      return link.sectorId === user.sectorId;
+      if (!matchesUnit(getLinkUnitIds(link))) return false;
+      return link.sectorId ? userSectorIds.has(link.sectorId) : false;
     }
     if (audience === 'COMPANY') {
       return isAdmin;
@@ -220,7 +230,7 @@ export default function LinksPage() {
             ? api.get('/sectors')
             : Promise.resolve({ data: [] })
         : Promise.resolve({ data: [] }),
-      api.get('/units'),
+      !isCollaborator ? api.get('/units') : Promise.resolve({ data: [] }),
     ]);
     setLinks(linksRes.data);
     setCategories(catsRes.data);
@@ -306,7 +316,12 @@ export default function LinksPage() {
       if (filterSectorId && link.sectorId !== filterSectorId) {
         return false;
       }
-      if (filterUnitId && link.unitId && link.unitId !== filterUnitId) {
+      const linkUnitIds = getLinkUnitIds(link);
+      if (
+        filterUnitId &&
+        linkUnitIds.length > 0 &&
+        !linkUnitIds.includes(filterUnitId)
+      ) {
         return false;
       }
       return true;
@@ -344,6 +359,7 @@ export default function LinksPage() {
       ...emptyFormData,
       audience: isCollaborator ? 'PRIVATE' : 'COMPANY',
       sectorId: '',
+      unitIds: [],
     });
     setFormCompanyId(
       isSuperAdmin ? companyId : user?.companyId || '',
@@ -361,7 +377,7 @@ export default function LinksPage() {
       description: link.description || '',
       categoryId: link.categoryId || '',
       sectorId: link.sectorId || '',
-      unitId: link.unitId || '',
+      unitIds: getLinkUnitIds(link),
       imageUrl: link.imageUrl || '',
       imagePosition: normalizeImagePosition(link.imagePosition),
       imageScale: link.imageScale || 1,
@@ -431,7 +447,7 @@ export default function LinksPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
-        unitId: normalizedAudience === 'SECTOR' ? formData.unitId || null : null,
+        unitIds: normalizedAudience === 'SECTOR' ? formData.unitIds : undefined,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -546,8 +562,20 @@ export default function LinksPage() {
       ...prev,
       audience: value,
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
-      unitId: value === 'SECTOR' ? prev.unitId : '',
+      unitIds: value === 'SECTOR' ? prev.unitIds : [],
     }));
+  };
+
+  const toggleUnitSelection = (unitId: string) => {
+    setFormData((prev) => {
+      const selected = new Set(prev.unitIds);
+      if (selected.has(unitId)) {
+        selected.delete(unitId);
+      } else {
+        selected.add(unitId);
+      }
+      return { ...prev, unitIds: Array.from(selected) };
+    });
   };
 
   const previewTitle = formData.title.trim() || 'Nome do link';
@@ -1031,7 +1059,7 @@ export default function LinksPage() {
                       setFormData((prev) => ({
                         ...prev,
                         sectorId: event.target.value,
-                        unitId: '',
+                        unitIds: [],
                       }))
                     }
                     disabled={isSuperAdmin && !formCompanyId}
@@ -1048,29 +1076,63 @@ export default function LinksPage() {
               {shouldShowUnitField && (
                 <div className="md:col-span-2">
                   <AdminField
-                    label="Unidade"
-                    htmlFor="link-unit"
-                    hint={!formData.sectorId ? 'Selecione um setor primeiro.' : undefined}
+                    label="Unidades"
+                    htmlFor="link-units"
+                    hint={
+                      !formData.sectorId
+                        ? 'Selecione um setor primeiro.'
+                        : 'Se nenhuma unidade for marcada, o link aparece em todas.'
+                    }
                   >
-                    <select
-                      id="link-unit"
-                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                      value={formData.unitId}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          unitId: event.target.value,
-                        }))
-                      }
-                      disabled={!formData.sectorId}
+                    <div
+                      id="link-units"
+                      className="space-y-2 rounded-lg border border-border/70 bg-card/60 p-3"
                     >
-                      <option value="">Todas as unidades</option>
-                      {formUnits.map((unit) => (
-                        <option key={unit.id} value={unit.id}>
-                          {unit.name}
-                        </option>
-                      ))}
-                    </select>
+                      {!formData.sectorId && (
+                        <p className="text-xs text-muted-foreground">
+                          Selecione um setor para listar unidades.
+                        </p>
+                      )}
+                      {formData.sectorId && formUnits.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma unidade encontrada para este setor.
+                        </p>
+                      )}
+                      {formData.sectorId && formUnits.length > 0 && (
+                        <div className="space-y-2">
+                          {formUnits.map((unit) => {
+                            const isSelected = formData.unitIds.includes(unit.id);
+                            return (
+                              <div
+                                key={unit.id}
+                                className={`flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 ${
+                                  isSelected
+                                    ? 'border-foreground/30 bg-white/90'
+                                    : 'border-border/70 bg-card/70'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-border/70"
+                                  checked={isSelected}
+                                  onChange={() => toggleUnitSelection(unit.id)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {unit.name}
+                                  </p>
+                                  {isSelected && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Selecionada
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </AdminField>
                 </div>
               )}

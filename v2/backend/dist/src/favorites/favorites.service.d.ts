@@ -10,16 +10,6 @@ export declare class FavoritesService {
     constructor(prisma: PrismaService, notificationsService: NotificationsService, notificationsGateway: NotificationsGateway);
     create(userId: string, dto: CreateFavoriteDto): Promise<{
         link: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             category: {
                 id: string;
                 name: string;
@@ -31,6 +21,15 @@ export declare class FavoritesService {
                 icon: string | null;
                 adminOnly: boolean;
             } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            } | null;
         } & {
             url: string;
             id: string;
@@ -38,8 +37,8 @@ export declare class FavoritesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            sectorId: string | null;
             description: string | null;
+            sectorId: string | null;
             userId: string | null;
             title: string;
             color: string | null;
@@ -50,19 +49,10 @@ export declare class FavoritesService {
             isPublic: boolean;
             order: number;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
         }) | null;
         note: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             category: {
                 id: string;
                 name: string;
@@ -73,6 +63,15 @@ export declare class FavoritesService {
                 color: string | null;
                 icon: string | null;
                 adminOnly: boolean;
+            } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
             } | null;
         } & {
             id: string;
@@ -90,20 +89,11 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
             content: string;
         }) | null;
         schedule: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             category: {
                 id: string;
                 name: string;
@@ -114,6 +104,15 @@ export declare class FavoritesService {
                 color: string | null;
                 icon: string | null;
                 adminOnly: boolean;
+            } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
             } | null;
         } & {
             id: string;
@@ -131,6 +130,7 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
             fileUrl: string;
             fileName: string;
@@ -147,16 +147,6 @@ export declare class FavoritesService {
     }>;
     findAllByUser(userId: string): Promise<({
         link: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             user: {
                 id: string;
                 name: string;
@@ -174,6 +164,15 @@ export declare class FavoritesService {
                 icon: string | null;
                 adminOnly: boolean;
             } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            } | null;
         } & {
             url: string;
             id: string;
@@ -181,8 +180,8 @@ export declare class FavoritesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            sectorId: string | null;
             description: string | null;
+            sectorId: string | null;
             userId: string | null;
             title: string;
             color: string | null;
@@ -193,19 +192,10 @@ export declare class FavoritesService {
             isPublic: boolean;
             order: number;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
         }) | null;
         note: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             user: {
                 id: string;
                 name: string;
@@ -223,6 +213,15 @@ export declare class FavoritesService {
                 icon: string | null;
                 adminOnly: boolean;
             } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            } | null;
         } & {
             id: string;
             status: import(".prisma/client").$Enums.EntityStatus;
@@ -239,20 +238,11 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
             content: string;
         }) | null;
         schedule: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             user: {
                 id: string;
                 name: string;
@@ -270,6 +260,15 @@ export declare class FavoritesService {
                 icon: string | null;
                 adminOnly: boolean;
             } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            } | null;
         } & {
             id: string;
             status: import(".prisma/client").$Enums.EntityStatus;
@@ -286,6 +285,7 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
             fileUrl: string;
             fileName: string;
@@ -302,16 +302,6 @@ export declare class FavoritesService {
     })[]>;
     findByUserAndType(userId: string, entityType: EntityType): Promise<({
         link: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             category: {
                 id: string;
                 name: string;
@@ -323,6 +313,15 @@ export declare class FavoritesService {
                 icon: string | null;
                 adminOnly: boolean;
             } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            } | null;
         } & {
             url: string;
             id: string;
@@ -330,8 +329,8 @@ export declare class FavoritesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            sectorId: string | null;
             description: string | null;
+            sectorId: string | null;
             userId: string | null;
             title: string;
             color: string | null;
@@ -342,19 +341,10 @@ export declare class FavoritesService {
             isPublic: boolean;
             order: number;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
         }) | null;
         note: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             category: {
                 id: string;
                 name: string;
@@ -365,6 +355,15 @@ export declare class FavoritesService {
                 color: string | null;
                 icon: string | null;
                 adminOnly: boolean;
+            } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
             } | null;
         } & {
             id: string;
@@ -382,20 +381,11 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
             content: string;
         }) | null;
         schedule: ({
-            sector: {
-                id: string;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-                unitId: string;
-                description: string | null;
-            } | null;
             category: {
                 id: string;
                 name: string;
@@ -406,6 +396,15 @@ export declare class FavoritesService {
                 color: string | null;
                 icon: string | null;
                 adminOnly: boolean;
+            } | null;
+            sector: {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
             } | null;
         } & {
             id: string;
@@ -423,6 +422,7 @@ export declare class FavoritesService {
             audience: import(".prisma/client").$Enums.ContentAudience;
             isPublic: boolean;
             deletedAt: Date | null;
+            unitId: string | null;
             categoryId: string | null;
             fileUrl: string;
             fileName: string;

@@ -3,6 +3,8 @@ export declare class CreateScheduleDto {
     companyId: string;
     userId?: string;
     sectorId?: string;
+    unitId?: string | null;
+    unitIds?: string[];
     categoryId?: string;
     title: string;
     fileUrl: string;

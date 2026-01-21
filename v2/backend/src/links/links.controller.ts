@@ -23,7 +23,7 @@ import { ContentAudience, UserRole } from '@prisma/client';
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
   [UserRole.ADMIN]: ContentAudience.COMPANY,
-  [UserRole.COLLABORATOR]: ContentAudience.COMPANY,
+  [UserRole.COLLABORATOR]: ContentAudience.PRIVATE,
 };
 
 const audienceOptionsByRole: Record<UserRole, ContentAudience[]> = {
@@ -117,6 +117,10 @@ export class LinksController {
       unitId:
         audience === ContentAudience.SECTOR
           ? createLinkDto.unitId ?? undefined
+          : undefined,
+      unitIds:
+        audience === ContentAudience.SECTOR
+          ? createLinkDto.unitIds ?? undefined
           : undefined,
       userId: req.user.id,
       audience,

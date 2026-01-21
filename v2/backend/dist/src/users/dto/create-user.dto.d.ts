@@ -1,4 +1,9 @@
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus, SectorRole } from '@prisma/client';
+export declare class UserSectorDto {
+    sectorId: string;
+    isPrimary?: boolean;
+    role?: SectorRole;
+}
 export declare class CreateUserDto {
     name: string;
     username: string;
@@ -6,8 +11,7 @@ export declare class CreateUserDto {
     role?: UserRole;
     status?: UserStatus;
     companyId?: string;
-    unitId?: string;
-    sectorId?: string;
+    sectors?: UserSectorDto[];
     avatarUrl?: string;
     theme?: Record<string, unknown>;
 }

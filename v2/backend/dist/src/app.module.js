@@ -23,6 +23,7 @@ const uploaded_schedules_module_1 = require("./uploaded-schedules/uploaded-sched
 const notes_module_1 = require("./notes/notes.module");
 const uploads_module_1 = require("./uploads/uploads.module");
 const backups_module_1 = require("./backups/backups.module");
+const bootstrap_module_1 = require("./bootstrap/bootstrap.module");
 const resets_module_1 = require("./resets/resets.module");
 const favorites_module_1 = require("./favorites/favorites.module");
 const system_config_module_1 = require("./system-config/system-config.module");
@@ -51,6 +52,7 @@ exports.AppModule = AppModule = __decorate([
             notes_module_1.NotesModule,
             uploads_module_1.UploadsModule,
             backups_module_1.BackupsModule,
+            bootstrap_module_1.BootstrapModule,
             resets_module_1.ResetsModule,
             favorites_module_1.FavoritesModule,
             system_config_module_1.SystemConfigModule,

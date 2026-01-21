@@ -19,8 +19,6 @@ export declare class JwtStrategy extends JwtStrategy_base {
         email: string;
         cpf: string | null;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         avatarUrl: string | null;
         theme: import("@prisma/client/runtime/client").JsonValue | null;
     }>;

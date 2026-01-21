@@ -21,12 +21,23 @@ const userSelect = {
     role: true,
     status: true,
     companyId: true,
-    unitId: true,
-    sectorId: true,
     avatarUrl: true,
     theme: true,
     createdAt: true,
     updatedAt: true,
+    userSectors: {
+        include: {
+            sector: {
+                include: {
+                    sectorUnits: {
+                        include: {
+                            unit: true,
+                        },
+                    },
+                },
+            },
+        },
+    },
 };
 let UsersService = class UsersService {
     constructor(prisma) {
@@ -75,10 +86,17 @@ let UsersService = class UsersService {
                 role: data.role,
                 status: data.status,
                 companyId: data.companyId,
-                unitId: data.unitId,
-                sectorId: data.sectorId,
                 avatarUrl: data.avatarUrl,
                 theme,
+                userSectors: data.sectors
+                    ? {
+                        create: data.sectors.map((sector) => ({
+                            sectorId: sector.sectorId,
+                            isPrimary: sector.isPrimary ?? false,
+                            role: sector.role ?? 'MEMBER',
+                        })),
+                    }
+                    : undefined,
             },
             select: userSelect,
         });
@@ -91,8 +109,6 @@ let UsersService = class UsersService {
             role: data.role,
             status: data.status,
             companyId: data.companyId,
-            unitId: data.unitId,
-            sectorId: data.sectorId,
             avatarUrl: data.avatarUrl,
             theme: data.theme
                 ? data.theme
@@ -101,6 +117,16 @@ let UsersService = class UsersService {
         if (data.password) {
             updateData.passwordHash = await bcrypt.hash(data.password, 12);
         }
+        if (data.sectors) {
+            updateData.userSectors = {
+                deleteMany: {},
+                create: data.sectors.map((sector) => ({
+                    sectorId: sector.sectorId,
+                    isPrimary: sector.isPrimary ?? false,
+                    role: sector.role ?? 'MEMBER',
+                })),
+            };
+        }
         return this.prisma.user.update({
             where: { id },
             data: updateData,
@@ -108,7 +134,8 @@ let UsersService = class UsersService {
         });
     }
     async getDependencies(id) {
-        const [links, schedules, notes, uploadedImages, linkVersions, favorites, refreshTokens, activityLogs, auditLogs,] = await Promise.all([
+        const [sectors, links, schedules, notes, uploadedImages, linkVersions, favorites, refreshTokens, activityLogs, auditLogs,] = await Promise.all([
+            this.prisma.userSector.count({ where: { userId: id } }),
             this.prisma.link.count({ where: { userId: id } }),
             this.prisma.uploadedSchedule.count({ where: { userId: id } }),
             this.prisma.note.count({ where: { userId: id } }),
@@ -120,6 +147,7 @@ let UsersService = class UsersService {
             this.prisma.auditLog.count({ where: { userId: id } }),
         ]);
         return {
+            sectors,
             links,
             schedules,
             notes,
@@ -129,7 +157,8 @@ let UsersService = class UsersService {
             refreshTokens,
             activityLogs,
             auditLogs,
-            hasAny: links > 0 ||
+            hasAny: sectors > 0 ||
+                links > 0 ||
                 schedules > 0 ||
                 notes > 0 ||
                 uploadedImages > 0 ||

@@ -9,9 +9,22 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateSectorDto = void 0;
+exports.CreateSectorDto = exports.SectorUnitDto = void 0;
 const class_validator_1 = require("class-validator");
 const client_1 = require("@prisma/client");
+const class_transformer_1 = require("class-transformer");
+class SectorUnitDto {
+}
+exports.SectorUnitDto = SectorUnitDto;
+__decorate([
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], SectorUnitDto.prototype, "unitId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], SectorUnitDto.prototype, "isPrimary", void 0);
 class CreateSectorDto {
 }
 exports.CreateSectorDto = CreateSectorDto;
@@ -20,9 +33,11 @@ __decorate([
     __metadata("design:type", String)
 ], CreateSectorDto.prototype, "companyId", void 0);
 __decorate([
-    (0, class_validator_1.IsUUID)(),
-    __metadata("design:type", String)
-], CreateSectorDto.prototype, "unitId", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => SectorUnitDto),
+    __metadata("design:type", Array)
+], CreateSectorDto.prototype, "units", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(2),

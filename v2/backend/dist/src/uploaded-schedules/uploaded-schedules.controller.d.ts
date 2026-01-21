@@ -5,16 +5,6 @@ export declare class UploadedSchedulesController {
     private readonly schedulesService;
     constructor(schedulesService: UploadedSchedulesService);
     create(createScheduleDto: CreateScheduleDto, req: any): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -31,6 +21,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -47,22 +63,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     }>;
-    findAll(companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
+    findAll(companyId?: string, sectorId?: string, unitId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         user: {
             id: string;
             name: string;
@@ -79,6 +86,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -95,22 +128,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     })[]>;
-    findAllAdmin(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
+    findAllAdmin(req: any, companyId?: string, sectorId?: string, unitId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         user: {
             id: string;
             name: string;
@@ -127,6 +151,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -143,22 +193,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     })[]>;
-    findAllAdminAlias(req: any, companyId?: string, sectorId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
+    findAllAdminAlias(req: any, companyId?: string, sectorId?: string, unitId?: string, categoryId?: string, isPublic?: string, audience?: string): Promise<({
         user: {
             id: string;
             name: string;
@@ -175,6 +216,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -191,22 +258,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     })[]>;
     findOne(id: string): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -223,6 +281,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -239,22 +323,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     }>;
     update(id: string, updateScheduleDto: UpdateScheduleDto, req: any): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -271,6 +346,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -287,6 +388,7 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
@@ -310,22 +412,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     }>;
     restore(id: string): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -342,6 +435,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -358,22 +477,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     }>;
     activate(id: string, req: any): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -390,6 +500,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -406,22 +542,13 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;
         fileSize: number;
     }>;
     deactivate(id: string, req: any): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -438,6 +565,32 @@ export declare class UploadedSchedulesController {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        scheduleUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            scheduleId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -454,6 +607,7 @@ export declare class UploadedSchedulesController {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         fileUrl: string;
         fileName: string;

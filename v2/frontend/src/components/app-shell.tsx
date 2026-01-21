@@ -5,6 +5,7 @@ import AppHeader from '@/components/app-header';
 import AppNav from '@/components/app-nav';
 import MaxWidth from '@/components/max-width';
 import ContactModal from '@/components/contact-modal';
+import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 
 type AppShellProps = {
@@ -13,6 +14,10 @@ type AppShellProps = {
 
 export default function AppShell({ children }: AppShellProps) {
   const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const setUser = useAuthStore((state) => state.setUser);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
@@ -23,6 +28,29 @@ export default function AppShell({ children }: AppShellProps) {
       stored === 'dark' || (stored !== 'light' && prefersDark) ? 'dark' : 'light';
     setTheme(nextTheme);
   }, []);
+
+  useEffect(() => {
+    if (!hasHydrated || !accessToken) return;
+    let active = true;
+
+    const syncUser = async () => {
+      try {
+        const response = await api.get('/auth/me');
+        if (active) {
+          setUser(response.data);
+        }
+      } catch (error) {
+        if (active) {
+          clearAuth();
+        }
+      }
+    };
+
+    syncUser();
+    return () => {
+      active = false;
+    };
+  }, [accessToken, clearAuth, hasHydrated, setUser]);
 
   const applyTheme = (nextTheme: 'light' | 'dark') => {
     const root = document.documentElement;

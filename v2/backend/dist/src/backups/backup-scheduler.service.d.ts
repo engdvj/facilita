@@ -11,5 +11,6 @@ export declare class BackupSchedulerService implements OnModuleInit, OnModuleDes
     onModuleInit(): void;
     onModuleDestroy(): void;
     private tick;
+    private parseScheduleMinutes;
     private runBackup;
 }

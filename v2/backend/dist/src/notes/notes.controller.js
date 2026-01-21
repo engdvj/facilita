@@ -24,7 +24,7 @@ const client_1 = require("@prisma/client");
 const defaultAudienceByRole = {
     [client_1.UserRole.SUPERADMIN]: client_1.ContentAudience.COMPANY,
     [client_1.UserRole.ADMIN]: client_1.ContentAudience.COMPANY,
-    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.COMPANY,
+    [client_1.UserRole.COLLABORATOR]: client_1.ContentAudience.PRIVATE,
 };
 const audienceOptionsByRole = {
     [client_1.UserRole.SUPERADMIN]: [
@@ -63,7 +63,7 @@ let NotesController = class NotesController {
     constructor(notesService) {
         this.notesService = notesService;
     }
-    create(createNoteDto, req) {
+    async create(createNoteDto, req) {
         const user = req.user;
         const isSuperAdmin = user?.role === client_1.UserRole.SUPERADMIN;
         const companyId = isSuperAdmin ? createNoteDto.companyId : user?.companyId;
@@ -79,7 +79,7 @@ let NotesController = class NotesController {
         }
         if (user?.role === client_1.UserRole.COLLABORATOR &&
             createNoteDto.sectorId &&
-            createNoteDto.sectorId !== user?.sectorId) {
+            !(await this.notesService.userHasSector(user.id, createNoteDto.sectorId))) {
             throw new common_1.ForbiddenException('Setor nao autorizado.');
         }
         if (audience === client_1.ContentAudience.SECTOR && !createNoteDto.sectorId) {
@@ -91,23 +91,30 @@ let NotesController = class NotesController {
             sectorId: audience === client_1.ContentAudience.SECTOR
                 ? createNoteDto.sectorId || undefined
                 : undefined,
+            unitId: audience === client_1.ContentAudience.SECTOR
+                ? createNoteDto.unitId ?? undefined
+                : undefined,
+            unitIds: audience === client_1.ContentAudience.SECTOR
+                ? createNoteDto.unitIds ?? undefined
+                : undefined,
             userId: req.user.id,
             audience,
             isPublic: audience === client_1.ContentAudience.PUBLIC,
         });
     }
-    async findAll(companyId, sectorId, categoryId, isPublic, audience) {
+    async findAll(companyId, sectorId, unitId, categoryId, isPublic, audience) {
         const normalizedCompanyId = companyId?.trim() || undefined;
         const parsedAudience = parseAudienceParam(audience);
         const filters = {
             sectorId,
+            unitId,
             categoryId,
             audience: parsedAudience || (isPublic === 'true' ? client_1.ContentAudience.PUBLIC : undefined),
             isPublic: isPublic === 'true' ? true : isPublic === 'false' ? false : undefined,
         };
         return this.notesService.findAll(normalizedCompanyId, filters);
     }
-    async findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience) {
+    async findAllAdmin(req, companyId, sectorId, unitId, categoryId, isPublic, audience) {
         const normalizedCompanyId = companyId?.trim() || undefined;
         const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
         const resolvedCompanyId = normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
@@ -117,6 +124,7 @@ let NotesController = class NotesController {
         const parsedAudience = parseAudienceParam(audience);
         const filters = {
             sectorId,
+            unitId,
             categoryId,
             audience: parsedAudience,
             isPublic: isPublic ? isPublic === 'true' : undefined,
@@ -124,8 +132,8 @@ let NotesController = class NotesController {
         };
         return this.notesService.findAll(resolvedCompanyId, filters);
     }
-    async findAllAdminAlias(req, companyId, sectorId, categoryId, isPublic, audience) {
-        return this.findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience);
+    async findAllAdminAlias(req, companyId, sectorId, unitId, categoryId, isPublic, audience) {
+        return this.findAllAdmin(req, companyId, sectorId, unitId, categoryId, isPublic, audience);
     }
     findOne(id) {
         return this.notesService.findOne(id);
@@ -171,17 +179,18 @@ __decorate([
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_note_dto_1.CreateNoteDto, Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], NotesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('companyId')),
     __param(1, (0, common_1.Query)('sectorId')),
-    __param(2, (0, common_1.Query)('categoryId')),
-    __param(3, (0, common_1.Query)('isPublic')),
-    __param(4, (0, common_1.Query)('audience')),
+    __param(2, (0, common_1.Query)('unitId')),
+    __param(3, (0, common_1.Query)('categoryId')),
+    __param(4, (0, common_1.Query)('isPublic')),
+    __param(5, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], NotesController.prototype, "findAll", null);
 __decorate([
@@ -191,11 +200,12 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('companyId')),
     __param(2, (0, common_1.Query)('sectorId')),
-    __param(3, (0, common_1.Query)('categoryId')),
-    __param(4, (0, common_1.Query)('isPublic')),
-    __param(5, (0, common_1.Query)('audience')),
+    __param(3, (0, common_1.Query)('unitId')),
+    __param(4, (0, common_1.Query)('categoryId')),
+    __param(5, (0, common_1.Query)('isPublic')),
+    __param(6, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], NotesController.prototype, "findAllAdmin", null);
 __decorate([
@@ -205,11 +215,12 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('companyId')),
     __param(2, (0, common_1.Query)('sectorId')),
-    __param(3, (0, common_1.Query)('categoryId')),
-    __param(4, (0, common_1.Query)('isPublic')),
-    __param(5, (0, common_1.Query)('audience')),
+    __param(3, (0, common_1.Query)('unitId')),
+    __param(4, (0, common_1.Query)('categoryId')),
+    __param(5, (0, common_1.Query)('isPublic')),
+    __param(6, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], NotesController.prototype, "findAllAdminAlias", null);
 __decorate([

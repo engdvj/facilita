@@ -1,4 +1,6 @@
 import {
+  ArrayUnique,
+  IsArray,
   IsString,
   IsOptional,
   IsBoolean,
@@ -23,6 +25,12 @@ export class CreateNoteDto {
   @IsUUID()
   @IsOptional()
   unitId?: string | null;
+
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  unitIds?: string[];
 
   @IsUUID()
   @IsOptional()

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
+import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
 import { formatBytes } from '@/lib/format';
 import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
@@ -18,7 +19,7 @@ const emptyFormData = {
   title: '',
   categoryId: '',
   sectorId: '',
-  unitId: '',
+  unitIds: [] as string[],
   fileUrl: '',
   fileName: '',
   fileSize: 0,
@@ -27,6 +28,13 @@ const emptyFormData = {
   imageScale: 1,
   audience: 'COMPANY' as ContentAudience,
 };
+
+const getScheduleUnitIds = (schedule: UploadedSchedule) =>
+  schedule.scheduleUnits?.length
+    ? schedule.scheduleUnits.map((unit) => unit.unitId)
+    : schedule.unitId
+      ? [schedule.unitId]
+      : [];
 
 export default function SchedulesPage() {
   const user = useAuthStore((state) => state.user);
@@ -58,6 +66,8 @@ export default function SchedulesPage() {
   const [formTab, setFormTab] = useState<'basic' | 'category' | 'visual'>('basic');
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
+  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin
@@ -90,11 +100,11 @@ export default function SchedulesPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
-  const matchesUnit = (unitId?: string | null) => {
-    if (!unitId) return true;
+  const matchesUnit = (unitIds?: string[]) => {
+    if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (isAdmin || isSuperAdmin) return true;
-    return Boolean(user.unitId && user.unitId === unitId);
+    return unitIds.some((unitId) => userUnitIds.has(unitId));
   };
 
   const scopedSectors = useMemo(() => {
@@ -245,8 +255,8 @@ export default function SchedulesPage() {
       if (audience === 'ADMIN') return isAdmin;
       if (audience === 'SECTOR') {
         if (isAdmin) return true;
-        if (!matchesUnit(schedule.unitId)) return false;
-        return Boolean(user.sectorId) && schedule.sectorId === user.sectorId;
+        if (!matchesUnit(getScheduleUnitIds(schedule))) return false;
+        return schedule.sectorId ? userSectorIds.has(schedule.sectorId) : false;
       }
       if (audience === 'COMPANY') return isAdmin;
       return false;
@@ -278,7 +288,12 @@ export default function SchedulesPage() {
       if (filterSectorId && schedule.sectorId !== filterSectorId) {
         return false;
       }
-      if (filterUnitId && schedule.unitId && schedule.unitId !== filterUnitId) {
+      const scheduleUnitIds = getScheduleUnitIds(schedule);
+      if (
+        filterUnitId &&
+        scheduleUnitIds.length > 0 &&
+        !scheduleUnitIds.includes(filterUnitId)
+      ) {
         return false;
       }
       return true;
@@ -316,7 +331,7 @@ export default function SchedulesPage() {
       ...emptyFormData,
       audience: 'COMPANY',
       sectorId: '',
-      unitId: '',
+      unitIds: [],
     });
     setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
@@ -330,7 +345,7 @@ export default function SchedulesPage() {
       title: schedule.title,
       categoryId: schedule.categoryId || '',
       sectorId: schedule.sectorId || '',
-      unitId: schedule.unitId || '',
+      unitIds: getScheduleUnitIds(schedule),
       fileUrl: schedule.fileUrl,
       fileName: schedule.fileName,
       fileSize: schedule.fileSize,
@@ -436,7 +451,7 @@ export default function SchedulesPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
-        unitId: normalizedAudience === 'SECTOR' ? formData.unitId || null : null,
+        unitIds: normalizedAudience === 'SECTOR' ? formData.unitIds : undefined,
         fileUrl: formData.fileUrl,
         fileName: formData.fileName,
         fileSize: formData.fileSize,
@@ -541,8 +556,20 @@ export default function SchedulesPage() {
       ...prev,
       audience: value,
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
-      unitId: value === 'SECTOR' ? prev.unitId : '',
+      unitIds: value === 'SECTOR' ? prev.unitIds : [],
     }));
+  };
+
+  const toggleUnitSelection = (unitId: string) => {
+    setFormData((prev) => {
+      const selected = new Set(prev.unitIds);
+      if (selected.has(unitId)) {
+        selected.delete(unitId);
+      } else {
+        selected.add(unitId);
+      }
+      return { ...prev, unitIds: Array.from(selected) };
+    });
   };
 
   const previewTitle = formData.title.trim() || 'Nome do documento';
@@ -1005,7 +1032,7 @@ export default function SchedulesPage() {
                       setFormData((prev) => ({
                         ...prev,
                         sectorId: event.target.value,
-                        unitId: '',
+                        unitIds: [],
                       }))
                     }
                     disabled={isSuperAdmin && !formCompanyId}
@@ -1022,29 +1049,63 @@ export default function SchedulesPage() {
               {shouldShowUnitField && (
                 <div className="md:col-span-2">
                   <AdminField
-                    label="Unidade"
-                    htmlFor="schedule-unit"
-                    hint={!formData.sectorId ? 'Selecione um setor primeiro.' : undefined}
+                    label="Unidades"
+                    htmlFor="schedule-units"
+                    hint={
+                      !formData.sectorId
+                        ? 'Selecione um setor primeiro.'
+                        : 'Se nenhuma unidade for marcada, o documento aparece em todas.'
+                    }
                   >
-                    <select
-                      id="schedule-unit"
-                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                      value={formData.unitId}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          unitId: event.target.value,
-                        }))
-                      }
-                      disabled={!formData.sectorId}
+                    <div
+                      id="schedule-units"
+                      className="space-y-2 rounded-lg border border-border/70 bg-card/60 p-3"
                     >
-                      <option value="">Todas as unidades</option>
-                      {formUnits.map((unit) => (
-                        <option key={unit.id} value={unit.id}>
-                          {unit.name}
-                        </option>
-                      ))}
-                    </select>
+                      {!formData.sectorId && (
+                        <p className="text-xs text-muted-foreground">
+                          Selecione um setor para listar unidades.
+                        </p>
+                      )}
+                      {formData.sectorId && formUnits.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma unidade encontrada para este setor.
+                        </p>
+                      )}
+                      {formData.sectorId && formUnits.length > 0 && (
+                        <div className="space-y-2">
+                          {formUnits.map((unit) => {
+                            const isSelected = formData.unitIds.includes(unit.id);
+                            return (
+                              <div
+                                key={unit.id}
+                                className={`flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 ${
+                                  isSelected
+                                    ? 'border-foreground/30 bg-white/90'
+                                    : 'border-border/70 bg-card/70'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-border/70"
+                                  checked={isSelected}
+                                  onChange={() => toggleUnitSelection(unit.id)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {unit.name}
+                                  </p>
+                                  {isSelected && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Selecionada
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </AdminField>
                 </div>
               )}

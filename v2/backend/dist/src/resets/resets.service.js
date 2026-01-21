@@ -94,18 +94,6 @@ let ResetsService = class ResetsService {
                 where: { sectorId: { not: null } },
             });
         }
-        if (selection.has('sectors') && !selection.has('users')) {
-            await tx.user.updateMany({
-                data: { sectorId: null },
-                where: { sectorId: { not: null } },
-            });
-        }
-        if (selection.has('units') && !selection.has('users')) {
-            await tx.user.updateMany({
-                data: { unitId: null },
-                where: { unitId: { not: null } },
-            });
-        }
         if (selection.has('companies') && !selection.has('users')) {
             await tx.user.updateMany({
                 data: { companyId: null },

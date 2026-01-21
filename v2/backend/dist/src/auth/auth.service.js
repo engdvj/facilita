@@ -35,8 +35,9 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         const tokens = await this.issueTokens(user);
+        const profile = await this.usersService.findOne(user.id);
         return {
-            user: this.sanitizeUser(user),
+            user: this.sanitizeUser(profile),
             tokens,
         };
     }
@@ -65,8 +66,9 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('User not found');
         }
         const tokens = await this.issueTokens(user);
+        const profile = await this.usersService.findOne(user.id);
         return {
-            user: this.sanitizeUser(user),
+            user: this.sanitizeUser(profile),
             tokens,
         };
     }
@@ -91,8 +93,6 @@ let AuthService = class AuthService {
             role: user.role,
             email: user.email,
             companyId: user.companyId,
-            unitId: user.unitId,
-            sectorId: user.sectorId,
         };
         const accessToken = await this.jwtService.signAsync(payload);
         const refreshSecret = this.configService.get('JWT_REFRESH_SECRET') || 'dev-refresh';

@@ -22,11 +22,29 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         this.notificationsGateway = notificationsGateway;
     }
     async create(createScheduleDto) {
+        const { unitIds, unitId, ...data } = createScheduleDto;
+        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
+        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
         const schedule = await this.prisma.uploadedSchedule.create({
-            data: createScheduleDto,
+            data: {
+                ...data,
+                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
+                scheduleUnits: normalizedUnitIds.length > 0
+                    ? {
+                        create: normalizedUnitIds.map((itemUnitId) => ({
+                            unitId: itemUnitId,
+                        })),
+                    }
+                    : undefined,
+            },
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -64,6 +82,32 @@ let UploadedSchedulesService = class UploadedSchedulesService {
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
+        const filterUnitIds = filters?.unitId !== undefined
+            ? this.normalizeUnitIds(undefined, filters.unitId)
+            : filters?.unitIds;
+        const unitFilter = filterUnitIds !== undefined
+            ? filterUnitIds.length > 0
+                ? {
+                    OR: [
+                        { unitId: null, scheduleUnits: { none: {} } },
+                        { unitId: { in: filterUnitIds } },
+                        { scheduleUnits: { some: { unitId: { in: filterUnitIds } } } },
+                    ],
+                }
+                : { OR: [{ unitId: null, scheduleUnits: { none: {} } }] }
+            : undefined;
+        const andFilters = [];
+        if (unitFilter) {
+            andFilters.push(unitFilter);
+        }
+        if (shouldFilterPublic) {
+            andFilters.push({
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            });
+        }
         const where = {
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
@@ -73,12 +117,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 filters?.audience && { audience: filters.audience }),
             ...(filters?.isPublic !== undefined &&
                 !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(shouldFilterPublic && {
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            }),
+            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
         };
         console.log('SchedulesService.findAll - where clause:', JSON.stringify(where, null, 2));
         const schedules = await this.prisma.uploadedSchedule.findMany({
@@ -86,6 +125,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -107,6 +151,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -134,17 +183,58 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
         }
         const hasChanges = updateScheduleDto.title !== existingSchedule.title;
-        const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateScheduleDto;
+        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateScheduleDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingSchedule.sectorId ?? undefined
             : undefined;
+        const existingUnitIds = existingSchedule.scheduleUnits?.length
+            ? existingSchedule.scheduleUnits.map((unit) => unit.unitId)
+            : this.normalizeUnitIds(undefined, existingSchedule.unitId ?? undefined);
+        const unitIdsPayload = _unitIds !== undefined
+            ? _unitIds ?? []
+            : _unitId !== undefined
+                ? this.normalizeUnitIds(undefined, _unitId)
+                : undefined;
+        const sectorChanged = resolvedAudience === client_1.ContentAudience.SECTOR &&
+            sectorId &&
+            sectorId !== existingSchedule.sectorId;
+        let nextUnitIds = unitIdsPayload !== undefined
+            ? this.normalizeUnitIds(unitIdsPayload, undefined)
+            : sectorChanged
+                ? []
+                : existingUnitIds;
+        if (resolvedAudience !== client_1.ContentAudience.SECTOR) {
+            nextUnitIds = [];
+        }
+        const unitId = resolvedAudience === client_1.ContentAudience.SECTOR && nextUnitIds.length === 1
+            ? nextUnitIds[0]
+            : null;
         if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
             throw new common_1.ForbiddenException('Setor obrigatorio para documentos de setor.');
         }
+        await this.assertUnitsAllowed(sectorId, nextUnitIds);
         const updateData = {
             ...rest,
-            sectorId,
+            sector: resolvedAudience === client_1.ContentAudience.SECTOR
+                ? { connect: { id: sectorId } }
+                : { disconnect: true },
+            unit: resolvedAudience === client_1.ContentAudience.SECTOR && unitId
+                ? { connect: { id: unitId } }
+                : { disconnect: true },
         };
+        const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
+        if (shouldUpdateUnits) {
+            updateData.scheduleUnits = {
+                deleteMany: {},
+                ...(nextUnitIds.length > 0
+                    ? {
+                        create: nextUnitIds.map((itemUnitId) => ({
+                            unitId: itemUnitId,
+                        })),
+                    }
+                    : {}),
+            };
+        }
         if (shouldUpdateAudience) {
             updateData.audience = resolvedAudience;
             updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
@@ -155,6 +245,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -262,6 +357,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -283,6 +383,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -325,6 +430,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -348,6 +458,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -392,6 +507,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -415,6 +535,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             include: {
                 category: true,
                 sector: true,
+                scheduleUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -451,6 +576,30 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             }
         }
         return deactivated;
+    }
+    normalizeUnitIds(unitIds, unitId) {
+        const combined = [
+            ...(unitIds ?? []),
+            ...(unitId ? [unitId] : []),
+        ].filter(Boolean);
+        return Array.from(new Set(combined));
+    }
+    async assertUnitsAllowed(sectorId, unitIds) {
+        const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
+        if (normalizedUnitIds.length === 0)
+            return;
+        if (!sectorId) {
+            throw new common_1.ForbiddenException('Unidade requer setor.');
+        }
+        const relationCount = await this.prisma.sectorUnit.count({
+            where: {
+                sectorId,
+                unitId: { in: normalizedUnitIds },
+            },
+        });
+        if (relationCount !== normalizedUnitIds.length) {
+            throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
+        }
     }
     assertCanMutate(schedule, actor) {
         if (!actor)

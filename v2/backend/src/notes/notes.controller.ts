@@ -22,7 +22,7 @@ import { ContentAudience, UserRole } from '@prisma/client';
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
   [UserRole.ADMIN]: ContentAudience.COMPANY,
-  [UserRole.COLLABORATOR]: ContentAudience.COMPANY,
+  [UserRole.COLLABORATOR]: ContentAudience.PRIVATE,
 };
 
 const audienceOptionsByRole: Record<UserRole, ContentAudience[]> = {
@@ -110,6 +110,10 @@ export class NotesController {
       unitId:
         audience === ContentAudience.SECTOR
           ? createNoteDto.unitId ?? undefined
+          : undefined,
+      unitIds:
+        audience === ContentAudience.SECTOR
+          ? createNoteDto.unitIds ?? undefined
           : undefined,
       userId: req.user.id,
       audience,

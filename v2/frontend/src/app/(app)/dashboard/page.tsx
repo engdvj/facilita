@@ -10,6 +10,7 @@ import {
   UploadedSchedule,
 } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
+import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 type CategoryOption = Category;
@@ -47,6 +48,8 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
+  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
   const numberFormatter = useMemo(() => new Intl.NumberFormat('pt-BR'), []);
@@ -85,6 +88,34 @@ export default function DashboardPage() {
     if (dashboardContent === 'LINK') return type === 'link';
     if (dashboardContent === 'DOCUMENT') return type === 'document';
     return type === 'note';
+  };
+
+  const getLinkUnitIds = (link: LinkType) =>
+    link.linkUnits?.length
+      ? link.linkUnits.map((unit) => unit.unitId)
+      : link.unitId
+        ? [link.unitId]
+        : [];
+
+  const getDocumentUnitIds = (document: UploadedSchedule) =>
+    document.scheduleUnits?.length
+      ? document.scheduleUnits.map((unit) => unit.unitId)
+      : document.unitId
+        ? [document.unitId]
+        : [];
+
+  const getNoteUnitIds = (note: Note) =>
+    note.noteUnits?.length
+      ? note.noteUnits.map((unit) => unit.unitId)
+      : note.unitId
+        ? [note.unitId]
+        : [];
+
+  const matchesUnit = (unitIds?: string[]) => {
+    if (!unitIds || unitIds.length === 0) return true;
+    if (!user) return false;
+    if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return true;
+    return unitIds.some((unitId) => userUnitIds.has(unitId));
   };
 
   useEffect(() => {
@@ -234,7 +265,8 @@ export default function DashboardPage() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        return Boolean(user.sectorId) && link.sectorId === user.sectorId;
+        if (!matchesUnit(getLinkUnitIds(link))) return false;
+        return link.sectorId ? userSectorIds.has(link.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return (
@@ -266,7 +298,8 @@ export default function DashboardPage() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        return Boolean(user.sectorId) && document.sectorId === user.sectorId;
+        if (!matchesUnit(getDocumentUnitIds(document))) return false;
+        return document.sectorId ? userSectorIds.has(document.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return (
@@ -298,7 +331,8 @@ export default function DashboardPage() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        return Boolean(user.sectorId) && note.sectorId === user.sectorId;
+        if (!matchesUnit(getNoteUnitIds(note))) return false;
+        return note.sectorId ? userSectorIds.has(note.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return (

@@ -15,8 +15,6 @@ export declare class UsersService {
         email: string;
         cpf: string | null;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         passwordHash: string;
         avatarUrl: string | null;
         theme: Prisma.JsonValue | null;
@@ -31,8 +29,6 @@ export declare class UsersService {
         email: string;
         cpf: string | null;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         passwordHash: string;
         avatarUrl: string | null;
         theme: Prisma.JsonValue | null;
@@ -47,8 +43,6 @@ export declare class UsersService {
         email: string;
         cpf: string | null;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         passwordHash: string;
         avatarUrl: string | null;
         theme: Prisma.JsonValue | null;
@@ -63,8 +57,6 @@ export declare class UsersService {
         email: string;
         cpf: string | null;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         passwordHash: string;
         avatarUrl: string | null;
         theme: Prisma.JsonValue | null;
@@ -78,10 +70,46 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         avatarUrl: string | null;
         theme: Prisma.JsonValue;
+        userSectors: ({
+            sector: {
+                sectorUnits: ({
+                    unit: {
+                        id: string;
+                        cnpj: string | null;
+                        name: string;
+                        status: import(".prisma/client").$Enums.EntityStatus;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        companyId: string;
+                    };
+                } & {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sectorId: string;
+                    isPrimary: boolean;
+                    unitId: string;
+                })[];
+            } & {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            role: import(".prisma/client").$Enums.SectorRole;
+            sectorId: string;
+            isPrimary: boolean;
+            userId: string;
+        })[];
     }[]>;
     findOne(id: string): Promise<{
         id: string;
@@ -92,10 +120,46 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         avatarUrl: string | null;
         theme: Prisma.JsonValue;
+        userSectors: ({
+            sector: {
+                sectorUnits: ({
+                    unit: {
+                        id: string;
+                        cnpj: string | null;
+                        name: string;
+                        status: import(".prisma/client").$Enums.EntityStatus;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        companyId: string;
+                    };
+                } & {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sectorId: string;
+                    isPrimary: boolean;
+                    unitId: string;
+                })[];
+            } & {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            role: import(".prisma/client").$Enums.SectorRole;
+            sectorId: string;
+            isPrimary: boolean;
+            userId: string;
+        })[];
     }>;
     create(data: CreateUserDto): Promise<{
         id: string;
@@ -106,10 +170,46 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         avatarUrl: string | null;
         theme: Prisma.JsonValue;
+        userSectors: ({
+            sector: {
+                sectorUnits: ({
+                    unit: {
+                        id: string;
+                        cnpj: string | null;
+                        name: string;
+                        status: import(".prisma/client").$Enums.EntityStatus;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        companyId: string;
+                    };
+                } & {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sectorId: string;
+                    isPrimary: boolean;
+                    unitId: string;
+                })[];
+            } & {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            role: import(".prisma/client").$Enums.SectorRole;
+            sectorId: string;
+            isPrimary: boolean;
+            userId: string;
+        })[];
     }>;
     update(id: string, data: UpdateUserDto): Promise<{
         id: string;
@@ -120,12 +220,49 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         avatarUrl: string | null;
         theme: Prisma.JsonValue;
+        userSectors: ({
+            sector: {
+                sectorUnits: ({
+                    unit: {
+                        id: string;
+                        cnpj: string | null;
+                        name: string;
+                        status: import(".prisma/client").$Enums.EntityStatus;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        companyId: string;
+                    };
+                } & {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sectorId: string;
+                    isPrimary: boolean;
+                    unitId: string;
+                })[];
+            } & {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            role: import(".prisma/client").$Enums.SectorRole;
+            sectorId: string;
+            isPrimary: boolean;
+            userId: string;
+        })[];
     }>;
     getDependencies(id: string): Promise<{
+        sectors: number;
         links: number;
         schedules: number;
         notes: number;
@@ -146,9 +283,45 @@ export declare class UsersService {
         role: import(".prisma/client").$Enums.UserRole;
         email: string;
         companyId: string | null;
-        unitId: string | null;
-        sectorId: string | null;
         avatarUrl: string | null;
         theme: Prisma.JsonValue;
+        userSectors: ({
+            sector: {
+                sectorUnits: ({
+                    unit: {
+                        id: string;
+                        cnpj: string | null;
+                        name: string;
+                        status: import(".prisma/client").$Enums.EntityStatus;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        companyId: string;
+                    };
+                } & {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sectorId: string;
+                    isPrimary: boolean;
+                    unitId: string;
+                })[];
+            } & {
+                id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+                description: string | null;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            role: import(".prisma/client").$Enums.SectorRole;
+            sectorId: string;
+            isPrimary: boolean;
+            userId: string;
+        })[];
     }>;
 }

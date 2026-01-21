@@ -126,6 +126,10 @@ api.interceptors.request.use((config) => {
 
 const refreshAccessToken = async () => {
   const response = await refreshClient.post('/auth/refresh');
+  const user = response.data?.user;
+  if (user) {
+    useAuthStore.getState().setUser(user);
+  }
   return response.data.accessToken as string;
 };
 

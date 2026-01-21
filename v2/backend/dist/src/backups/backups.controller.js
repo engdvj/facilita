@@ -95,11 +95,16 @@ let BackupsController = class BackupsController {
                 });
                 child.on('error', reject);
             });
+            return { opened: true, directory };
         }
-        catch {
-            throw new common_1.InternalServerErrorException('Nao foi possivel abrir o diretorio no servidor.');
+        catch (error) {
+            const code = error.code;
+            return {
+                opened: false,
+                directory,
+                reason: code === 'ENOENT' ? 'not_supported' : 'failed',
+            };
         }
-        return { opened: true, directory };
     }
     async downloadAutoBackup(name, res) {
         if (!/^[a-zA-Z0-9._-]+$/.test(name)) {

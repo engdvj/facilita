@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLinkDto } from './dto/create-link.dto';
 import { UpdateLinkDto } from './dto/update-link.dto';
-import { ContentAudience, EntityStatus, UserRole, NotificationType, EntityType } from '@prisma/client';
+import { ContentAudience, EntityStatus, UserRole, NotificationType, EntityType, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
@@ -23,13 +23,32 @@ export class LinksService {
   async create(createLinkDto: CreateLinkDto) {
     console.log('[LinksService.create] Criando link com dados:', createLinkDto);
 
-    await this.assertUnitAllowed(createLinkDto.sectorId, createLinkDto.unitId ?? undefined);
+    const { unitIds, unitId, ...data } = createLinkDto;
+    const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
+
+    await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
 
     const link = await this.prisma.link.create({
-      data: createLinkDto,
+      data: {
+        ...data,
+        unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
+        linkUnits:
+          normalizedUnitIds.length > 0
+            ? {
+                create: normalizedUnitIds.map((itemUnitId) => ({
+                  unitId: itemUnitId,
+                })),
+              }
+            : undefined,
+      },
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -104,22 +123,22 @@ export class LinksService {
       ? { sectorId: filters.sectorId }
       : {};
 
-    const unitFilter =
+    const filterUnitIds =
       filters?.unitId !== undefined
-        ? {
-            OR: [
-              { unitId: null },
-              { unitId: filters.unitId },
-            ],
-          }
-        : filters?.unitIds !== undefined
+        ? this.normalizeUnitIds(undefined, filters.unitId)
+        : filters?.unitIds;
+    const unitFilter =
+      filterUnitIds !== undefined
+        ? filterUnitIds.length > 0
           ? {
               OR: [
-                { unitId: null },
-                { unitId: { in: filters.unitIds } },
+                { unitId: null, linkUnits: { none: {} } },
+                { unitId: { in: filterUnitIds } },
+                { linkUnits: { some: { unitId: { in: filterUnitIds } } } },
               ],
             }
-          : undefined;
+          : { OR: [{ unitId: null, linkUnits: { none: {} } }] }
+        : undefined;
 
     const andFilters = [];
     if (unitFilter) {
@@ -153,6 +172,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -231,6 +255,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -295,10 +324,12 @@ export class LinksService {
     }
 
     const {
+      categoryId: _categoryId,
       companyId,
       userId,
       sectorId: _sectorId,
       unitId: _unitId,
+      unitIds: _unitIds,
       audience,
       isPublic,
       ...rest
@@ -307,22 +338,72 @@ export class LinksService {
       resolvedAudience === ContentAudience.SECTOR
         ? _sectorId ?? existingLink.sectorId ?? undefined
         : undefined;
+    const existingUnitIds =
+      existingLink.linkUnits?.length
+        ? existingLink.linkUnits.map((unit) => unit.unitId)
+        : this.normalizeUnitIds(undefined, existingLink.unitId ?? undefined);
+    const unitIdsPayload =
+      _unitIds !== undefined
+        ? _unitIds ?? []
+        : _unitId !== undefined
+          ? this.normalizeUnitIds(undefined, _unitId)
+          : undefined;
+    const sectorChanged =
+      resolvedAudience === ContentAudience.SECTOR &&
+      sectorId &&
+      sectorId !== existingLink.sectorId;
+    let nextUnitIds =
+      unitIdsPayload !== undefined
+        ? this.normalizeUnitIds(unitIdsPayload, undefined)
+        : sectorChanged
+          ? []
+          : existingUnitIds;
+    if (resolvedAudience !== ContentAudience.SECTOR) {
+      nextUnitIds = [];
+    }
     const unitId =
-      resolvedAudience === ContentAudience.SECTOR
-        ? (_unitId !== undefined ? _unitId : existingLink.unitId) ?? undefined
+      resolvedAudience === ContentAudience.SECTOR && nextUnitIds.length === 1
+        ? nextUnitIds[0]
         : null;
 
     if (resolvedAudience === ContentAudience.SECTOR && !sectorId) {
       throw new ForbiddenException('Setor obrigatorio para links de setor.');
     }
 
-    await this.assertUnitAllowed(sectorId, unitId ?? undefined);
+    await this.assertUnitsAllowed(sectorId, nextUnitIds);
 
-    const updateData: UpdateLinkDto = {
+    const updateData: Prisma.LinkUpdateInput = {
       ...rest,
-      sectorId,
-      unitId,
+      sector:
+        resolvedAudience === ContentAudience.SECTOR
+          ? { connect: { id: sectorId! } }
+          : { disconnect: true },
+      unit:
+        resolvedAudience === ContentAudience.SECTOR && unitId
+          ? { connect: { id: unitId } }
+          : { disconnect: true },
     };
+
+    if (_categoryId !== undefined) {
+      updateData.category = _categoryId
+        ? { connect: { id: _categoryId } }
+        : { disconnect: true };
+    }
+    const shouldUpdateUnits =
+      resolvedAudience !== ContentAudience.SECTOR || unitIdsPayload !== undefined;
+
+    if (shouldUpdateUnits) {
+      updateData.linkUnits = {
+        deleteMany: {},
+        ...(nextUnitIds.length > 0
+          ? {
+              create: nextUnitIds.map((itemUnitId) => ({
+                unitId: itemUnitId,
+              })),
+            }
+          : {}),
+      };
+    }
 
     if (shouldUpdateAudience) {
       updateData.audience = resolvedAudience;
@@ -335,6 +416,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -461,23 +547,32 @@ export class LinksService {
     return deleted;
   }
 
-  private async assertUnitAllowed(
+  private normalizeUnitIds(unitIds?: string[] | null, unitId?: string | null) {
+    const combined = [
+      ...(unitIds ?? []),
+      ...(unitId ? [unitId] : []),
+    ].filter(Boolean);
+    return Array.from(new Set(combined));
+  }
+
+  private async assertUnitsAllowed(
     sectorId?: string | null,
-    unitId?: string,
+    unitIds?: string[],
   ) {
-    if (!unitId) return;
+    const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
+    if (normalizedUnitIds.length === 0) return;
     if (!sectorId) {
       throw new ForbiddenException('Unidade requer setor.');
     }
 
-    const relation = await this.prisma.sectorUnit.findFirst({
+    const relationCount = await this.prisma.sectorUnit.count({
       where: {
         sectorId,
-        unitId,
+        unitId: { in: normalizedUnitIds },
       },
     });
 
-    if (!relation) {
+    if (relationCount !== normalizedUnitIds.length) {
       throw new ForbiddenException('Unidade nao pertence ao setor.');
     }
   }
@@ -553,6 +648,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -576,6 +676,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -627,6 +732,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -654,6 +764,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -708,6 +823,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -735,6 +855,11 @@ export class LinksService {
       include: {
         category: true,
         sector: true,
+        linkUnits: {
+          include: {
+            unit: true,
+          },
+        },
         user: {
           select: {
             id: true,

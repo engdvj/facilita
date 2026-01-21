@@ -23,11 +23,29 @@ let LinksService = class LinksService {
     }
     async create(createLinkDto) {
         console.log('[LinksService.create] Criando link com dados:', createLinkDto);
+        const { unitIds, unitId, ...data } = createLinkDto;
+        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
+        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
         const link = await this.prisma.link.create({
-            data: createLinkDto,
+            data: {
+                ...data,
+                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
+                linkUnits: normalizedUnitIds.length > 0
+                    ? {
+                        create: normalizedUnitIds.map((itemUnitId) => ({
+                            unitId: itemUnitId,
+                        })),
+                    }
+                    : undefined,
+            },
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -71,21 +89,47 @@ let LinksService = class LinksService {
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
+        const sectorFilter = filters?.sectorIds
+            ? { sectorId: { in: filters.sectorIds } }
+            : filters?.sectorId
+                ? { sectorId: filters.sectorId }
+                : {};
+        const filterUnitIds = filters?.unitId !== undefined
+            ? this.normalizeUnitIds(undefined, filters.unitId)
+            : filters?.unitIds;
+        const unitFilter = filterUnitIds !== undefined
+            ? filterUnitIds.length > 0
+                ? {
+                    OR: [
+                        { unitId: null, linkUnits: { none: {} } },
+                        { unitId: { in: filterUnitIds } },
+                        { linkUnits: { some: { unitId: { in: filterUnitIds } } } },
+                    ],
+                }
+                : { OR: [{ unitId: null, linkUnits: { none: {} } }] }
+            : undefined;
+        const andFilters = [];
+        if (unitFilter) {
+            andFilters.push(unitFilter);
+        }
+        if (shouldFilterPublic) {
+            andFilters.push({
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            });
+        }
         const where = {
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
+            ...sectorFilter,
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
             ...(!shouldFilterPublic &&
                 filters?.audience && { audience: filters.audience }),
             ...(filters?.isPublic !== undefined &&
                 !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(shouldFilterPublic && {
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            }),
+            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
         };
         console.log('LinksService.findAll - where clause:', JSON.stringify(where, null, 2));
         const links = await this.prisma.link.findMany({
@@ -93,6 +137,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -109,12 +158,56 @@ let LinksService = class LinksService {
         console.log('LinksService.findAll - links encontrados:', links.length);
         return links;
     }
+    async findAllByUser(userId, companyId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                userSectors: {
+                    select: {
+                        sectorId: true,
+                        sector: {
+                            select: {
+                                sectorUnits: {
+                                    select: {
+                                        unitId: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!user) {
+            return [];
+        }
+        const sectorIds = user.userSectors.map((us) => us.sectorId);
+        const unitIds = Array.from(new Set(user.userSectors.flatMap((userSector) => userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || [])));
+        return this.findAll(companyId, {
+            sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
+            unitIds,
+        });
+    }
+    async userHasSector(userId, sectorId) {
+        const count = await this.prisma.userSector.count({
+            where: {
+                userId,
+                sectorId,
+            },
+        });
+        return count > 0;
+    }
     async findOne(id) {
         const link = await this.prisma.link.findUnique({
             where: { id },
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -167,17 +260,58 @@ let LinksService = class LinksService {
                 },
             });
         }
-        const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateLinkDto;
+        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateLinkDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingLink.sectorId ?? undefined
             : undefined;
+        const existingUnitIds = existingLink.linkUnits?.length
+            ? existingLink.linkUnits.map((unit) => unit.unitId)
+            : this.normalizeUnitIds(undefined, existingLink.unitId ?? undefined);
+        const unitIdsPayload = _unitIds !== undefined
+            ? _unitIds ?? []
+            : _unitId !== undefined
+                ? this.normalizeUnitIds(undefined, _unitId)
+                : undefined;
+        const sectorChanged = resolvedAudience === client_1.ContentAudience.SECTOR &&
+            sectorId &&
+            sectorId !== existingLink.sectorId;
+        let nextUnitIds = unitIdsPayload !== undefined
+            ? this.normalizeUnitIds(unitIdsPayload, undefined)
+            : sectorChanged
+                ? []
+                : existingUnitIds;
+        if (resolvedAudience !== client_1.ContentAudience.SECTOR) {
+            nextUnitIds = [];
+        }
+        const unitId = resolvedAudience === client_1.ContentAudience.SECTOR && nextUnitIds.length === 1
+            ? nextUnitIds[0]
+            : null;
         if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
             throw new common_1.ForbiddenException('Setor obrigatorio para links de setor.');
         }
+        await this.assertUnitsAllowed(sectorId, nextUnitIds);
         const updateData = {
             ...rest,
-            sectorId,
+            sector: resolvedAudience === client_1.ContentAudience.SECTOR
+                ? { connect: { id: sectorId } }
+                : { disconnect: true },
+            unit: resolvedAudience === client_1.ContentAudience.SECTOR && unitId
+                ? { connect: { id: unitId } }
+                : { disconnect: true },
         };
+        const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
+        if (shouldUpdateUnits) {
+            updateData.linkUnits = {
+                deleteMany: {},
+                ...(nextUnitIds.length > 0
+                    ? {
+                        create: nextUnitIds.map((itemUnitId) => ({
+                            unitId: itemUnitId,
+                        })),
+                    }
+                    : {}),
+            };
+        }
         if (shouldUpdateAudience) {
             updateData.audience = resolvedAudience;
             updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
@@ -188,6 +322,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -290,6 +429,30 @@ let LinksService = class LinksService {
         }
         return deleted;
     }
+    normalizeUnitIds(unitIds, unitId) {
+        const combined = [
+            ...(unitIds ?? []),
+            ...(unitId ? [unitId] : []),
+        ].filter(Boolean);
+        return Array.from(new Set(combined));
+    }
+    async assertUnitsAllowed(sectorId, unitIds) {
+        const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
+        if (normalizedUnitIds.length === 0)
+            return;
+        if (!sectorId) {
+            throw new common_1.ForbiddenException('Unidade requer setor.');
+        }
+        const relationCount = await this.prisma.sectorUnit.count({
+            where: {
+                sectorId,
+                unitId: { in: normalizedUnitIds },
+            },
+        });
+        if (relationCount !== normalizedUnitIds.length) {
+            throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
+        }
+    }
     assertCanMutate(link, actor) {
         if (!actor)
             return;
@@ -350,6 +513,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -371,6 +539,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -412,6 +585,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -435,6 +613,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -479,6 +662,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -502,6 +690,11 @@ let LinksService = class LinksService {
             include: {
                 category: true,
                 sector: true,
+                linkUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,

@@ -4,6 +4,4 @@ export interface AuthPayload {
     role: UserRole;
     email: string;
     companyId?: string | null;
-    unitId?: string | null;
-    sectorId?: string | null;
 }

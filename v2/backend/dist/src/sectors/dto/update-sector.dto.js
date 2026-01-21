@@ -9,9 +9,22 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateSectorDto = void 0;
+exports.UpdateSectorDto = exports.UpdateSectorUnitDto = void 0;
 const class_validator_1 = require("class-validator");
 const client_1 = require("@prisma/client");
+const class_transformer_1 = require("class-transformer");
+class UpdateSectorUnitDto {
+}
+exports.UpdateSectorUnitDto = UpdateSectorUnitDto;
+__decorate([
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], UpdateSectorUnitDto.prototype, "unitId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateSectorUnitDto.prototype, "isPrimary", void 0);
 class UpdateSectorDto {
 }
 exports.UpdateSectorDto = UpdateSectorDto;
@@ -22,9 +35,11 @@ __decorate([
 ], UpdateSectorDto.prototype, "companyId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUUID)(),
-    __metadata("design:type", String)
-], UpdateSectorDto.prototype, "unitId", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => UpdateSectorUnitDto),
+    __metadata("design:type", Array)
+], UpdateSectorDto.prototype, "units", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

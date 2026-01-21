@@ -84,16 +84,23 @@ let UploadedSchedulesController = class UploadedSchedulesController {
             sectorId: audience === client_1.ContentAudience.SECTOR
                 ? createScheduleDto.sectorId || undefined
                 : undefined,
+            unitId: audience === client_1.ContentAudience.SECTOR
+                ? createScheduleDto.unitId ?? undefined
+                : undefined,
+            unitIds: audience === client_1.ContentAudience.SECTOR
+                ? createScheduleDto.unitIds ?? undefined
+                : undefined,
             userId: req.user.id,
             audience,
             isPublic: audience === client_1.ContentAudience.PUBLIC,
         });
     }
-    async findAll(companyId, sectorId, categoryId, isPublic, audience) {
+    async findAll(companyId, sectorId, unitId, categoryId, isPublic, audience) {
         const normalizedCompanyId = companyId?.trim() || undefined;
         const parsedAudience = parseAudienceParam(audience);
         const filters = {
             sectorId,
+            unitId,
             categoryId,
             audience: parsedAudience ||
                 (isPublic
@@ -113,7 +120,7 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         console.log('SchedulesController.findAll - resultado:', result.length, 'schedules');
         return result;
     }
-    async findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience) {
+    async findAllAdmin(req, companyId, sectorId, unitId, categoryId, isPublic, audience) {
         const normalizedCompanyId = companyId?.trim() || undefined;
         const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
         const resolvedCompanyId = normalizedCompanyId || (!isSuperAdmin ? req.user?.companyId : undefined);
@@ -123,6 +130,7 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         const parsedAudience = parseAudienceParam(audience);
         const filters = {
             sectorId,
+            unitId,
             categoryId,
             audience: parsedAudience,
             isPublic: isPublic ? isPublic === 'true' : undefined,
@@ -132,8 +140,8 @@ let UploadedSchedulesController = class UploadedSchedulesController {
         console.log('SchedulesController.findAllAdmin - resultado:', result.length, 'schedules');
         return result;
     }
-    async findAllAdminAlias(req, companyId, sectorId, categoryId, isPublic, audience) {
-        return this.findAllAdmin(req, companyId, sectorId, categoryId, isPublic, audience);
+    async findAllAdminAlias(req, companyId, sectorId, unitId, categoryId, isPublic, audience) {
+        return this.findAllAdmin(req, companyId, sectorId, unitId, categoryId, isPublic, audience);
     }
     findOne(id) {
         return this.schedulesService.findOne(id);
@@ -185,11 +193,12 @@ __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('companyId')),
     __param(1, (0, common_1.Query)('sectorId')),
-    __param(2, (0, common_1.Query)('categoryId')),
-    __param(3, (0, common_1.Query)('isPublic')),
-    __param(4, (0, common_1.Query)('audience')),
+    __param(2, (0, common_1.Query)('unitId')),
+    __param(3, (0, common_1.Query)('categoryId')),
+    __param(4, (0, common_1.Query)('isPublic')),
+    __param(5, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAll", null);
 __decorate([
@@ -199,11 +208,12 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('companyId')),
     __param(2, (0, common_1.Query)('sectorId')),
-    __param(3, (0, common_1.Query)('categoryId')),
-    __param(4, (0, common_1.Query)('isPublic')),
-    __param(5, (0, common_1.Query)('audience')),
+    __param(3, (0, common_1.Query)('unitId')),
+    __param(4, (0, common_1.Query)('categoryId')),
+    __param(5, (0, common_1.Query)('isPublic')),
+    __param(6, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAllAdmin", null);
 __decorate([
@@ -213,11 +223,12 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('companyId')),
     __param(2, (0, common_1.Query)('sectorId')),
-    __param(3, (0, common_1.Query)('categoryId')),
-    __param(4, (0, common_1.Query)('isPublic')),
-    __param(5, (0, common_1.Query)('audience')),
+    __param(3, (0, common_1.Query)('unitId')),
+    __param(4, (0, common_1.Query)('categoryId')),
+    __param(5, (0, common_1.Query)('isPublic')),
+    __param(6, (0, common_1.Query)('audience')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UploadedSchedulesController.prototype, "findAllAdminAlias", null);
 __decorate([

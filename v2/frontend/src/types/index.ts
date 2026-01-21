@@ -98,6 +98,10 @@ export interface Link {
   userId?: string;
   sectorId?: string;
   unitId?: string;
+  linkUnits?: {
+    unitId: string;
+    unit?: Unit;
+  }[];
   categoryId?: string;
   title: string;
   url: string;
@@ -132,6 +136,10 @@ export interface UploadedSchedule {
   userId?: string;
   sectorId?: string;
   unitId?: string;
+  scheduleUnits?: {
+    unitId: string;
+    unit?: Unit;
+  }[];
   categoryId?: string;
   title: string;
   fileUrl: string;
@@ -165,6 +173,10 @@ export interface Note {
   userId?: string;
   sectorId?: string;
   unitId?: string;
+  noteUnits?: {
+    unitId: string;
+    unit?: Unit;
+  }[];
   categoryId?: string;
   title: string;
   content: string;

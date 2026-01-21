@@ -32,6 +32,18 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsUUID)(),
     (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], CreateLinkDto.prototype, "unitId", void 0);
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayUnique)(),
+    (0, class_validator_1.IsUUID)('4', { each: true }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Array)
+], CreateLinkDto.prototype, "unitIds", void 0);
+__decorate([
+    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "categoryId", void 0);
 __decorate([

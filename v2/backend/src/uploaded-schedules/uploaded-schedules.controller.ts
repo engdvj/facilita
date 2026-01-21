@@ -101,6 +101,10 @@ export class UploadedSchedulesController {
         audience === ContentAudience.SECTOR
           ? createScheduleDto.unitId ?? undefined
           : undefined,
+      unitIds:
+        audience === ContentAudience.SECTOR
+          ? createScheduleDto.unitIds ?? undefined
+          : undefined,
       userId: req.user.id,
       audience,
       isPublic: audience === ContentAudience.PUBLIC,

@@ -15,16 +15,6 @@ export declare class NotesService {
     private notificationsGateway;
     constructor(prisma: PrismaService, notificationsService: NotificationsService, notificationsGateway: NotificationsGateway);
     create(createNoteDto: CreateNoteDto): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -41,6 +31,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -57,26 +73,19 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
     findAll(companyId?: string, filters?: {
         sectorId?: string;
+        unitId?: string;
+        unitIds?: string[];
         categoryId?: string;
         isPublic?: boolean;
         audience?: ContentAudience;
         includeInactive?: boolean;
     }): Promise<({
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -93,6 +102,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -109,20 +144,12 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     })[]>;
+    userHasSector(userId: string, sectorId: string): Promise<boolean>;
     findOne(id: string): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -139,6 +166,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -155,20 +208,11 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
     update(id: string, updateNoteDto: UpdateNoteDto, actor?: NoteActor): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -185,6 +229,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -201,6 +271,7 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
@@ -220,20 +291,11 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
     restore(id: string): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -250,6 +312,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -266,20 +354,11 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
     activate(id: string, actor?: NoteActor): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -296,6 +375,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -312,20 +417,11 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
     deactivate(id: string, actor?: NoteActor): Promise<{
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            unitId: string;
-            description: string | null;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -342,6 +438,32 @@ export declare class NotesService {
             icon: string | null;
             adminOnly: boolean;
         } | null;
+        sector: {
+            id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+        } | null;
+        noteUnits: ({
+            unit: {
+                id: string;
+                cnpj: string | null;
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                companyId: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            unitId: string;
+            noteId: string;
+        })[];
     } & {
         id: string;
         status: import(".prisma/client").$Enums.EntityStatus;
@@ -358,9 +480,12 @@ export declare class NotesService {
         audience: import(".prisma/client").$Enums.ContentAudience;
         isPublic: boolean;
         deletedAt: Date | null;
+        unitId: string | null;
         categoryId: string | null;
         content: string;
     }>;
+    private normalizeUnitIds;
+    private assertUnitsAllowed;
     private assertCanMutate;
     private resolveAudienceFromExisting;
     private resolveAudienceForUpdate;

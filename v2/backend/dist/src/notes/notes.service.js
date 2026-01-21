@@ -22,11 +22,29 @@ let NotesService = class NotesService {
         this.notificationsGateway = notificationsGateway;
     }
     async create(createNoteDto) {
+        const { unitIds, unitId, ...data } = createNoteDto;
+        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
+        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
         const note = await this.prisma.note.create({
-            data: createNoteDto,
+            data: {
+                ...data,
+                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
+                noteUnits: normalizedUnitIds.length > 0
+                    ? {
+                        create: normalizedUnitIds.map((itemUnitId) => ({
+                            unitId: itemUnitId,
+                        })),
+                    }
+                    : undefined,
+            },
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -64,6 +82,32 @@ let NotesService = class NotesService {
     }
     async findAll(companyId, filters) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
+        const filterUnitIds = filters?.unitId !== undefined
+            ? this.normalizeUnitIds(undefined, filters.unitId)
+            : filters?.unitIds;
+        const unitFilter = filterUnitIds !== undefined
+            ? filterUnitIds.length > 0
+                ? {
+                    OR: [
+                        { unitId: null, noteUnits: { none: {} } },
+                        { unitId: { in: filterUnitIds } },
+                        { noteUnits: { some: { unitId: { in: filterUnitIds } } } },
+                    ],
+                }
+                : { OR: [{ unitId: null, noteUnits: { none: {} } }] }
+            : undefined;
+        const andFilters = [];
+        if (unitFilter) {
+            andFilters.push(unitFilter);
+        }
+        if (shouldFilterPublic) {
+            andFilters.push({
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            });
+        }
         const where = {
             deletedAt: null,
             ...(companyId ? { companyId } : {}),
@@ -73,18 +117,18 @@ let NotesService = class NotesService {
                 filters?.audience && { audience: filters.audience }),
             ...(filters?.isPublic !== undefined &&
                 !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(shouldFilterPublic && {
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            }),
+            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
         };
         return this.prisma.note.findMany({
             where,
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -98,12 +142,26 @@ let NotesService = class NotesService {
             },
         });
     }
+    async userHasSector(userId, sectorId) {
+        const count = await this.prisma.userSector.count({
+            where: {
+                userId,
+                sectorId,
+            },
+        });
+        return count > 0;
+    }
     async findOne(id) {
         const note = await this.prisma.note.findUnique({
             where: { id },
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -131,17 +189,58 @@ let NotesService = class NotesService {
         }
         const hasChanges = updateNoteDto.title !== existingNote.title ||
             updateNoteDto.content !== existingNote.content;
-        const { companyId, userId, sectorId: _sectorId, audience, isPublic, ...rest } = updateNoteDto;
+        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateNoteDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingNote.sectorId ?? undefined
             : undefined;
+        const existingUnitIds = existingNote.noteUnits?.length
+            ? existingNote.noteUnits.map((unit) => unit.unitId)
+            : this.normalizeUnitIds(undefined, existingNote.unitId ?? undefined);
+        const unitIdsPayload = _unitIds !== undefined
+            ? _unitIds ?? []
+            : _unitId !== undefined
+                ? this.normalizeUnitIds(undefined, _unitId)
+                : undefined;
+        const sectorChanged = resolvedAudience === client_1.ContentAudience.SECTOR &&
+            sectorId &&
+            sectorId !== existingNote.sectorId;
+        let nextUnitIds = unitIdsPayload !== undefined
+            ? this.normalizeUnitIds(unitIdsPayload, undefined)
+            : sectorChanged
+                ? []
+                : existingUnitIds;
+        if (resolvedAudience !== client_1.ContentAudience.SECTOR) {
+            nextUnitIds = [];
+        }
+        const unitId = resolvedAudience === client_1.ContentAudience.SECTOR && nextUnitIds.length === 1
+            ? nextUnitIds[0]
+            : null;
         if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
             throw new common_1.ForbiddenException('Setor obrigatorio para notas de setor.');
         }
+        await this.assertUnitsAllowed(sectorId, nextUnitIds);
         const updateData = {
             ...rest,
-            sectorId,
+            sector: resolvedAudience === client_1.ContentAudience.SECTOR
+                ? { connect: { id: sectorId } }
+                : { disconnect: true },
+            unit: resolvedAudience === client_1.ContentAudience.SECTOR && unitId
+                ? { connect: { id: unitId } }
+                : { disconnect: true },
         };
+        const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
+        if (shouldUpdateUnits) {
+            updateData.noteUnits = {
+                deleteMany: {},
+                ...(nextUnitIds.length > 0
+                    ? {
+                        create: nextUnitIds.map((itemUnitId) => ({
+                            unitId: itemUnitId,
+                        })),
+                    }
+                    : {}),
+            };
+        }
         if (shouldUpdateAudience) {
             updateData.audience = resolvedAudience;
             updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
@@ -152,6 +251,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -259,6 +363,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -280,6 +389,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -322,6 +436,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -345,6 +464,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -389,6 +513,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -412,6 +541,11 @@ let NotesService = class NotesService {
             include: {
                 category: true,
                 sector: true,
+                noteUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
                 user: {
                     select: {
                         id: true,
@@ -448,6 +582,30 @@ let NotesService = class NotesService {
             }
         }
         return deactivated;
+    }
+    normalizeUnitIds(unitIds, unitId) {
+        const combined = [
+            ...(unitIds ?? []),
+            ...(unitId ? [unitId] : []),
+        ].filter(Boolean);
+        return Array.from(new Set(combined));
+    }
+    async assertUnitsAllowed(sectorId, unitIds) {
+        const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
+        if (normalizedUnitIds.length === 0)
+            return;
+        if (!sectorId) {
+            throw new common_1.ForbiddenException('Unidade requer setor.');
+        }
+        const relationCount = await this.prisma.sectorUnit.count({
+            where: {
+                sectorId,
+                unitId: { in: normalizedUnitIds },
+            },
+        });
+        if (relationCount !== normalizedUnitIds.length) {
+            throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
+        }
     }
     assertCanMutate(note, actor) {
         if (!actor)

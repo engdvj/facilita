@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import api, { serverURL } from '@/lib/api';
+import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
 import AdminModal from '@/components/admin/modal';
 import {
   Category,
@@ -68,6 +69,8 @@ function HomeContent() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
+  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
 
@@ -128,11 +131,32 @@ function HomeContent() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
-  const matchesUnit = (unitId?: string | null) => {
-    if (!unitId) return true;
+  const getLinkUnitIds = (link: LinkType) =>
+    link.linkUnits?.length
+      ? link.linkUnits.map((unit) => unit.unitId)
+      : link.unitId
+        ? [link.unitId]
+        : [];
+
+  const getDocumentUnitIds = (document: UploadedSchedule) =>
+    document.scheduleUnits?.length
+      ? document.scheduleUnits.map((unit) => unit.unitId)
+      : document.unitId
+        ? [document.unitId]
+        : [];
+
+  const getNoteUnitIds = (note: Note) =>
+    note.noteUnits?.length
+      ? note.noteUnits.map((unit) => unit.unitId)
+      : note.unitId
+        ? [note.unitId]
+        : [];
+
+  const matchesUnit = (unitIds?: string[]) => {
+    if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return true;
-    return Boolean(user.unitId && user.unitId === unitId);
+    return unitIds.some((unitId) => userUnitIds.has(unitId));
   };
 
   useEffect(() => {
@@ -277,8 +301,8 @@ function HomeContent() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        if (!matchesUnit(link.unitId)) return false;
-        return Boolean(user.sectorId) && link.sectorId === user.sectorId;
+        if (!matchesUnit(getLinkUnitIds(link))) return false;
+        return link.sectorId ? userSectorIds.has(link.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return Boolean(user.companyId) && link.companyId === user.companyId;
@@ -306,8 +330,8 @@ function HomeContent() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        if (!matchesUnit(document.unitId)) return false;
-        return Boolean(user.sectorId) && document.sectorId === user.sectorId;
+        if (!matchesUnit(getDocumentUnitIds(document))) return false;
+        return document.sectorId ? userSectorIds.has(document.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return Boolean(user.companyId) && document.companyId === user.companyId;
@@ -335,8 +359,8 @@ function HomeContent() {
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        if (!matchesUnit(note.unitId)) return false;
-        return Boolean(user.sectorId) && note.sectorId === user.sectorId;
+        if (!matchesUnit(getNoteUnitIds(note))) return false;
+        return note.sectorId ? userSectorIds.has(note.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return Boolean(user.companyId) && note.companyId === user.companyId;

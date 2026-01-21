@@ -19,13 +19,27 @@ let SectorsService = class SectorsService {
     findAll() {
         return this.prisma.sector.findMany({
             orderBy: { createdAt: 'desc' },
-            include: { company: true, unit: true },
+            include: {
+                company: true,
+                sectorUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
+            },
         });
     }
     async findById(id) {
         const sector = await this.prisma.sector.findUnique({
             where: { id },
-            include: { company: true, unit: true },
+            include: {
+                company: true,
+                sectorUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
+            },
         });
         if (!sector) {
             throw new common_1.NotFoundException('Sector not found');
@@ -36,44 +50,76 @@ let SectorsService = class SectorsService {
         return this.prisma.sector.create({
             data: {
                 companyId: data.companyId,
-                unitId: data.unitId,
                 name: data.name,
                 description: data.description,
                 status: data.status,
+                sectorUnits: {
+                    create: data.units.map((unit) => ({
+                        unitId: unit.unitId,
+                        isPrimary: unit.isPrimary ?? false,
+                    })),
+                },
             },
-            include: { company: true, unit: true },
+            include: {
+                company: true,
+                sectorUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
+            },
         });
     }
     async update(id, data) {
         await this.findById(id);
+        const updateData = {
+            name: data.name,
+            description: data.description,
+            status: data.status,
+            companyId: data.companyId,
+        };
+        if (data.units) {
+            updateData.sectorUnits = {
+                deleteMany: {},
+                create: data.units.map((unit) => ({
+                    unitId: unit.unitId,
+                    isPrimary: unit.isPrimary ?? false,
+                })),
+            };
+        }
         return this.prisma.sector.update({
             where: { id },
-            data,
-            include: { company: true, unit: true },
+            data: updateData,
+            include: {
+                company: true,
+                sectorUnits: {
+                    include: {
+                        unit: true,
+                    },
+                },
+            },
         });
     }
     async getDependencies(id) {
-        const [users, links, schedules, notes] = await Promise.all([
-            this.prisma.user.count({ where: { sectorId: id } }),
+        const [users, units, links, schedules, notes] = await Promise.all([
+            this.prisma.userSector.count({ where: { sectorId: id } }),
+            this.prisma.sectorUnit.count({ where: { sectorId: id } }),
             this.prisma.link.count({ where: { sectorId: id } }),
             this.prisma.uploadedSchedule.count({ where: { sectorId: id } }),
             this.prisma.note.count({ where: { sectorId: id } }),
         ]);
         return {
             users,
+            units,
             links,
             schedules,
             notes,
-            hasAny: users > 0 || links > 0 || schedules > 0 || notes > 0,
+            hasAny: users > 0 || units > 0 || links > 0 || schedules > 0 || notes > 0,
         };
     }
     async remove(id) {
         await this.findById(id);
         return this.prisma.$transaction(async (tx) => {
-            await tx.user.updateMany({
-                data: { sectorId: null },
-                where: { sectorId: id },
-            });
             await tx.link.updateMany({
                 data: { sectorId: null },
                 where: { sectorId: id },
@@ -88,7 +134,14 @@ let SectorsService = class SectorsService {
             });
             return tx.sector.delete({
                 where: { id },
-                include: { company: true, unit: true },
+                include: {
+                    company: true,
+                    sectorUnits: {
+                        include: {
+                            unit: true,
+                        },
+                    },
+                },
             });
         });
     }

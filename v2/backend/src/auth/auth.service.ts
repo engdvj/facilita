@@ -33,10 +33,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.issueTokens(user);
+    const profile = await this.usersService.findOne(user.id);
+    const tokens = await this.issueTokens(profile);
 
     return {
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(profile),
       tokens,
     };
   }
@@ -71,10 +72,11 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const tokens = await this.issueTokens(user);
+    const profile = await this.usersService.findOne(user.id);
+    const tokens = await this.issueTokens(profile);
 
     return {
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(profile),
       tokens,
     };
   }
@@ -97,7 +99,9 @@ export class AuthService {
     });
   }
 
-  private async issueTokens(user: User) {
+  private async issueTokens(
+    user: Pick<User, 'id' | 'role' | 'email' | 'companyId'>,
+  ) {
     const payload: AuthPayload = {
       sub: user.id,
       role: user.role,

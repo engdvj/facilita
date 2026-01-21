@@ -66,9 +66,14 @@ model Unit {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  company     Company      @relation(fields: [companyId], references: [id])
-  sectorUnits SectorUnit[]
-  linkUnits   LinkUnit[]
+  company       Company        @relation(fields: [companyId], references: [id])
+  links         Link[]
+  schedules     UploadedSchedule[]
+  notes         Note[]
+  sectorUnits   SectorUnit[]
+  linkUnits     LinkUnit[]
+  noteUnits     NoteUnit[]
+  scheduleUnits ScheduleUnit[]
 }
 
 model Sector {
@@ -227,6 +232,36 @@ model LinkUnit {
   @@index([unitId])
 }
 
+model ScheduleUnit {
+  id         String   @id @default(uuid()) @db.Uuid
+  scheduleId String   @db.Uuid
+  unitId     String   @db.Uuid
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  schedule UploadedSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  unit     Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, unitId])
+  @@index([scheduleId])
+  @@index([unitId])
+}
+
+model NoteUnit {
+  id        String   @id @default(uuid()) @db.Uuid
+  noteId    String   @db.Uuid
+  unitId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, unitId])
+  @@index([noteId])
+  @@index([unitId])
+}
+
 model UploadedSchedule {
   id         String       @id @default(uuid()) @db.Uuid
   companyId  String       @db.Uuid
@@ -255,6 +290,7 @@ model UploadedSchedule {
   unit      Unit?     @relation(fields: [unitId], references: [id])
   category  Category? @relation(fields: [categoryId], references: [id])
   favorites Favorite[]
+  scheduleUnits ScheduleUnit[]
 
   @@index([companyId])
   @@index([userId])
@@ -289,6 +325,7 @@ model Note {
   unit     Unit?     @relation(fields: [unitId], references: [id])
   category Category? @relation(fields: [categoryId], references: [id])
   favorites Favorite[]
+  noteUnits NoteUnit[]
 
   @@index([companyId])
   @@index([userId])

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
+import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
 import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
@@ -18,12 +19,19 @@ const emptyFormData = {
   content: '',
   categoryId: '',
   sectorId: '',
-  unitId: '',
+  unitIds: [] as string[],
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
   audience: 'COMPANY' as ContentAudience,
 };
+
+const getNoteUnitIds = (note: Note) =>
+  note.noteUnits?.length
+    ? note.noteUnits.map((unit) => unit.unitId)
+    : note.unitId
+      ? [note.unitId]
+      : [];
 
 export default function NotesPage() {
   const user = useAuthStore((state) => state.user);
@@ -55,6 +63,8 @@ export default function NotesPage() {
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isCollaborator = user?.role === 'COLLABORATOR';
+  const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
+  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin
@@ -72,8 +82,8 @@ export default function NotesPage() {
     if (!user || isAdmin || isSuperAdmin) {
       return scopedSectors;
     }
-    return scopedSectors.filter((sector) => sector.id === user.sectorId);
-  }, [isAdmin, isSuperAdmin, resolvedCompanyId, sectors, user]);
+    return scopedSectors.filter((sector) => userSectorIds.has(sector.id));
+  }, [isAdmin, isSuperAdmin, resolvedCompanyId, sectors, userSectorIds, user]);
 
   const formCategories = useMemo(() => {
     if (isSuperAdmin && !formCompanyId) {
@@ -154,11 +164,11 @@ export default function NotesPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
-  const matchesUnit = (unitId?: string | null) => {
-    if (!unitId) return true;
+  const matchesUnit = (unitIds?: string[]) => {
+    if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (isAdmin || isSuperAdmin) return true;
-    return Boolean(user.unitId && user.unitId === unitId);
+    return unitIds.some((unitId) => userUnitIds.has(unitId));
   };
 
   const canViewNote = (note: Note) => {
@@ -171,8 +181,8 @@ export default function NotesPage() {
     if (audience === 'PRIVATE') return note.userId === user.id;
     if (audience === 'SECTOR') {
       if (isAdmin) return true;
-      if (!matchesUnit(note.unitId)) return false;
-      return note.sectorId === user.sectorId;
+      if (!matchesUnit(getNoteUnitIds(note))) return false;
+      return note.sectorId ? userSectorIds.has(note.sectorId) : false;
     }
     if (audience === 'COMPANY') {
       return isAdmin;
@@ -217,7 +227,7 @@ export default function NotesPage() {
             ? api.get('/sectors')
             : Promise.resolve({ data: [] })
         : Promise.resolve({ data: [] }),
-      api.get('/units'),
+      !isCollaborator ? api.get('/units') : Promise.resolve({ data: [] }),
     ]);
     setNotes(notesRes.data);
     setCategories(catsRes.data);
@@ -285,8 +295,8 @@ export default function NotesPage() {
       if (audience === 'PRIVATE') return note.userId === user.id;
       if (audience === 'SECTOR') {
         if (isAdmin) return true;
-        if (!matchesUnit(note.unitId)) return false;
-        return note.sectorId === user.sectorId;
+        if (!matchesUnit(getNoteUnitIds(note))) return false;
+        return note.sectorId ? userSectorIds.has(note.sectorId) : false;
       }
       if (audience === 'COMPANY') {
         return isAdmin;
@@ -324,7 +334,12 @@ export default function NotesPage() {
       if (filterSectorId && note.sectorId !== filterSectorId) {
         return false;
       }
-      if (filterUnitId && note.unitId && note.unitId !== filterUnitId) {
+      const noteUnitIds = getNoteUnitIds(note);
+      if (
+        filterUnitId &&
+        noteUnitIds.length > 0 &&
+        !noteUnitIds.includes(filterUnitId)
+      ) {
         return false;
       }
       return true;
@@ -361,7 +376,7 @@ export default function NotesPage() {
       ...emptyFormData,
       audience: isCollaborator ? 'PRIVATE' : 'COMPANY',
       sectorId: '',
-      unitId: '',
+      unitIds: [],
     });
     setFormCompanyId(isSuperAdmin ? companyId : user?.companyId || '');
     setFormError(null);
@@ -376,7 +391,7 @@ export default function NotesPage() {
       content: note.content,
       categoryId: note.categoryId || '',
       sectorId: note.sectorId || '',
-      unitId: note.unitId || '',
+      unitIds: getNoteUnitIds(note),
       imageUrl: note.imageUrl || '',
       imagePosition: normalizeImagePosition(note.imagePosition),
       imageScale: note.imageScale || 1,
@@ -450,7 +465,7 @@ export default function NotesPage() {
           normalizedAudience === 'SECTOR'
             ? formData.sectorId || undefined
             : undefined,
-        unitId: normalizedAudience === 'SECTOR' ? formData.unitId || null : null,
+        unitIds: normalizedAudience === 'SECTOR' ? formData.unitIds : undefined,
         imageUrl: formData.imageUrl || undefined,
         imagePosition: formData.imageUrl ? formData.imagePosition : undefined,
         imageScale: formData.imageUrl ? formData.imageScale : undefined,
@@ -549,8 +564,20 @@ export default function NotesPage() {
       ...prev,
       audience: value,
       sectorId: value === 'SECTOR' ? prev.sectorId : '',
-      unitId: value === 'SECTOR' ? prev.unitId : '',
+      unitIds: value === 'SECTOR' ? prev.unitIds : [],
     }));
+  };
+
+  const toggleUnitSelection = (unitId: string) => {
+    setFormData((prev) => {
+      const selected = new Set(prev.unitIds);
+      if (selected.has(unitId)) {
+        selected.delete(unitId);
+      } else {
+        selected.add(unitId);
+      }
+      return { ...prev, unitIds: Array.from(selected) };
+    });
   };
 
   const previewTitle = formData.title.trim() || 'Nome da nota';
@@ -1009,7 +1036,7 @@ export default function NotesPage() {
                       setFormData((prev) => ({
                         ...prev,
                         sectorId: event.target.value,
-                        unitId: '',
+                        unitIds: [],
                       }))
                     }
                     disabled={(isSuperAdmin && !formCompanyId) || isCollaborator}
@@ -1026,29 +1053,63 @@ export default function NotesPage() {
               {shouldShowUnitField && (
                 <div className="md:col-span-2">
                   <AdminField
-                    label="Unidade"
-                    htmlFor="note-unit"
-                    hint={!formData.sectorId ? 'Selecione um setor primeiro.' : undefined}
+                    label="Unidades"
+                    htmlFor="note-units"
+                    hint={
+                      !formData.sectorId
+                        ? 'Selecione um setor primeiro.'
+                        : 'Se nenhuma unidade for marcada, a nota aparece em todas.'
+                    }
                   >
-                    <select
-                      id="note-unit"
-                      className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-                      value={formData.unitId}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          unitId: event.target.value,
-                        }))
-                      }
-                      disabled={!formData.sectorId}
+                    <div
+                      id="note-units"
+                      className="space-y-2 rounded-lg border border-border/70 bg-card/60 p-3"
                     >
-                      <option value="">Todas as unidades</option>
-                      {formUnits.map((unit) => (
-                        <option key={unit.id} value={unit.id}>
-                          {unit.name}
-                        </option>
-                      ))}
-                    </select>
+                      {!formData.sectorId && (
+                        <p className="text-xs text-muted-foreground">
+                          Selecione um setor para listar unidades.
+                        </p>
+                      )}
+                      {formData.sectorId && formUnits.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma unidade encontrada para este setor.
+                        </p>
+                      )}
+                      {formData.sectorId && formUnits.length > 0 && (
+                        <div className="space-y-2">
+                          {formUnits.map((unit) => {
+                            const isSelected = formData.unitIds.includes(unit.id);
+                            return (
+                              <div
+                                key={unit.id}
+                                className={`flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 ${
+                                  isSelected
+                                    ? 'border-foreground/30 bg-white/90'
+                                    : 'border-border/70 bg-card/70'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-border/70"
+                                  checked={isSelected}
+                                  onChange={() => toggleUnitSelection(unit.id)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {unit.name}
+                                  </p>
+                                  {isSelected && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Selecionada
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </AdminField>
                 </div>
               )}

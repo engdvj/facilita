@@ -1,4 +1,15 @@
-import { IsString, IsOptional, IsBoolean, IsUUID, IsInt, IsUrl, IsEnum, IsNumber } from 'class-validator';
+import {
+  ArrayUnique,
+  IsArray,
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsUUID,
+  IsInt,
+  IsUrl,
+  IsEnum,
+  IsNumber,
+} from 'class-validator';
 import { ContentAudience, EntityStatus } from '@prisma/client';
 
 export class CreateLinkDto {
@@ -16,6 +27,12 @@ export class CreateLinkDto {
   @IsUUID()
   @IsOptional()
   unitId?: string | null;
+
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  unitIds?: string[];
 
   @IsUUID()
   @IsOptional()

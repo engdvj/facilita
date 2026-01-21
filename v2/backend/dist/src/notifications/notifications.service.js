@@ -85,7 +85,11 @@ let NotificationsService = class NotificationsService {
                 break;
             case client_1.ContentAudience.SECTOR:
                 if (sectorId) {
-                    where.sectorId = sectorId;
+                    where.userSectors = {
+                        some: {
+                            sectorId: sectorId,
+                        },
+                    };
                 }
                 else {
                     where.companyId = companyId;

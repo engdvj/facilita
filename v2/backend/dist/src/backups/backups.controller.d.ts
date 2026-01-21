@@ -18,6 +18,11 @@ export declare class BackupsController {
     openAutoBackups(): Promise<{
         opened: boolean;
         directory: string;
+        reason?: undefined;
+    } | {
+        opened: boolean;
+        directory: string;
+        reason: string;
     }>;
     downloadAutoBackup(name: string, res: Response): Promise<StreamableFile>;
     export(data: ExportBackupDto, res: Response): Promise<StreamableFile>;
