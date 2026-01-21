@@ -1,0 +1,19 @@
+import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { EntityStatus } from '@prisma/client';
+
+export class CreateUnitDto {
+  @IsUUID()
+  companyId!: string;
+
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  cnpj?: string;
+
+  @IsOptional()
+  @IsEnum(EntityStatus)
+  status?: EntityStatus;
+}

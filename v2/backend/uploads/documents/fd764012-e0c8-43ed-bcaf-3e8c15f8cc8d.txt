@@ -1,0 +1,2 @@
+vc trocou a ordem e o nome. o primeiro link é inicio e o segundo é dashboard. Além disso, na pagina inicial, ta meio bugado. ao clicar no dashboard ele tem q ir para o     
+  link /admin

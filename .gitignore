@@ -1,7 +1,44 @@
-__pycache__/
-venv/
-node_modules/
-instance/
-*.sqlite
+# Environment files (contain secrets)
 .env
-uploads/*.txt
+.env.local
+.env.*.local
+
+# Keep example files
+!.env.example
+!.env.production
+
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploads (keep directory structure)
+v2/backend/uploads/*
+!v2/backend/uploads/.gitkeep
+!v2/backend/uploads/images/.gitkeep
+!v2/backend/uploads/documents/.gitkeep
+
+# Backups
+v2/backend/backups/*
+!v2/backend/backups/.gitkeep
+!v2/backend/backups/auto/.gitkeep
+!v2/backend/backups/tmp/.gitkeep
+
+# Docker volumes data (if using bind mounts locally)
+v2/postgres_data/
+v2/redis_data/

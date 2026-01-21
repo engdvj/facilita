@@ -1,0 +1,53 @@
+import { UserRole } from '@prisma/client';
+import { PermissionsService } from './permissions.service';
+import { UpdateRolePermissionDto } from './dto/update-role-permission.dto';
+export declare class PermissionsController {
+    private readonly permissionsService;
+    constructor(permissionsService: PermissionsService);
+    findAll(): import(".prisma/client").Prisma.PrismaPromise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        role: import(".prisma/client").$Enums.UserRole;
+        canViewDashboard: boolean;
+        canAccessAdmin: boolean;
+        canViewUsers: boolean;
+        canCreateUsers: boolean;
+        canEditUsers: boolean;
+        canDeleteUsers: boolean;
+        canViewSectors: boolean;
+        canManageSectors: boolean;
+        canViewLinks: boolean;
+        canManageLinks: boolean;
+        canManageCategories: boolean;
+        canManageSchedules: boolean;
+        canBackupSystem: boolean;
+        canResetSystem: boolean;
+        canViewAuditLogs: boolean;
+        canManageSystemConfig: boolean;
+        restrictToOwnSector: boolean;
+    }[]>;
+    update(role: UserRole, data: UpdateRolePermissionDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        role: import(".prisma/client").$Enums.UserRole;
+        canViewDashboard: boolean;
+        canAccessAdmin: boolean;
+        canViewUsers: boolean;
+        canCreateUsers: boolean;
+        canEditUsers: boolean;
+        canDeleteUsers: boolean;
+        canViewSectors: boolean;
+        canManageSectors: boolean;
+        canViewLinks: boolean;
+        canManageLinks: boolean;
+        canManageCategories: boolean;
+        canManageSchedules: boolean;
+        canBackupSystem: boolean;
+        canResetSystem: boolean;
+        canViewAuditLogs: boolean;
+        canManageSystemConfig: boolean;
+        restrictToOwnSector: boolean;
+    }>;
+}
