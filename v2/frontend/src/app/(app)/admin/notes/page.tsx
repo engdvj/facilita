@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
-import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
+import { getUserSectorIds, getUserUnitsBySector } from '@/lib/user-scope';
 import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
@@ -64,7 +64,7 @@ export default function NotesPage() {
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const isCollaborator = user?.role === 'COLLABORATOR';
   const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
-  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
+  const userUnitsBySector = useMemo(() => getUserUnitsBySector(user), [user]);
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin
@@ -164,11 +164,14 @@ export default function NotesPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
-  const matchesUnit = (unitIds?: string[]) => {
+  const matchesUnit = (unitIds?: string[], sectorId?: string | null) => {
     if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (isAdmin || isSuperAdmin) return true;
-    return unitIds.some((unitId) => userUnitIds.has(unitId));
+    if (!sectorId) return false;
+    const allowedUnits = userUnitsBySector.get(sectorId);
+    if (!allowedUnits || allowedUnits.size === 0) return true;
+    return unitIds.some((unitId) => allowedUnits.has(unitId));
   };
 
   const canViewNote = (note: Note) => {
@@ -178,10 +181,10 @@ export default function NotesPage() {
     if (isSuperAdmin) return true;
     if (audience === 'SUPERADMIN') return false;
     if (audience === 'ADMIN') return isAdmin;
-    if (audience === 'PRIVATE') return note.userId === user.id;
+    if (audience === 'PRIVATE') return isAdmin || isSuperAdmin || note.userId === user.id;
     if (audience === 'SECTOR') {
       if (isAdmin) return true;
-      if (!matchesUnit(getNoteUnitIds(note))) return false;
+      if (!matchesUnit(getNoteUnitIds(note), note.sectorId)) return false;
       return note.sectorId ? userSectorIds.has(note.sectorId) : false;
     }
     if (audience === 'COMPANY') {
@@ -292,10 +295,10 @@ export default function NotesPage() {
       if (isSuperAdmin) return true;
       if (audience === 'SUPERADMIN') return false;
       if (audience === 'ADMIN') return isAdmin;
-      if (audience === 'PRIVATE') return note.userId === user.id;
+      if (audience === 'PRIVATE') return isAdmin || isSuperAdmin || note.userId === user.id;
       if (audience === 'SECTOR') {
         if (isAdmin) return true;
-        if (!matchesUnit(getNoteUnitIds(note))) return false;
+        if (!matchesUnit(getNoteUnitIds(note), note.sectorId)) return false;
         return note.sectorId ? userSectorIds.has(note.sectorId) : false;
       }
       if (audience === 'COMPANY') {

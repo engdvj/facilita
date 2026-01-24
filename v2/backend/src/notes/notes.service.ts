@@ -10,6 +10,12 @@ type NoteActor = {
   id: string;
   role: UserRole;
   companyId?: string | null;
+  canViewPrivate?: boolean;
+};
+
+type NoteViewer = {
+  id?: string;
+  canViewPrivate?: boolean;
 };
 
 @Injectable()
@@ -103,6 +109,7 @@ export class NotesService {
       audience?: ContentAudience;
       includeInactive?: boolean;
     },
+    viewer?: NoteViewer,
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
     const filterUnitIds =
@@ -134,9 +141,14 @@ export class NotesService {
         ],
       });
     }
+    const privateFilter = this.buildPrivateAccessFilter(viewer);
+    if (privateFilter) {
+      andFilters.push(privateFilter);
+    }
 
     const where = {
       deletedAt: null,
+      ...(filters?.includeInactive ? {} : { status: EntityStatus.ACTIVE }),
       ...(companyId ? { companyId } : {}),
       ...(filters?.sectorId && { sectorId: filters.sectorId }),
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
@@ -182,7 +194,7 @@ export class NotesService {
     return count > 0;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewer?: NoteViewer) {
     const note = await this.prisma.note.findUnique({
       where: { id },
       include: {
@@ -205,6 +217,10 @@ export class NotesService {
 
     if (!note || note.deletedAt) {
       throw new NotFoundException(`Note with ID ${id} not found`);
+    }
+
+    if (viewer !== undefined) {
+      this.assertPrivateAccess(note, viewer);
     }
 
     return note;
@@ -452,7 +468,7 @@ export class NotesService {
     return deleted;
   }
 
-  async restore(id: string) {
+  async restore(id: string, actor?: NoteActor) {
     const note = await this.prisma.note.findUnique({
       where: { id },
       include: {
@@ -475,6 +491,10 @@ export class NotesService {
 
     if (!note) {
       throw new NotFoundException(`Note with ID ${id} not found`);
+    }
+
+    if (actor) {
+      this.assertCanMutate(note, actor);
     }
 
     const restored = await this.prisma.note.update({
@@ -748,11 +768,49 @@ export class NotesService {
     }
   }
 
+  private buildPrivateAccessFilter(viewer?: NoteViewer): Prisma.NoteWhereInput | undefined {
+    if (viewer?.canViewPrivate) {
+      return undefined;
+    }
+    if (viewer?.id) {
+      return {
+        OR: [
+          { audience: { not: ContentAudience.PRIVATE } },
+          { userId: viewer.id },
+        ],
+      };
+    }
+    return { audience: { not: ContentAudience.PRIVATE } };
+  }
+
+  private assertPrivateAccess(
+    note: { audience?: ContentAudience | null; userId?: string | null },
+    viewer: NoteViewer,
+  ) {
+    if (note.audience !== ContentAudience.PRIVATE) {
+      return;
+    }
+    if (!viewer.id) {
+      throw new ForbiddenException('Nota nao autorizada.');
+    }
+    if (note.userId !== viewer.id && !viewer.canViewPrivate) {
+      throw new ForbiddenException('Nota nao autorizada.');
+    }
+  }
+
   private assertCanMutate(
-    note: { userId?: string | null; companyId: string },
+    note: { userId?: string | null; companyId: string; audience?: ContentAudience | null },
     actor?: NoteActor,
   ) {
     if (!actor) return;
+
+    if (
+      note.audience === ContentAudience.PRIVATE &&
+      note.userId !== actor.id &&
+      !actor.canViewPrivate
+    ) {
+      throw new ForbiddenException('Nota nao autorizada.');
+    }
 
     if (actor.role === UserRole.SUPERADMIN) {
       return;

@@ -51,6 +51,10 @@ export class UpdateRolePermissionDto {
 
   @IsOptional()
   @IsBoolean()
+  canViewPrivateContent?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   canBackupSystem?: boolean;
 
   @IsOptional()

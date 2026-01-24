@@ -71,6 +71,7 @@ model Unit {
   schedules     UploadedSchedule[]
   notes         Note[]
   sectorUnits   SectorUnit[]
+  userSectorUnits UserSectorUnit[]
   linkUnits     LinkUnit[]
   noteUnits     NoteUnit[]
   scheduleUnits ScheduleUnit[]
@@ -136,6 +137,7 @@ model RolePermission {
   canManageLinks        Boolean  @default(false)
   canManageCategories   Boolean  @default(false)
   canManageSchedules    Boolean  @default(false)
+  canViewPrivateContent Boolean  @default(false)
   canBackupSystem       Boolean  @default(false)
   canResetSystem        Boolean  @default(false)
   canViewAuditLogs      Boolean  @default(false)
@@ -524,8 +526,24 @@ model UserSector {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  userSectorUnits UserSectorUnit[]
 
   @@unique([userId, sectorId])
   @@index([userId])
   @@index([sectorId])
+}
+
+model UserSectorUnit {
+  id           String   @id @default(uuid()) @db.Uuid
+  userSectorId String   @db.Uuid
+  unitId       String   @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userSector UserSector @relation(fields: [userSectorId], references: [id], onDelete: Cascade)
+  unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([userSectorId, unitId])
+  @@index([userSectorId])
+  @@index([unitId])
 }

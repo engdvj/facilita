@@ -152,6 +152,24 @@ export default function FavoritosPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
+  const resolveFileUrl = (fileUrl?: string) => {
+    if (!fileUrl) return '';
+    return fileUrl.startsWith('http') ? fileUrl : `${serverURL}${fileUrl}`;
+  };
+
+  const downloadDocument = (fileUrl: string, fileName?: string) => {
+    if (!fileUrl) return;
+    const anchor = document.createElement('a');
+    anchor.href = fileUrl;
+    if (fileName) {
+      anchor.download = fileName;
+    }
+    anchor.rel = 'noopener noreferrer';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
   const categories = useMemo(() => {
     const map: Record<string, CategoryOption> = {};
     favoriteLinks.forEach((link) => {
@@ -596,11 +614,8 @@ export default function FavoritosPage() {
       );
     }
 
-    const fileUrl = item.fileUrl
-      ? item.fileUrl.startsWith('http')
-        ? item.fileUrl
-        : `${serverURL}${item.fileUrl}`
-      : '#';
+    const resolvedFileUrl = resolveFileUrl(item.fileUrl);
+    const fileUrl = resolvedFileUrl || '#';
     const imageUrl = item.imageUrl
       ? item.imageUrl.startsWith('http')
         ? item.imageUrl
@@ -638,12 +653,40 @@ export default function FavoritosPage() {
           {titleBadge}
           {statusBadge}
           {typeBadge}
-          {user && (
-            <div
-              className="absolute right-3 top-3 z-10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <FavoriteButton entityType="SCHEDULE" entityId={item.id} />
+          {(user || (!isInactive && resolvedFileUrl)) && (
+            <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
+              {user && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <FavoriteButton entityType="SCHEDULE" entityId={item.id} />
+                </div>
+              )}
+              {!isInactive && resolvedFileUrl && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    downloadDocument(resolvedFileUrl, item.fileName);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-black/5 bg-white/95 text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_4px_8px_rgba(0,0,0,0.12)]"
+                  title="Baixar arquivo"
+                  aria-label="Baixar arquivo"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <path d="M7 10l5 5 5-5" />
+                    <path d="M12 15V3" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />

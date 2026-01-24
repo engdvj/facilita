@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
-import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
+import { getUserSectorIds, getUserUnitsBySector } from '@/lib/user-scope';
 import { formatBytes } from '@/lib/format';
 import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
@@ -67,7 +67,7 @@ export default function SchedulesPage() {
   const isAdmin = user?.role === 'ADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
-  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
+  const userUnitsBySector = useMemo(() => getUserUnitsBySector(user), [user]);
   const resolvedCompanyId =
     isSuperAdmin ? companyId || undefined : user?.companyId;
   const formResolvedCompanyId = isSuperAdmin
@@ -100,11 +100,14 @@ export default function SchedulesPage() {
     return `${withPercent(x)} ${withPercent(y)}`;
   };
 
-  const matchesUnit = (unitIds?: string[]) => {
+  const matchesUnit = (unitIds?: string[], sectorId?: string | null) => {
     if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (isAdmin || isSuperAdmin) return true;
-    return unitIds.some((unitId) => userUnitIds.has(unitId));
+    if (!sectorId) return false;
+    const allowedUnits = userUnitsBySector.get(sectorId);
+    if (!allowedUnits || allowedUnits.size === 0) return true;
+    return unitIds.some((unitId) => allowedUnits.has(unitId));
   };
 
   const scopedSectors = useMemo(() => {
@@ -253,9 +256,10 @@ export default function SchedulesPage() {
       if (isSuperAdmin) return true;
       if (audience === 'SUPERADMIN') return false;
       if (audience === 'ADMIN') return isAdmin;
+      if (audience === 'PRIVATE') return isAdmin || isSuperAdmin || schedule.userId === user.id;
       if (audience === 'SECTOR') {
         if (isAdmin) return true;
-        if (!matchesUnit(getScheduleUnitIds(schedule))) return false;
+        if (!matchesUnit(getScheduleUnitIds(schedule), schedule.sectorId)) return false;
         return schedule.sectorId ? userSectorIds.has(schedule.sectorId) : false;
       }
       if (audience === 'COMPANY') return isAdmin;
@@ -941,12 +945,12 @@ export default function SchedulesPage() {
               <AdminField
                 label="Arquivo"
                 htmlFor="schedule-file"
-                hint="PDF, DOC, XLS, PPT ou TXT"
+                hint="PDF, DOC, XLS/XLSX, PPT, TXT ou MD"
               >
                 <input
                   id="schedule-file"
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md"
                   onChange={handleFileUpload}
                   disabled={fileUploading}
                   className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"

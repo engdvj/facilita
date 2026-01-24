@@ -10,6 +10,12 @@ type ScheduleActor = {
   id: string;
   role: UserRole;
   companyId?: string | null;
+  canViewPrivate?: boolean;
+};
+
+type ScheduleViewer = {
+  id?: string;
+  canViewPrivate?: boolean;
 };
 
 @Injectable()
@@ -103,6 +109,7 @@ export class UploadedSchedulesService {
       audience?: ContentAudience;
       includeInactive?: boolean;
     },
+    viewer?: ScheduleViewer,
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
     const filterUnitIds =
@@ -134,9 +141,14 @@ export class UploadedSchedulesService {
         ],
       });
     }
+    const privateFilter = this.buildPrivateAccessFilter(viewer);
+    if (privateFilter) {
+      andFilters.push(privateFilter);
+    }
 
     const where = {
       deletedAt: null,
+      ...(filters?.includeInactive ? {} : { status: EntityStatus.ACTIVE }),
       ...(companyId ? { companyId } : {}),
       ...(filters?.sectorId && { sectorId: filters.sectorId }),
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
@@ -176,7 +188,7 @@ export class UploadedSchedulesService {
     return schedules;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewer?: ScheduleViewer) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },
       include: {
@@ -199,6 +211,10 @@ export class UploadedSchedulesService {
 
     if (!schedule || schedule.deletedAt) {
       throw new NotFoundException(`Schedule with ID ${id} not found`);
+    }
+
+    if (viewer !== undefined) {
+      this.assertPrivateAccess(schedule, viewer);
     }
 
     return schedule;
@@ -450,7 +466,7 @@ export class UploadedSchedulesService {
     return deleted;
   }
 
-  async restore(id: string) {
+  async restore(id: string, actor?: ScheduleActor) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },
       include: {
@@ -473,6 +489,10 @@ export class UploadedSchedulesService {
 
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${id} not found`);
+    }
+
+    if (actor) {
+      this.assertCanMutate(schedule, actor);
     }
 
     const restored = await this.prisma.uploadedSchedule.update({
@@ -746,11 +766,51 @@ export class UploadedSchedulesService {
     }
   }
 
+  private buildPrivateAccessFilter(
+    viewer?: ScheduleViewer,
+  ): Prisma.UploadedScheduleWhereInput | undefined {
+    if (viewer?.canViewPrivate) {
+      return undefined;
+    }
+    if (viewer?.id) {
+      return {
+        OR: [
+          { audience: { not: ContentAudience.PRIVATE } },
+          { userId: viewer.id },
+        ],
+      };
+    }
+    return { audience: { not: ContentAudience.PRIVATE } };
+  }
+
+  private assertPrivateAccess(
+    schedule: { audience?: ContentAudience | null; userId?: string | null },
+    viewer: ScheduleViewer,
+  ) {
+    if (schedule.audience !== ContentAudience.PRIVATE) {
+      return;
+    }
+    if (!viewer.id) {
+      throw new ForbiddenException('Documento nao autorizado.');
+    }
+    if (schedule.userId !== viewer.id && !viewer.canViewPrivate) {
+      throw new ForbiddenException('Documento nao autorizado.');
+    }
+  }
+
   private assertCanMutate(
-    schedule: { companyId: string },
+    schedule: { companyId: string; userId?: string | null; audience?: ContentAudience | null },
     actor?: ScheduleActor,
   ) {
     if (!actor) return;
+
+    if (
+      schedule.audience === ContentAudience.PRIVATE &&
+      schedule.userId !== actor.id &&
+      !actor.canViewPrivate
+    ) {
+      throw new ForbiddenException('Documento nao autorizado.');
+    }
 
     if (actor.role === UserRole.SUPERADMIN) {
       return;

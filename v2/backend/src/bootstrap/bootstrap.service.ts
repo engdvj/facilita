@@ -49,6 +49,7 @@ export class BootstrapService implements OnModuleInit {
         role: UserRole.COLLABORATOR,
         canViewLinks: true,
         canManageLinks: true,
+        canViewPrivateContent: false,
         restrictToOwnSector: true,
       },
       {
@@ -65,6 +66,7 @@ export class BootstrapService implements OnModuleInit {
         canManageLinks: true,
         canManageCategories: true,
         canManageSchedules: true,
+        canViewPrivateContent: false,
         canBackupSystem: true,
         canResetSystem: true,
         canViewAuditLogs: true,
@@ -85,6 +87,7 @@ export class BootstrapService implements OnModuleInit {
         canManageLinks: true,
         canManageCategories: true,
         canManageSchedules: true,
+        canViewPrivateContent: false,
         canBackupSystem: true,
         canResetSystem: true,
         canViewAuditLogs: true,
@@ -94,10 +97,14 @@ export class BootstrapService implements OnModuleInit {
     ];
 
     for (const rolePermission of roles) {
-      await this.prisma.rolePermission.upsert({
+      const existing = await this.prisma.rolePermission.findUnique({
         where: { role: rolePermission.role },
-        update: rolePermission,
-        create: rolePermission,
+        select: { id: true },
+      });
+      if (existing) continue;
+
+      await this.prisma.rolePermission.create({
+        data: rolePermission,
       });
     }
   }

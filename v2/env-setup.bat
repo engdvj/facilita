@@ -2,125 +2,21 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 REM -----------------------------------------------------------------------------
-REM Facilita V2 - One-shot secure deploy/operate script (Windows)
-REM
-REM Usage:
-REM   facilita.bat                (default: up)
-REM   facilita.bat up
-REM   facilita.bat down
-REM   facilita.bat restart
-REM   facilita.bat status
-REM   facilita.bat logs [service]
-REM   facilita.bat clean          (DANGEROUS)
-REM
-REM What it does for security:
-REM   - Creates .env (from .env.production/.env.example if present) if missing
-REM   - Replaces known insecure defaults (postgres password, JWT secrets, superadmin password)
-REM   - Generates cryptographically strong, URL-safe secrets (avoids breaking DATABASE_URL)
-REM   - Generates compose.secure.yml to bind DB/Redis/App ports ONLY to 127.0.0.1
-REM     (so only Nginx is reachable from your LAN)
+REM Facilita V2 - .env setup only (no Docker/Compose)
 REM -----------------------------------------------------------------------------
 
 cd /d "%~dp0"
 
-set "ACTION=%~1"
-if "%ACTION%"=="" set "ACTION=up"
-
 set "ENV_PATH=%CD%\.env"
-set "SECURE_COMPOSE_FILE=%CD%\compose.secure.yml"
+set "ENV_CHANGED=0"
 
-call :ensure_dirs
 call :ensure_env_secure
-call :ensure_secure_compose
 
-if /i "%ACTION%"=="up" goto :up
-if /i "%ACTION%"=="down" goto :down
-if /i "%ACTION%"=="restart" goto :restart
-if /i "%ACTION%"=="status" goto :status
-if /i "%ACTION%"=="logs" goto :logs
-if /i "%ACTION%"=="clean" goto :clean
-if /i "%ACTION%"=="help" goto :usage
-if /i "%ACTION%"=="--help" goto :usage
-if /i "%ACTION%"=="-h" goto :usage
-goto :usage
-
-:up
-echo Starting services...
-call :compose up -d --build
+if "%ENV_CHANGED%"=="0" echo Nenhuma alteracao necessaria.
 echo.
-call :print_access
-goto :end
-
-:down
-echo Stopping services...
-call :compose down
-goto :end
-
-:restart
-echo Restarting services...
-call :compose down
-call :compose up -d --build
+echo .env ready at "%ENV_PATH%"
 echo.
-call :print_access
-goto :end
-
-:status
-call :compose ps
-goto :end
-
-:logs
-REM optional service name in %2
-call :compose logs -f %2
-goto :end
-
-:clean
-echo WARNING: This will remove containers, volumes, and images for this project.
-set /p CONFIRM=Are you sure? (y/N):
-if /i "%CONFIRM%"=="y" (
-  call :compose down -v --rmi all
-  echo Cleanup complete.
-) else (
-  echo Cancelled.
-)
-goto :end
-
-:usage
-echo Usage: %~nx0 {up^|down^|restart^|status^|logs [service]^|clean}
-echo.
-echo Notes:
-echo   - This script will create/adjust .env only to replace known insecure defaults.
-echo   - It generates compose.secure.yml to bind internal ports to 127.0.0.1.
-goto :end
-
-:compose
-REM Uses docker compose with explicit env-file + secure override
-REM Requires docker compose plugin or docker-compose v2.
-docker compose --env-file "%ENV_PATH%" -f "docker-compose.yml" -f "%SECURE_COMPOSE_FILE%" %*
-exit /b
-
-:ensure_dirs
-if not exist "backend\uploads\images" mkdir "backend\uploads\images"
-if not exist "backend\uploads\documents" mkdir "backend\uploads\documents"
-if not exist "backend\backups\auto" mkdir "backend\backups\auto"
-if not exist "backend\backups\tmp" mkdir "backend\backups\tmp"
-exit /b
-
-:ensure_secure_compose
-REM Restrict app ports to localhost and remove DB/Redis host bindings.
-(
-  echo services:
-  echo   postgres:
-  echo     ports: []
-  echo   redis:
-  echo     ports: []
-  echo   backend:
-  echo     ports:
-  echo       - "127.0.0.1:3001:3001"
-  echo   frontend:
-  echo     ports:
-  echo       - "127.0.0.1:3000:3000"
-) > "%SECURE_COMPOSE_FILE%"
-exit /b
+exit /b 0
 
 :ensure_env_secure
 set "ENV_TEMPLATE="
@@ -145,13 +41,12 @@ if exist ".gitignore" (
   if errorlevel 1 echo .env>>".gitignore"
 )
 
-REM Keep POSTGRES_USER=postgres because your compose healthcheck uses -U postgres.
+REM Keep POSTGRES_USER=postgres because compose healthcheck uses -U postgres.
 call :ensure_kv POSTGRES_USER postgres
 call :ensure_kv POSTGRES_DB facilita_v2
 
 REM Replace insecure defaults
 call :ensure_kv_if_insecure POSTGRES_PASSWORD postgres 24
-
 call :ensure_kv_if_insecure JWT_ACCESS_SECRET facilita-jwt-access-secret-change-me 32
 call :ensure_kv_if_insecure JWT_ACCESS_SECRET your-super-secret-access-key-change-me-in-production 32
 call :ensure_kv_if_insecure JWT_REFRESH_SECRET facilita-jwt-refresh-secret-change-me 32
@@ -234,21 +129,6 @@ exit /b
 :set_env
 REM Robustly set/replace KEY=VALUE in .env (single occurrence).
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$path=$env:ENV_PATH; $key=$env:ENV_KEY; $value=$env:ENV_VALUE; if (-not (Test-Path $path)) { New-Item -ItemType File -Path $path -Force | Out-Null }; $content=Get-Content -Raw -ErrorAction SilentlyContinue $path; if ($null -eq $content) { $content='' }; $nl=[Environment]::NewLine; $lines = $content -split '\r?\n'; $out = New-Object System.Collections.Generic.List[string]; $found=$false; foreach($line in $lines){ if($line -match ('\A' + [regex]::Escape($key) + '=')){ if(-not $found){ $out.Add($key + '=' + $value); $found=$true } } elseif($line -ne ''){ $out.Add($line) } }; if(-not $found){ $out.Add($key + '=' + $value) }; Set-Content -Encoding ascii -Path $path -Value ($out -join $nl)"
+set "ENV_CHANGED=1"
+echo Atualizado: %ENV_KEY%=%ENV_VALUE%
 exit /b
-
-:print_access
-REM Reads NGINX_PORT from .env and prints access URL
-call :read_kv NGINX_PORT
-if "%ENV_CUR%"=="" set "ENV_CUR=80"
-echo Access (local): http://localhost:%ENV_CUR%/
-echo.
-echo To view saved secrets in .env:
-echo   findstr /b /c:"SUPERADMIN_EMAIL=" .env
-echo   findstr /b /c:"SUPERADMIN_PASSWORD=" .env
-echo   findstr /b /c:"POSTGRES_PASSWORD=" .env
-echo   findstr /b /c:"JWT_ACCESS_SECRET=" .env
-echo   findstr /b /c:"JWT_REFRESH_SECRET=" .env
-exit /b
-
-:end
-endlocal

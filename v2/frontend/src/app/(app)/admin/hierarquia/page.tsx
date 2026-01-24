@@ -6,6 +6,7 @@ import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { getUserUnitsBySector } from '@/lib/user-scope';
 
 type ContentAudience =
   | 'PUBLIC'
@@ -53,6 +54,9 @@ type User = {
     sectorId: string;
     isPrimary?: boolean | null;
     role?: string | null;
+    userSectorUnits?: {
+      unitId: string;
+    }[] | null;
     sector?: {
       id: string;
       name: string;
@@ -71,6 +75,8 @@ type LinkItem = {
   title: string;
   companyId?: string | null;
   sectorId?: string | null;
+  unitId?: string | null;
+  linkUnits?: { unitId: string }[] | null;
   userId?: string | null;
   isPublic?: boolean | null;
   audience?: ContentAudience | null;
@@ -86,6 +92,8 @@ type ScheduleItem = {
   title: string;
   companyId?: string | null;
   sectorId?: string | null;
+  unitId?: string | null;
+  scheduleUnits?: { unitId: string }[] | null;
   userId?: string | null;
   isPublic?: boolean | null;
   audience?: ContentAudience | null;
@@ -101,6 +109,8 @@ type NoteItem = {
   title: string;
   companyId?: string | null;
   sectorId?: string | null;
+  unitId?: string | null;
+  noteUnits?: { unitId: string }[] | null;
   userId?: string | null;
   isPublic?: boolean | null;
   audience?: ContentAudience | null;
@@ -130,10 +140,34 @@ const getPrimarySectorUnit = (sector?: Sector | null) =>
 const sectorMatchesUnit = (sector: Sector, selectedUnitId: string) =>
   Boolean(sector.sectorUnits?.some((unit) => unit.unitId === selectedUnitId));
 
+const getLinkUnitIds = (link: LinkItem) =>
+  link.linkUnits?.length
+    ? link.linkUnits.map((unit) => unit.unitId)
+    : link.unitId
+      ? [link.unitId]
+      : [];
+
+const getScheduleUnitIds = (schedule: ScheduleItem) =>
+  schedule.scheduleUnits?.length
+    ? schedule.scheduleUnits.map((unit) => unit.unitId)
+    : schedule.unitId
+      ? [schedule.unitId]
+      : [];
+
+const getNoteUnitIds = (note: NoteItem) =>
+  note.noteUnits?.length
+    ? note.noteUnits.map((unit) => unit.unitId)
+    : note.unitId
+      ? [note.unitId]
+      : [];
+
 const userMatchesSector = (user: User, selectedSectorId: string) =>
   Boolean(
     user.userSectors?.some((userSector) => userSector.sectorId === selectedSectorId),
   );
+
+const matchesSelectedSector = (sectorId?: string | null, selectedSectorId?: string) =>
+  !selectedSectorId || sectorId === selectedSectorId;
 
 const parseTimestamp = (value?: string | null) =>
   value ? Date.parse(value) : 0;
@@ -175,8 +209,14 @@ const getNoteAudience = (note: NoteItem): ContentAudience => {
 const canUserAccessItem = (
   subject: User,
   audience: ContentAudience,
-  item: { companyId?: string | null; sectorId?: string | null; userId?: string | null },
+  item: {
+    companyId?: string | null;
+    sectorId?: string | null;
+    userId?: string | null;
+    unitIds?: string[];
+  },
   sectorIds: Set<string>,
+  unitsBySector: Map<string, Set<string>>,
 ) => {
   if (audience === 'PUBLIC') return true;
   if (subject.role === 'SUPERADMIN') return true;
@@ -199,7 +239,16 @@ const canUserAccessItem = (
 
   if (audience === 'SECTOR') {
     if (subject.role === 'ADMIN') return true;
-    return Boolean(item.sectorId && sectorIds.has(item.sectorId));
+    if (!item.sectorId || !sectorIds.has(item.sectorId)) {
+      return false;
+    }
+    if (item.unitIds && item.unitIds.length > 0) {
+      const allowedUnits = unitsBySector.get(item.sectorId);
+      if (allowedUnits && allowedUnits.size > 0) {
+        return item.unitIds.some((unitId) => allowedUnits.has(unitId));
+      }
+    }
+    return true;
   }
 
   if (audience === 'COMPANY') {
@@ -340,14 +389,22 @@ export default function HierarquiaPage() {
     const sectorIds = new Set(
       selectedUser.userSectors?.map((userSector) => userSector.sectorId) ?? [],
     );
+    const unitsBySector = getUserUnitsBySector(selectedUser);
 
     const userLinks = links
       .filter((link) =>
+        matchesSelectedSector(link.sectorId, selectedSectorId) &&
         canUserAccessItem(
           selectedUser,
           getLinkAudience(link),
-          link,
+          {
+            companyId: link.companyId,
+            sectorId: link.sectorId,
+            userId: link.userId,
+            unitIds: getLinkUnitIds(link),
+          },
           sectorIds,
+          unitsBySector,
         ),
       )
       .map((link) => ({
@@ -362,11 +419,18 @@ export default function HierarquiaPage() {
       }));
     const userSchedules = schedules
       .filter((schedule) =>
+        matchesSelectedSector(schedule.sectorId, selectedSectorId) &&
         canUserAccessItem(
           selectedUser,
           getScheduleAudience(schedule),
-          schedule,
+          {
+            companyId: schedule.companyId,
+            sectorId: schedule.sectorId,
+            userId: schedule.userId,
+            unitIds: getScheduleUnitIds(schedule),
+          },
           sectorIds,
+          unitsBySector,
         ),
       )
       .map((schedule) => ({
@@ -381,11 +445,18 @@ export default function HierarquiaPage() {
       }));
     const userNotes = notes
       .filter((note) =>
+        matchesSelectedSector(note.sectorId, selectedSectorId) &&
         canUserAccessItem(
           selectedUser,
           getNoteAudience(note),
-          note,
+          {
+            companyId: note.companyId,
+            sectorId: note.sectorId,
+            userId: note.userId,
+            unitIds: getNoteUnitIds(note),
+          },
           sectorIds,
+          unitsBySector,
         ),
       )
       .map((note) => ({
@@ -404,7 +475,7 @@ export default function HierarquiaPage() {
       if (diff !== 0) return diff;
       return a.title.localeCompare(b.title);
     });
-  }, [links, notes, schedules, selectedUser]);
+  }, [links, notes, schedules, selectedSectorId, selectedUser]);
 
   const companyTotalPages = Math.max(1, Math.ceil(companies.length / pageSize));
   const unitTotalPages = Math.max(1, Math.ceil(filteredUnits.length / pageSize));

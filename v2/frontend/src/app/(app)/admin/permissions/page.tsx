@@ -12,7 +12,7 @@ type PermissionKey = Exclude<
 >;
 
 type PermissionItem = {
-  key: PermissionKey;
+  key: PermissionKey | string;
   label: string;
   hint: string;
 };
@@ -111,6 +111,11 @@ const permissionGroups: PermissionGroup[] = [
         label: 'Gerenciar documentos',
         hint: 'Publica e remove documentos.',
       },
+      {
+        key: 'canViewPrivateContent',
+        label: 'Ver conteudo privado',
+        hint: 'Libera acesso a conteudos privados.',
+      },
     ],
   },
   {
@@ -141,9 +146,83 @@ const permissionGroups: PermissionGroup[] = [
   },
 ];
 
-const permissionKeys: PermissionKey[] = permissionGroups.flatMap((group) =>
+const excludedPermissionKeys = new Set([
+  'id',
+  'role',
+  'createdAt',
+  'updatedAt',
+]);
+
+const knownPermissionKeys: string[] = permissionGroups.flatMap((group) =>
   group.items.map((item) => item.key),
 );
+
+const knownPermissionKeySet = new Set(knownPermissionKeys);
+
+const permissionWordMap: Record<string, string> = {
+  access: 'Acessar',
+  admin: 'Admin',
+  audit: 'Auditoria',
+  backup: 'Backup',
+  category: 'Categoria',
+  categories: 'Categorias',
+  company: 'Empresa',
+  companies: 'Empresas',
+  config: 'Configuracao',
+  content: 'Conteudo',
+  contents: 'Conteudos',
+  dashboard: 'Dashboard',
+  delete: 'Excluir',
+  document: 'Documento',
+  documents: 'Documentos',
+  edit: 'Editar',
+  gallery: 'Galeria',
+  image: 'Imagem',
+  images: 'Imagens',
+  link: 'Link',
+  links: 'Links',
+  manage: 'Gerenciar',
+  note: 'Nota',
+  notes: 'Notas',
+  permission: 'Permissao',
+  permissions: 'Permissoes',
+  private: 'Privado',
+  reset: 'Reset',
+  role: 'Role',
+  roles: 'Roles',
+  schedule: 'Documento',
+  schedules: 'Documentos',
+  sector: 'Setor',
+  sectors: 'Setores',
+  system: 'Sistema',
+  unit: 'Unidade',
+  units: 'Unidades',
+  use: 'Usar',
+  user: 'Usuario',
+  users: 'Usuarios',
+  view: 'Ver',
+};
+
+const formatPermissionKeyLabel = (key: string) => {
+  const trimmed = key.replace(/^(can|is|has)/, '');
+  const words = trimmed
+    .replace(/([A-Z])/g, ' $1')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!words.length) return key;
+
+  const mapped = words.map((word) => {
+    const replacement = permissionWordMap[word.toLowerCase()];
+    return replacement ?? word;
+  });
+
+  const label = mapped.join(' ').trim();
+  if (!label) return key;
+
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+};
 
 const roleLabels: Record<UserRole, string> = {
   SUPERADMIN: 'Superadmin',
@@ -157,9 +236,17 @@ const roleDescriptions: Record<UserRole, string> = {
   COLLABORATOR: 'Acesso operativo do dia a dia.',
 };
 
-const countActivePermissions = (rolePermission: RolePermission) =>
-  permissionKeys.reduce(
-    (total, key) => total + Number(rolePermission[key]),
+const readPermissionValue = (
+  permission: RolePermission | null | undefined,
+  key: string,
+) => Boolean((permission as Record<string, unknown> | null)?.[key]);
+
+const countActivePermissions = (
+  rolePermission: RolePermission,
+  keys: string[],
+) =>
+  keys.reduce(
+    (total, key) => total + Number(readPermissionValue(rolePermission, key)),
     0,
   );
 
@@ -172,9 +259,12 @@ const formatDate = (value: string) => {
 const isPermissionDirty = (
   draft: RolePermission | null,
   baseline: RolePermission | undefined,
+  keys: string[],
 ) => {
   if (!draft || !baseline) return false;
-  return permissionKeys.some((key) => draft[key] !== baseline[key]);
+  return keys.some(
+    (key) => readPermissionValue(draft, key) !== readPermissionValue(baseline, key),
+  );
 };
 
 export default function PermissionsPage() {
@@ -249,11 +339,55 @@ export default function PermissionsPage() {
     };
   }, [hasHydrated, user]);
 
+  const extraPermissionKeys = useMemo(() => {
+    const extraKeys = new Set<string>();
+    permissions.forEach((permission) => {
+      Object.entries(permission).forEach(([key, value]) => {
+        if (excludedPermissionKeys.has(key)) return;
+        if (typeof value !== 'boolean') return;
+        if (!knownPermissionKeySet.has(key)) {
+          extraKeys.add(key);
+        }
+      });
+    });
+    return Array.from(extraKeys).sort();
+  }, [permissions]);
+
+  const allPermissionKeys = useMemo(
+    () =>
+      extraPermissionKeys.length
+        ? [...knownPermissionKeys, ...extraPermissionKeys]
+        : knownPermissionKeys,
+    [extraPermissionKeys],
+  );
+
+  const extraPermissionItems = useMemo(
+    () =>
+      extraPermissionKeys.map((key) => ({
+        key,
+        label: formatPermissionKeyLabel(key),
+        hint: 'Permissao adicionada nas atualizacoes.',
+      })),
+    [extraPermissionKeys],
+  );
+
+  const permissionGroupList = useMemo(() => {
+    if (!extraPermissionItems.length) return permissionGroups;
+    return [
+      ...permissionGroups,
+      {
+        title: 'Outras',
+        description: 'Permissoes adicionais carregadas da API.',
+        items: extraPermissionItems,
+      },
+    ];
+  }, [extraPermissionItems]);
+
   const normalizedSearch = search.trim().toLowerCase();
   const filteredGroups = useMemo(() => {
-    if (!normalizedSearch) return permissionGroups;
+    if (!normalizedSearch) return permissionGroupList;
 
-    return permissionGroups
+    return permissionGroupList
       .map((group) => {
         const groupMatches =
           group.title.toLowerCase().includes(normalizedSearch) ||
@@ -271,7 +405,7 @@ export default function PermissionsPage() {
         return items.length > 0 ? { ...group, items } : null;
       })
       .filter((group): group is PermissionGroup => Boolean(group));
-  }, [normalizedSearch]);
+  }, [normalizedSearch, permissionGroupList]);
 
   useEffect(() => {
     if (!permissions.length) return;
@@ -283,12 +417,12 @@ export default function PermissionsPage() {
   const activePermission = permissions.find(
     (entry) => entry.role === activeRole,
   );
-  const totalPermissions = permissionKeys.length;
+  const totalPermissions = allPermissionKeys.length;
   const displayPermission = draft ?? activePermission;
   const activeCount = displayPermission
-    ? countActivePermissions(displayPermission)
+    ? countActivePermissions(displayPermission, allPermissionKeys)
     : 0;
-  const isDirty = isPermissionDirty(draft, activePermission);
+  const isDirty = isPermissionDirty(draft, activePermission, allPermissionKeys);
   const isReadOnly = loading || saving || Boolean(error);
 
   useEffect(() => {
@@ -305,9 +439,9 @@ export default function PermissionsPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const payload = permissionKeys.reduce<Record<string, boolean>>(
+      const payload = allPermissionKeys.reduce<Record<string, boolean>>(
         (acc, key) => {
-          acc[key] = Boolean(draft[key]);
+          acc[key] = readPermissionValue(draft, key);
           return acc;
         },
         {},
@@ -336,10 +470,13 @@ export default function PermissionsPage() {
     }
   };
 
-  const handleToggle = (key: PermissionKey, value: boolean) => {
-    setDraft((current) =>
-      current ? { ...current, [key]: value } : current,
-    );
+  const handleToggle = (key: string, value: boolean) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const next = { ...current };
+      (next as Record<string, boolean | string | UserRole>)[key] = value;
+      return next;
+    });
   };
 
   return (
@@ -378,7 +515,10 @@ export default function PermissionsPage() {
               const isActive = rolePermission.role === activeRole;
               const previewPermission =
                 isActive && draft ? draft : rolePermission;
-              const roleCount = countActivePermissions(previewPermission);
+              const roleCount = countActivePermissions(
+                previewPermission,
+                allPermissionKeys,
+              );
               return (
                 <button
                   key={rolePermission.role}
@@ -490,7 +630,7 @@ export default function PermissionsPage() {
               const groupActiveCount = displayPermission
                 ? group.items.reduce(
                     (total, item) =>
-                      total + Number(displayPermission[item.key]),
+                      total + Number(readPermissionValue(displayPermission, item.key)),
                     0,
                   )
                 : 0;
@@ -515,7 +655,7 @@ export default function PermissionsPage() {
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {group.items.map((item) => {
                       const enabled = displayPermission
-                        ? displayPermission[item.key]
+                        ? readPermissionValue(displayPermission, item.key)
                         : false;
                       const toggleId = `${activeRole}-${item.key}`;
                       return (

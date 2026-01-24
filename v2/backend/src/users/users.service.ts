@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -18,6 +18,11 @@ const userSelect = {
   updatedAt: true,
   userSectors: {
     include: {
+      userSectorUnits: {
+        select: {
+          unitId: true,
+        },
+      },
       sector: {
         include: {
           sectorUnits: {
@@ -98,6 +103,8 @@ export class UsersService {
       ? (data.theme as Prisma.InputJsonValue)
       : undefined;
 
+    await this.assertUserSectorUnits(data.sectors);
+
     return this.prisma.user.create({
       data: {
         name: data.name,
@@ -114,6 +121,7 @@ export class UsersService {
                 sectorId: sector.sectorId,
                 isPrimary: sector.isPrimary ?? false,
                 role: sector.role ?? 'MEMBER',
+                userSectorUnits: this.buildUserSectorUnits(sector.unitIds),
               })),
             }
           : undefined,
@@ -143,12 +151,14 @@ export class UsersService {
 
     // Se sectors foi fornecido, atualiza os relacionamentos
     if (data.sectors) {
+      await this.assertUserSectorUnits(data.sectors);
       updateData.userSectors = {
         deleteMany: {}, // Remove todos os relacionamentos antigos
         create: data.sectors.map((sector) => ({
           sectorId: sector.sectorId,
           isPrimary: sector.isPrimary ?? false,
           role: sector.role ?? 'MEMBER',
+          userSectorUnits: this.buildUserSectorUnits(sector.unitIds),
         })),
       };
     }
@@ -261,5 +271,64 @@ export class UsersService {
       data: { companyId: resolvedCompanyId },
       select: userSelect,
     });
+  }
+
+  private normalizeUnitIds(unitIds?: string[] | null) {
+    const filtered = (unitIds ?? []).filter((unitId): unitId is string =>
+      Boolean(unitId),
+    );
+    return Array.from(new Set(filtered));
+  }
+
+  private buildUserSectorUnits(unitIds?: string[] | null) {
+    const normalizedUnitIds = this.normalizeUnitIds(unitIds);
+    if (normalizedUnitIds.length === 0) {
+      return undefined;
+    }
+    return {
+      create: normalizedUnitIds.map((unitId) => ({ unitId })),
+    };
+  }
+
+  private async assertUserSectorUnits(
+    sectors?: { sectorId: string; unitIds?: string[] | null }[] | null,
+  ) {
+    if (!sectors || sectors.length === 0) return;
+
+    const pairs: { sectorId: string; unitId: string }[] = [];
+    sectors.forEach((sector) => {
+      const normalizedUnitIds = this.normalizeUnitIds(sector.unitIds);
+      if (normalizedUnitIds.length === 0) {
+        return;
+      }
+      normalizedUnitIds.forEach((unitId) => {
+        pairs.push({ sectorId: sector.sectorId, unitId });
+      });
+    });
+
+    if (pairs.length === 0) return;
+
+    const validPairs = await this.prisma.sectorUnit.findMany({
+      where: {
+        OR: pairs.map((pair) => ({
+          sectorId: pair.sectorId,
+          unitId: pair.unitId,
+        })),
+      },
+      select: {
+        sectorId: true,
+        unitId: true,
+      },
+    });
+
+    const validSet = new Set(
+      validPairs.map((pair) => `${pair.sectorId}:${pair.unitId}`),
+    );
+    const invalid = pairs.find(
+      (pair) => !validSet.has(`${pair.sectorId}:${pair.unitId}`),
+    );
+    if (invalid) {
+      throw new ForbiddenException('Unidade nao pertence ao setor.');
+    }
   }
 }

@@ -10,7 +10,7 @@ import {
   UploadedSchedule,
 } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
-import { getUserSectorIds, getUserUnitIds } from '@/lib/user-scope';
+import { getUserSectorIds, getUserUnitsBySector } from '@/lib/user-scope';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
 type CategoryOption = Category;
@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isSuperAdmin = user?.role === 'SUPERADMIN';
   const userSectorIds = useMemo(() => getUserSectorIds(user), [user]);
-  const userUnitIds = useMemo(() => getUserUnitIds(user), [user]);
+  const userUnitsBySector = useMemo(() => getUserUnitsBySector(user), [user]);
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
   const numberFormatter = useMemo(() => new Intl.NumberFormat('pt-BR'), []);
@@ -111,11 +111,14 @@ export default function DashboardPage() {
         ? [note.unitId]
         : [];
 
-  const matchesUnit = (unitIds?: string[]) => {
+  const matchesUnit = (unitIds?: string[], sectorId?: string | null) => {
     if (!unitIds || unitIds.length === 0) return true;
     if (!user) return false;
     if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return true;
-    return unitIds.some((unitId) => userUnitIds.has(unitId));
+    if (!sectorId) return false;
+    const allowedUnits = userUnitsBySector.get(sectorId);
+    if (!allowedUnits || allowedUnits.size === 0) return true;
+    return unitIds.some((unitId) => allowedUnits.has(unitId));
   };
 
   useEffect(() => {
@@ -153,6 +156,9 @@ export default function DashboardPage() {
         }
         const queryString = params.toString();
         const linksEndpoint = isSuperAdmin ? '/links/admin/list' : '/links';
+        const documentsEndpoint = isSuperAdmin
+          ? '/schedules/admin/list'
+          : '/schedules';
         const notesEndpoint = isSuperAdmin ? '/notes/admin/list' : '/notes';
 
         try {
@@ -169,7 +175,7 @@ export default function DashboardPage() {
 
         try {
           const documentsResponse = await api.get(
-            queryString ? `/schedules?${queryString}` : '/schedules',
+            queryString ? `${documentsEndpoint}?${queryString}` : documentsEndpoint,
           );
           if (!active) return;
           setDocuments(documentsResponse.data);
@@ -261,11 +267,11 @@ export default function DashboardPage() {
         return user.role === 'ADMIN';
       }
       if (audience === 'PRIVATE') {
-        return link.userId === user.id;
+        return user.role === 'ADMIN' || link.userId === user.id;
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        if (!matchesUnit(getLinkUnitIds(link))) return false;
+        if (!matchesUnit(getLinkUnitIds(link), link.sectorId)) return false;
         return link.sectorId ? userSectorIds.has(link.sectorId) : false;
       }
       if (audience === 'COMPANY') {
@@ -294,11 +300,11 @@ export default function DashboardPage() {
         return user.role === 'ADMIN';
       }
       if (audience === 'PRIVATE') {
-        return document.userId === user.id;
+        return user.role === 'ADMIN' || document.userId === user.id;
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        if (!matchesUnit(getDocumentUnitIds(document))) return false;
+        if (!matchesUnit(getDocumentUnitIds(document), document.sectorId)) return false;
         return document.sectorId ? userSectorIds.has(document.sectorId) : false;
       }
       if (audience === 'COMPANY') {
@@ -327,11 +333,11 @@ export default function DashboardPage() {
         return user.role === 'ADMIN';
       }
       if (audience === 'PRIVATE') {
-        return note.userId === user.id;
+        return user.role === 'ADMIN' || note.userId === user.id;
       }
       if (audience === 'SECTOR') {
         if (user.role === 'ADMIN') return true;
-        if (!matchesUnit(getNoteUnitIds(note))) return false;
+        if (!matchesUnit(getNoteUnitIds(note), note.sectorId)) return false;
         return note.sectorId ? userSectorIds.has(note.sectorId) : false;
       }
       if (audience === 'COMPANY') {

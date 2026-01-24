@@ -15,9 +15,11 @@ import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { ContentAudience, UserRole } from '@prisma/client';
+import { PermissionsService } from '../permissions/permissions.service';
 
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
@@ -65,7 +67,10 @@ const parseAudienceParam = (value?: string): ContentAudience | undefined => {
 
 @Controller('notes')
 export class NotesController {
-  constructor(private readonly notesService: NotesService) {}
+  constructor(
+    private readonly notesService: NotesService,
+    private readonly permissionsService: PermissionsService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -122,6 +127,7 @@ export class NotesController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   async findAll(
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
@@ -129,6 +135,7 @@ export class NotesController {
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
+    @Request() req?: any,
   ) {
     const normalizedCompanyId = companyId?.trim() || undefined;
     const parsedAudience = parseAudienceParam(audience);
@@ -139,7 +146,11 @@ export class NotesController {
       audience: parsedAudience || (isPublic === 'true' ? ContentAudience.PUBLIC : undefined),
       isPublic: isPublic === 'true' ? true : isPublic === 'false' ? false : undefined,
     };
-    return this.notesService.findAll(normalizedCompanyId, filters);
+    const { id, canViewPrivate } = await this.getAccessContext(req?.user);
+    return this.notesService.findAll(normalizedCompanyId, filters, {
+      id,
+      canViewPrivate,
+    });
   }
 
   @Get('admin/list')
@@ -173,7 +184,11 @@ export class NotesController {
       includeInactive: true,
     };
 
-    return this.notesService.findAll(resolvedCompanyId, filters);
+    const { id, canViewPrivate } = await this.getAccessContext(req.user);
+    return this.notesService.findAll(resolvedCompanyId, filters, {
+      id,
+      canViewPrivate,
+    });
   }
 
   @Get('admin')
@@ -200,76 +215,96 @@ export class NotesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.notesService.findOne(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  async findOne(
+    @Param('id') id: string,
+    @Request() req?: any,
+  ) {
+    const { id: userId, canViewPrivate } = await this.getAccessContext(req?.user);
+    return this.notesService.findOne(id, { id: userId, canViewPrivate });
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateNoteDto: UpdateNoteDto,
     @Request() req: any,
   ) {
-    return this.notesService.update(id, updateNoteDto, {
-      id: req.user.id,
-      role: req.user.role,
-      companyId: req.user.companyId,
-    });
+    const actor = await this.getAccessContext(req.user);
+    return this.notesService.update(id, updateNoteDto, actor);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
-  remove(
+  async remove(
     @Param('id') id: string,
     @Body() body: { adminMessage?: string } | undefined,
     @Request() req: any,
   ) {
-    return this.notesService.remove(
-      id,
-      {
-        id: req.user.id,
-        role: req.user.role,
-        companyId: req.user.companyId,
-      },
-      body?.adminMessage,
-    );
+    const actor = await this.getAccessContext(req.user);
+    return this.notesService.remove(id, actor, body?.adminMessage);
   }
 
   @Post(':id/restore')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  restore(@Param('id') id: string) {
-    return this.notesService.restore(id);
+  async restore(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    const actor = await this.getAccessContext(req.user);
+    return this.notesService.restore(id, actor);
   }
 
   @Post(':id/activate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  activate(
+  async activate(
     @Param('id') id: string,
     @Request() req: any,
   ) {
-    return this.notesService.activate(id, {
-      id: req.user.id,
-      role: req.user.role,
-      companyId: req.user.companyId,
-    });
+    const actor = await this.getAccessContext(req.user);
+    return this.notesService.activate(id, actor);
   }
 
   @Post(':id/deactivate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  deactivate(
+  async deactivate(
     @Param('id') id: string,
     @Request() req: any,
   ) {
-    return this.notesService.deactivate(id, {
-      id: req.user.id,
-      role: req.user.role,
-      companyId: req.user.companyId,
-    });
+    const actor = await this.getAccessContext(req.user);
+    return this.notesService.deactivate(id, actor);
+  }
+
+  private async getAccessContext(user?: any) {
+    if (!user) {
+      return {
+        id: undefined,
+        role: undefined,
+        companyId: undefined,
+        canViewPrivate: false,
+      };
+    }
+
+    const canViewPrivate = await this.permissionsService.hasPermissions(
+      user.role,
+      ['canViewPrivateContent'],
+    );
+
+    return {
+      id: user.id,
+      role: user.role,
+      companyId: user.companyId,
+      canViewPrivate,
+    };
   }
 }
+
+
+
+

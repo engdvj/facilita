@@ -247,6 +247,7 @@ export interface RolePermission {
   canManageLinks: boolean;
   canManageCategories: boolean;
   canManageSchedules: boolean;
+  canViewPrivateContent: boolean;
   canBackupSystem: boolean;
   canResetSystem: boolean;
   canViewAuditLogs: boolean;

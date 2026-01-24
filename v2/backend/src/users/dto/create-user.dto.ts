@@ -17,6 +17,11 @@ export class UserSectorDto {
   sectorId!: string;
 
   @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  unitIds?: string[];
+
+  @IsOptional()
   @IsBoolean()
   isPrimary?: boolean;
 

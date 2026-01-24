@@ -249,6 +249,7 @@ export class ResetsService {
         role: UserRole.COLLABORATOR,
         canViewLinks: true,
         canManageLinks: true,
+        canViewPrivateContent: false,
         restrictToOwnSector: true,
       },
       {
@@ -265,6 +266,7 @@ export class ResetsService {
         canManageLinks: true,
         canManageCategories: true,
         canManageSchedules: true,
+        canViewPrivateContent: false,
         canBackupSystem: true,
         canResetSystem: true,
         canViewAuditLogs: true,
@@ -285,6 +287,7 @@ export class ResetsService {
         canManageLinks: true,
         canManageCategories: true,
         canManageSchedules: true,
+        canViewPrivateContent: false,
         canBackupSystem: true,
         canResetSystem: true,
         canViewAuditLogs: true,

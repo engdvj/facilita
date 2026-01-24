@@ -9,22 +9,6 @@ import AdminPager from '@/components/admin/pager';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  createdAt?: string | null;
-  companyId?: string | null;
-  userSectors?: {
-    sectorId: string;
-    isPrimary?: boolean | null;
-    role?: SectorRole | null;
-    sector?: SectorOption | null;
-  }[] | null;
-};
-
 type CompanyOption = { id: string; name: string };
 
 type UnitOption = { id: string; name: string; companyId?: string | null };
@@ -42,10 +26,30 @@ type SectorOption = {
 
 type SectorRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
 
+type UserSector = {
+  sectorId: string;
+  isPrimary?: boolean | null;
+  role?: SectorRole | null;
+  userSectorUnits?: { unitId: string }[] | null;
+  sector?: SectorOption | null;
+};
+
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt?: string | null;
+  companyId?: string | null;
+  userSectors?: UserSector[] | null;
+};
+
 type UserSectorSelection = {
   sectorId: string;
   role: SectorRole;
   isPrimary: boolean;
+  unitIds: string[];
 };
 
 const pageSize = 8;
@@ -57,12 +61,27 @@ const getPrimarySectorUnit = (sector?: SectorOption | null) =>
   sector?.sectorUnits?.find((unit) => unit.isPrimary) ||
   sector?.sectorUnits?.[0];
 
+const getUserSectorUnitIds = (userSector: UserSector) => {
+  const explicitUnitIds =
+    userSector.userSectorUnits
+      ?.map((unit) => unit.unitId)
+      .filter((unitId): unitId is string => Boolean(unitId)) || [];
+  if (explicitUnitIds.length > 0) {
+    return explicitUnitIds;
+  }
+  return (
+    userSector.sector?.sectorUnits
+      ?.map((unit) => unit.unitId)
+      .filter((unitId): unitId is string => Boolean(unitId)) || []
+  );
+};
+
 const userMatchesUnit = (user: User, selectedUnitId: string) =>
   Boolean(
     user.userSectors?.some((userSector) =>
-      userSector.sector?.sectorUnits?.some(
-        (unit) => unit.unitId === selectedUnitId
-      )
+      getUserSectorUnitIds(userSector).some(
+        (unitId) => unitId === selectedUnitId,
+      ),
     )
   );
 
@@ -283,6 +302,7 @@ export default function UsersPage() {
         sectorId,
         role: 'MEMBER',
         isPrimary: current.length === 0,
+        unitIds: [],
       };
       return [...current, nextSelection];
     });
@@ -298,6 +318,7 @@ export default function UsersPage() {
             sectorId,
             role: 'MEMBER',
             isPrimary: true,
+            unitIds: [],
           },
         ];
       }
@@ -318,6 +339,7 @@ export default function UsersPage() {
             sectorId,
             role,
             isPrimary: current.length === 0,
+            unitIds: [],
           },
         ];
       }
@@ -325,6 +347,23 @@ export default function UsersPage() {
         selection.sectorId === sectorId ? { ...selection, role } : selection,
       );
     });
+  };
+
+  const toggleSectorUnitSelection = (sectorId: string, unitId: string) => {
+    setSectorSelections((current) =>
+      current.map((selection) => {
+        if (selection.sectorId !== sectorId) {
+          return selection;
+        }
+        const nextUnitIds = new Set(selection.unitIds);
+        if (nextUnitIds.has(unitId)) {
+          nextUnitIds.delete(unitId);
+        } else {
+          nextUnitIds.add(unitId);
+        }
+        return { ...selection, unitIds: Array.from(nextUnitIds) };
+      }),
+    );
   };
 
   const openCreate = () => {
@@ -344,11 +383,13 @@ export default function UsersPage() {
   const openEdit = (user: User) => {
     const primaryUserSector = getPrimaryUserSector(user);
     const primarySectorUnit = getPrimarySectorUnit(primaryUserSector?.sector);
+    const primaryUserUnitId = primaryUserSector?.userSectorUnits?.[0]?.unitId;
     const selections =
       user.userSectors?.map((sector) => ({
         sectorId: sector.sectorId,
         role: sector.role || 'MEMBER',
         isPrimary: Boolean(sector.isPrimary),
+        unitIds: sector.userSectorUnits?.map((unit) => unit.unitId) || [],
       })) || [];
     const hasPrimary = selections.some((selection) => selection.isPrimary);
     const normalizedSelections = hasPrimary
@@ -364,7 +405,7 @@ export default function UsersPage() {
     setRole(user.role);
     setStatus(user.status);
     setCompanyId(user.companyId || '');
-    setSectorUnitFilterId(primarySectorUnit?.unitId || '');
+    setSectorUnitFilterId(primaryUserUnitId || primarySectorUnit?.unitId || '');
     setSectorSelections(normalizedSelections);
     setFormError(null);
     setModalOpen(true);
@@ -384,6 +425,7 @@ export default function UsersPage() {
           sectorId: selection.sectorId,
           isPrimary: selection.isPrimary,
           role: selection.role,
+          unitIds: selection.unitIds,
         })),
       };
 
@@ -826,7 +868,7 @@ export default function UsersPage() {
               <AdminField
                 label="Setores"
                 htmlFor="user-sectors"
-                hint="Selecione setores, defina o principal e o papel."
+                hint="Selecione setores, unidades, principal e papel."
               >
                 <div
                   id="user-sectors"
@@ -848,6 +890,8 @@ export default function UsersPage() {
                         const selection = sectorSelectionMap.get(sector.id);
                         const isSelected = Boolean(selection);
                         const unitNames = getSectorUnitNames(sector);
+                        const selectedUnitIds = selection?.unitIds ?? [];
+                        const sectorUnits = sector.sectorUnits ?? [];
                         return (
                           <div
                             key={sector.id}
@@ -902,6 +946,56 @@ export default function UsersPage() {
                                 ))}
                               </select>
                             </div>
+                            {isSelected && (
+                              <div className="w-full border-t border-border/60 pt-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                                  <span>Unidades com acesso</span>
+                                  {selectedUnitIds.length > 0 ? (
+                                    <span>{selectedUnitIds.length} selecionada(s)</span>
+                                  ) : (
+                                    <span>Todas as unidades</span>
+                                  )}
+                                </div>
+                                {sectorUnits.length === 0 && (
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    Nenhuma unidade vinculada a este setor.
+                                  </p>
+                                )}
+                                {sectorUnits.length > 0 && (
+                                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    {sectorUnits.map((sectorUnit) => {
+                                      const unitId = sectorUnit.unitId;
+                                      const unitLabel =
+                                        sectorUnit.unit?.name || unitId;
+                                      const isUnitSelected = selectedUnitIds.includes(unitId);
+                                      return (
+                                        <label
+                                          key={unitId}
+                                          className={`flex items-center gap-2 rounded-md border px-2 py-1 text-xs ${
+                                            isUnitSelected
+                                              ? 'border-foreground/30 bg-white/80 text-foreground'
+                                              : 'border-border/70 bg-card/70 text-muted-foreground'
+                                          }`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-border/70"
+                                            checked={isUnitSelected}
+                                            onChange={() =>
+                                              toggleSectorUnitSelection(sector.id, unitId)
+                                            }
+                                          />
+                                          <span className="truncate">{unitLabel}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                <p className="mt-2 text-[11px] text-muted-foreground">
+                                  Se nenhuma unidade for marcada, o usuario tem acesso a todas as unidades do setor.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         );
                       })}

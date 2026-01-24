@@ -10,6 +10,12 @@ type LinkActor = {
   id: string;
   role: UserRole;
   companyId?: string | null;
+  canViewPrivate?: boolean;
+};
+
+type LinkViewer = {
+  id?: string;
+  canViewPrivate?: boolean;
 };
 
 @Injectable()
@@ -113,6 +119,7 @@ export class LinksService {
       audience?: ContentAudience;
       includeInactive?: boolean;
     },
+    viewer?: LinkViewer,
   ) {
     const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
 
@@ -152,9 +159,14 @@ export class LinksService {
         ],
       });
     }
+    const privateFilter = this.buildPrivateAccessFilter(viewer);
+    if (privateFilter) {
+      andFilters.push(privateFilter);
+    }
 
     const where = {
       deletedAt: null,
+      ...(filters?.includeInactive ? {} : { status: EntityStatus.ACTIVE }),
       ...(companyId ? { companyId } : {}),
       ...sectorFilter,
       ...(filters?.categoryId && { categoryId: filters.categoryId }),
@@ -204,6 +216,11 @@ export class LinksService {
         userSectors: {
           select: {
             sectorId: true,
+            userSectorUnits: {
+              select: {
+                unitId: true,
+              },
+            },
             sector: {
               select: {
                 sectorUnits: {
@@ -223,18 +240,35 @@ export class LinksService {
     }
 
     const sectorIds = user.userSectors.map((us) => us.sectorId);
-    const unitIds = Array.from(
-      new Set(
-        user.userSectors.flatMap((userSector) =>
-          userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || []
-        )
-      ),
+    const sectorUnitsBySector = new Map<string, Set<string>>();
+
+    user.userSectors.forEach((userSector) => {
+      const explicitUnitIds =
+        userSector.userSectorUnits?.map((unit) => unit.unitId) || [];
+      const fallbackUnitIds =
+        userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || [];
+      const unitIds =
+        explicitUnitIds.length > 0 ? explicitUnitIds : fallbackUnitIds;
+      sectorUnitsBySector.set(userSector.sectorId, new Set(unitIds));
+    });
+
+    const links = await this.findAll(
+      companyId,
+      {
+        sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
+      },
+      { id: userId },
     );
 
-    // Busca links dos setores do usuário + links públicos/company
-    return this.findAll(companyId, {
-      sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
-      unitIds,
+    return links.filter((link) => {
+      if (!link.sectorId) return true;
+      const allowedUnits = sectorUnitsBySector.get(link.sectorId);
+      if (!allowedUnits || allowedUnits.size === 0) return true;
+      const linkUnitIds = link.linkUnits?.length
+        ? link.linkUnits.map((unit) => unit.unitId)
+        : this.normalizeUnitIds(undefined, link.unitId ?? undefined);
+      if (linkUnitIds.length === 0) return true;
+      return linkUnitIds.some((unitId) => allowedUnits.has(unitId));
     });
   }
 
@@ -249,7 +283,7 @@ export class LinksService {
     return count > 0;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewer?: LinkViewer) {
     const link = await this.prisma.link.findUnique({
       where: { id },
       include: {
@@ -285,6 +319,10 @@ export class LinksService {
 
     if (!link || link.deletedAt) {
       throw new NotFoundException(`Link with ID ${id} not found`);
+    }
+
+    if (viewer !== undefined) {
+      this.assertPrivateAccess(link, viewer);
     }
 
     return link;
@@ -577,8 +615,49 @@ export class LinksService {
     }
   }
 
-  private assertCanMutate(link: { userId?: string | null; companyId: string }, actor?: LinkActor) {
+  private buildPrivateAccessFilter(viewer?: LinkViewer): Prisma.LinkWhereInput | undefined {
+    if (viewer?.canViewPrivate) {
+      return undefined;
+    }
+    if (viewer?.id) {
+      return {
+        OR: [
+          { audience: { not: ContentAudience.PRIVATE } },
+          { userId: viewer.id },
+        ],
+      };
+    }
+    return { audience: { not: ContentAudience.PRIVATE } };
+  }
+
+  private assertPrivateAccess(
+    link: { audience?: ContentAudience | null; userId?: string | null },
+    viewer: LinkViewer,
+  ) {
+    if (link.audience !== ContentAudience.PRIVATE) {
+      return;
+    }
+    if (!viewer.id) {
+      throw new ForbiddenException('Link nao autorizado.');
+    }
+    if (link.userId !== viewer.id && !viewer.canViewPrivate) {
+      throw new ForbiddenException('Link nao autorizado.');
+    }
+  }
+
+  private assertCanMutate(
+    link: { userId?: string | null; companyId: string; audience?: ContentAudience | null },
+    actor?: LinkActor,
+  ) {
     if (!actor) return;
+
+    if (
+      link.audience === ContentAudience.PRIVATE &&
+      link.userId !== actor.id &&
+      !actor.canViewPrivate
+    ) {
+      throw new ForbiddenException('Link nao autorizado.');
+    }
 
     if (actor.role === UserRole.SUPERADMIN) {
       return;
@@ -642,7 +721,7 @@ export class LinksService {
     }
   }
 
-  async restore(id: string) {
+  async restore(id: string, actor?: LinkActor) {
     const link = await this.prisma.link.findUnique({
       where: { id },
       include: {
@@ -665,6 +744,10 @@ export class LinksService {
 
     if (!link) {
       throw new NotFoundException(`Link with ID ${id} not found`);
+    }
+
+    if (actor) {
+      this.assertCanMutate(link, actor);
     }
 
     const restored = await this.prisma.link.update({

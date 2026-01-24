@@ -12,6 +12,9 @@ type AuthUserSector = {
   sectorId: string;
   isPrimary?: boolean;
   role?: string;
+  userSectorUnits?: {
+    unitId: string;
+  }[] | null;
   sector?: {
     sectorUnits?: {
       unitId: string;
