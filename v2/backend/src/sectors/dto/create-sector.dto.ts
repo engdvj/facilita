@@ -29,6 +29,10 @@ export class CreateSectorDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
   @IsEnum(EntityStatus)
   status?: EntityStatus;
 }

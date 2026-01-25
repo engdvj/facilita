@@ -16,6 +16,10 @@ export class UpdateUnitDto {
   cnpj?: string;
 
   @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
   @IsEnum(EntityStatus)
   status?: EntityStatus;
 }

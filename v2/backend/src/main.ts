@@ -14,6 +14,9 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const systemConfigService = app.get(SystemConfigService);
 
+  // Avoid 304 responses for API payloads (frontend treats them as errors).
+  app.disable('etag');
+
   await systemConfigService.syncStore();
 
   // Create upload directories if they don't exist

@@ -6,6 +6,7 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
+import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -42,6 +43,7 @@ type User = {
   status: string;
   createdAt?: string | null;
   companyId?: string | null;
+  avatarUrl?: string | null;
   userSectors?: UserSector[] | null;
 };
 
@@ -123,6 +125,7 @@ export default function UsersPage() {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [role, setRole] = useState('COLLABORATOR');
   const [status, setStatus] = useState('ACTIVE');
   const [companyId, setCompanyId] = useState('');
@@ -371,6 +374,7 @@ export default function UsersPage() {
     setName('');
     setUsername('');
     setPassword('');
+    setAvatarUrl('');
     setRole('COLLABORATOR');
     setStatus('ACTIVE');
     setCompanyId('');
@@ -402,6 +406,7 @@ export default function UsersPage() {
     setName(user.name);
     setUsername(user.email);
     setPassword('');
+    setAvatarUrl(user.avatarUrl || '');
     setRole(user.role);
     setStatus(user.status);
     setCompanyId(user.companyId || '');
@@ -418,6 +423,7 @@ export default function UsersPage() {
       const payload: Record<string, unknown> = {
         name,
         username,
+        avatarUrl: avatarUrl || undefined,
         role,
         status,
         companyId: companyId || undefined,
@@ -813,6 +819,16 @@ export default function UsersPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
+              </AdminField>
+              <AdminField label="Imagem" htmlFor="user-avatar" hint="Opcional">
+                <div id="user-avatar">
+                  <ImageSelector
+                    value={avatarUrl}
+                    onChange={(url) => setAvatarUrl(url)}
+                    companyId={companyId}
+                    disabled={formLoading}
+                  />
+                </div>
               </AdminField>
             </div>
           </div>

@@ -39,6 +39,17 @@ const userSelect = {
 
 type UserProfile = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 
+type AccessItem = {
+  id: string;
+  title: string;
+  type: 'link' | 'document' | 'note';
+  imageUrl?: string | null;
+  imagePosition?: string | null;
+  imageScale?: number | null;
+  status?: string | null;
+  createdAt?: Date | string | null;
+};
+
 const resolveCompanyIdFromSectors = (user: UserProfile) => {
   if (user.companyId) {
     return user.companyId;
@@ -80,17 +91,49 @@ export class UsersService {
   async findAll(options?: {
     companyId?: string;
     sectorId?: string;
+    unitId?: string;
     search?: string;
     skip?: number;
     take?: number;
   }) {
     const search = options?.search?.trim();
+    const sectorOrUnitFilter = options?.sectorId || options?.unitId;
+    const unitScope = options?.unitId
+      ? {
+          OR: [
+            {
+              userSectorUnits: {
+                some: { unitId: options.unitId },
+              },
+            },
+            {
+              AND: [
+                { userSectorUnits: { none: {} } },
+                {
+                  sector: {
+                    sectorUnits: {
+                      some: { unitId: options.unitId },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        }
+      : {};
+    const sectorScope = options?.sectorId
+      ? { sectorId: options.sectorId }
+      : {};
+
     const where = {
       ...(options?.companyId ? { companyId: options.companyId } : {}),
-      ...(options?.sectorId
+      ...(sectorOrUnitFilter
         ? {
             userSectors: {
-              some: { sectorId: options.sectorId },
+              some: {
+                ...sectorScope,
+                ...unitScope,
+              },
             },
           }
         : {}),
@@ -320,6 +363,7 @@ export class UsersService {
     userId: string,
     options?: {
       sectorId?: string;
+      unitId?: string;
       page?: number;
       pageSize?: number;
       shouldPaginate?: boolean;
@@ -367,11 +411,21 @@ export class UsersService {
 
     const unitsBySector = this.getUserUnitsBySector(user.userSectors);
     const targetSectorId = options?.sectorId;
+    const targetUnitId = options?.unitId;
     const baseWhere = {
       deletedAt: null,
       ...(user.companyId ? { companyId: user.companyId } : {}),
       ...(targetSectorId ? { sectorId: targetSectorId } : {}),
     };
+
+    if (targetSectorId && targetUnitId) {
+      const allowedUnits = unitsBySector.get(targetSectorId);
+      if (allowedUnits && allowedUnits.size > 0) {
+        if (!allowedUnits.has(targetUnitId)) {
+          return { items: [], total: 0 };
+        }
+      }
+    }
 
     const [links, schedules, notes] = await Promise.all([
       this.prisma.link.findMany({
@@ -445,8 +499,9 @@ export class UsersService {
       }),
     ]);
 
-    const accessibleLinks = links
-      .filter((link) =>
+    const accessibleLinks = links.reduce<AccessItem[]>((acc, link) => {
+      const unitIds = this.resolveUnitIds(link.linkUnits, link.unitId);
+      if (
         this.canUserAccessItem(
           user,
           this.resolveAudience(link),
@@ -454,25 +509,33 @@ export class UsersService {
             companyId: link.companyId,
             sectorId: link.sectorId,
             userId: link.userId,
-            unitIds: this.resolveUnitIds(link.linkUnits, link.unitId),
+            unitIds,
           },
           sectorIds,
           unitsBySector,
-        ),
-      )
-      .map((link) => ({
-        id: link.id,
-        title: link.title,
-        type: 'link' as const,
-        imageUrl: link.imageUrl,
-        imagePosition: link.imagePosition,
-        imageScale: link.imageScale,
-        status: link.status,
-        createdAt: link.createdAt,
-      }));
+          targetUnitId,
+        )
+      ) {
+        acc.push({
+          id: link.id,
+          title: link.title,
+          type: 'link' as const,
+          imageUrl: link.imageUrl,
+          imagePosition: link.imagePosition,
+          imageScale: link.imageScale,
+          status: link.status,
+          createdAt: link.createdAt,
+        });
+      }
+      return acc;
+    }, []);
 
-    const accessibleSchedules = schedules
-      .filter((schedule) =>
+    const accessibleSchedules = schedules.reduce<AccessItem[]>((acc, schedule) => {
+      const unitIds = this.resolveUnitIds(
+        schedule.scheduleUnits,
+        schedule.unitId,
+      );
+      if (
         this.canUserAccessItem(
           user,
           this.resolveAudience(schedule),
@@ -480,25 +543,30 @@ export class UsersService {
             companyId: schedule.companyId,
             sectorId: schedule.sectorId,
             userId: schedule.userId,
-            unitIds: this.resolveUnitIds(schedule.scheduleUnits, schedule.unitId),
+            unitIds,
           },
           sectorIds,
           unitsBySector,
-        ),
-      )
-      .map((schedule) => ({
-        id: schedule.id,
-        title: schedule.title,
-        type: 'document' as const,
-        imageUrl: schedule.imageUrl,
-        imagePosition: schedule.imagePosition,
-        imageScale: schedule.imageScale,
-        status: schedule.status,
-        createdAt: schedule.createdAt,
-      }));
+          targetUnitId,
+        )
+      ) {
+        acc.push({
+          id: schedule.id,
+          title: schedule.title,
+          type: 'document' as const,
+          imageUrl: schedule.imageUrl,
+          imagePosition: schedule.imagePosition,
+          imageScale: schedule.imageScale,
+          status: schedule.status,
+          createdAt: schedule.createdAt,
+        });
+      }
+      return acc;
+    }, []);
 
-    const accessibleNotes = notes
-      .filter((note) =>
+    const accessibleNotes = notes.reduce<AccessItem[]>((acc, note) => {
+      const unitIds = this.resolveUnitIds(note.noteUnits, note.unitId);
+      if (
         this.canUserAccessItem(
           user,
           this.resolveAudience(note),
@@ -506,22 +574,26 @@ export class UsersService {
             companyId: note.companyId,
             sectorId: note.sectorId,
             userId: note.userId,
-            unitIds: this.resolveUnitIds(note.noteUnits, note.unitId),
+            unitIds,
           },
           sectorIds,
           unitsBySector,
-        ),
-      )
-      .map((note) => ({
-        id: note.id,
-        title: note.title,
-        type: 'note' as const,
-        imageUrl: note.imageUrl,
-        imagePosition: note.imagePosition,
-        imageScale: note.imageScale,
-        status: note.status,
-        createdAt: note.createdAt,
-      }));
+          targetUnitId,
+        )
+      ) {
+        acc.push({
+          id: note.id,
+          title: note.title,
+          type: 'note' as const,
+          imageUrl: note.imageUrl,
+          imagePosition: note.imagePosition,
+          imageScale: note.imageScale,
+          status: note.status,
+          createdAt: note.createdAt,
+        });
+      }
+      return acc;
+    }, []);
 
     const items = [...accessibleLinks, ...accessibleSchedules, ...accessibleNotes];
     items.sort((a, b) => {
@@ -617,7 +689,16 @@ export class UsersService {
     },
     sectorIds: Set<string>,
     unitsBySector: Map<string, Set<string>>,
+    requiredUnitId?: string,
   ) {
+    if (
+      requiredUnitId &&
+      item.unitIds &&
+      item.unitIds.length > 0 &&
+      !item.unitIds.includes(requiredUnitId)
+    ) {
+      return false;
+    }
     if (audience === ContentAudience.PUBLIC) return true;
     if (subject.role === UserRole.SUPERADMIN) return true;
     if (audience === ContentAudience.SUPERADMIN) return false;

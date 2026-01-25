@@ -58,6 +58,7 @@ export class UnitsService {
         companyId: data.companyId,
         name: data.name,
         cnpj: data.cnpj,
+        imageUrl: data.imageUrl,
         status: data.status,
       },
       include: { company: true },

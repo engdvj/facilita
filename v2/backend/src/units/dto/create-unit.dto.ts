@@ -14,6 +14,10 @@ export class CreateUnitDto {
   cnpj?: string;
 
   @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
   @IsEnum(EntityStatus)
   status?: EntityStatus;
 }

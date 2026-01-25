@@ -6,6 +6,7 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
+import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -13,6 +14,7 @@ type Sector = {
   id: string;
   name: string;
   description?: string | null;
+  imageUrl?: string | null;
   status?: string | null;
   createdAt?: string | null;
   companyId?: string | null;
@@ -54,6 +56,7 @@ export default function SectorsPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
   const [primaryUnitId, setPrimaryUnitId] = useState('');
@@ -198,6 +201,7 @@ export default function SectorsPage() {
     setEditing(null);
     setName('');
     setDescription('');
+    setImageUrl('');
     setCompanyId('');
     setSelectedUnitIds([]);
     setPrimaryUnitId('');
@@ -211,6 +215,7 @@ export default function SectorsPage() {
     setEditing(sector);
     setName(sector.name);
     setDescription(sector.description || '');
+    setImageUrl(sector.imageUrl || '');
     setCompanyId(sector.companyId || '');
     const unitIds = sector.sectorUnits?.map((unit) => unit.unitId) || [];
     setSelectedUnitIds(unitIds);
@@ -228,6 +233,7 @@ export default function SectorsPage() {
         await api.patch(`/sectors/${editing.id}`, {
           name,
           description: description || undefined,
+          imageUrl: imageUrl || undefined,
           companyId,
           units: selectedUnitIds.map((unit) => ({
             unitId: unit,
@@ -239,6 +245,7 @@ export default function SectorsPage() {
         await api.post('/sectors', {
           name,
           description: description || undefined,
+          imageUrl: imageUrl || undefined,
           companyId,
           units: selectedUnitIds.map((unit) => ({
             unitId: unit,
@@ -578,6 +585,18 @@ export default function SectorsPage() {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
+            </AdminField>
+          </div>
+          <div className="md:col-span-3">
+            <AdminField label="Imagem" htmlFor="sector-image" hint="Opcional">
+              <div id="sector-image">
+                <ImageSelector
+                  value={imageUrl}
+                  onChange={(url) => setImageUrl(url)}
+                  companyId={companyId}
+                  disabled={formLoading}
+                />
+              </div>
             </AdminField>
           </div>
           <div className="md:col-span-3">

@@ -82,6 +82,7 @@ export class SectorsService {
         companyId: data.companyId,
         name: data.name,
         description: data.description,
+        imageUrl: data.imageUrl,
         status: data.status,
         sectorUnits: {
           create: data.units.map((unit) => ({
@@ -107,6 +108,7 @@ export class SectorsService {
     const updateData: any = {
       name: data.name,
       description: data.description,
+      imageUrl: data.imageUrl,
       status: data.status,
       companyId: data.companyId,
     };

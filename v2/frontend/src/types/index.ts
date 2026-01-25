@@ -27,6 +27,7 @@ export interface Unit {
   companyId: string;
   name: string;
   cnpj?: string;
+  imageUrl?: string;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
@@ -38,6 +39,7 @@ export interface Sector {
   companyId: string;
   name: string;
   description?: string;
+  imageUrl?: string;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;

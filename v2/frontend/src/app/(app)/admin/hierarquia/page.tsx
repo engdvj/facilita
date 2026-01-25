@@ -19,6 +19,7 @@ type Unit = {
   id: string;
   name: string;
   cnpj?: string | null;
+  imageUrl?: string | null;
   status?: string | null;
   companyId?: string | null;
 };
@@ -26,6 +27,7 @@ type Unit = {
 type Sector = {
   id: string;
   name: string;
+  imageUrl?: string | null;
   status?: string | null;
   companyId?: string | null;
   sectorUnits?: {
@@ -57,27 +59,31 @@ type UserItem = {
 };
 
 type HeaderValue = string | string[] | number | boolean | null | undefined;
-type ResponseHeaders =
-  | Record<string, HeaderValue>
-  | { get?: (name: string) => HeaderValue };
 
 const pageSize = 6;
 
-const resolveTotalCount = (response: {
-  headers?: ResponseHeaders;
+type ResponseLike = {
+  headers?: unknown;
   data?: unknown;
-}) => {
+};
+
+const resolveTotalCount = (response: ResponseLike) => {
   const headerSource = response.headers;
-  const rawHeader =
-    headerSource &&
-    typeof (headerSource as { get?: (name: string) => HeaderValue }).get ===
-      'function'
-      ? (headerSource as { get: (name: string) => HeaderValue }).get(
-          'x-total-count',
-        )
-      : (headerSource as Record<string, HeaderValue> | undefined)?.[
-          'x-total-count'
-        ];
+  let rawHeader: HeaderValue | undefined;
+
+  if (headerSource && typeof headerSource === 'object') {
+    const headerGetter = (
+      headerSource as { get?: (name: string) => HeaderValue }
+    ).get;
+    if (typeof headerGetter === 'function') {
+      rawHeader = headerGetter('x-total-count');
+    } else {
+      const headerRecord = headerSource as Record<string, HeaderValue>;
+      rawHeader =
+        headerRecord['x-total-count'] ?? headerRecord['X-Total-Count'];
+    }
+  }
+
   const raw = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
   const parsed =
     typeof raw === 'number'
@@ -421,6 +427,7 @@ export default function HierarquiaPage() {
         const response = await api.get(
           `/users${buildQuery({
             sectorId: selectedSectorId,
+            unitId: selectedUnitId,
             page: userPage,
             pageSize,
             search: userSearch,
@@ -450,7 +457,7 @@ export default function HierarquiaPage() {
     return () => {
       active = false;
     };
-  }, [canLoad, selectedSectorId, userPage, userSearch]);
+  }, [canLoad, selectedSectorId, selectedUnitId, userPage, userSearch]);
 
   useEffect(() => {
     let active = true;
@@ -474,6 +481,7 @@ export default function HierarquiaPage() {
         const response = await api.get(
           `/users/${selectedUserId}/access-items${buildQuery({
             sectorId: selectedSectorId,
+            unitId: selectedUnitId,
             page: itemPage,
             pageSize,
           })}`,
@@ -502,7 +510,7 @@ export default function HierarquiaPage() {
     return () => {
       active = false;
     };
-  }, [canLoad, itemPage, selectedSectorId, selectedUserId]);
+  }, [canLoad, itemPage, selectedSectorId, selectedUnitId, selectedUserId]);
 
   const companyTotalPages = Math.max(
     1,
@@ -699,6 +707,7 @@ export default function HierarquiaPage() {
                     title={unit.name}
                     subtitle={unit.cnpj || undefined}
                     status={unit.status}
+                    imageUrl={unit.imageUrl || undefined}
                     typeLabel="UNIDADE"
                     selected={isSelected}
                     onClick={() => handleSelectUnit(unit.id)}
@@ -771,6 +780,7 @@ export default function HierarquiaPage() {
                     title={sector.name}
                     subtitle={primaryUnit?.unit?.name || undefined}
                     status={sector.status}
+                    imageUrl={sector.imageUrl || undefined}
                     typeLabel="SETOR"
                     selected={isSelected}
                     onClick={() => handleSelectSector(sector.id)}

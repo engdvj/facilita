@@ -6,6 +6,7 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
+import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -13,6 +14,7 @@ type Unit = {
   id: string;
   name: string;
   cnpj?: string | null;
+  imageUrl?: string | null;
   status?: string | null;
   createdAt?: string | null;
   companyId?: string | null;
@@ -45,6 +47,7 @@ export default function UnitsPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [status, setStatus] = useState('ACTIVE');
   const [deleteTarget, setDeleteTarget] = useState<Unit | null>(null);
@@ -147,6 +150,7 @@ export default function UnitsPage() {
     setEditing(null);
     setName('');
     setCnpj('');
+    setImageUrl('');
     setCompanyId('');
     setStatus('ACTIVE');
     setFormError(null);
@@ -157,6 +161,7 @@ export default function UnitsPage() {
     setEditing(unit);
     setName(unit.name);
     setCnpj(unit.cnpj || '');
+    setImageUrl(unit.imageUrl || '');
     setCompanyId(unit.companyId || '');
     setStatus(unit.status || 'ACTIVE');
     setFormError(null);
@@ -171,6 +176,7 @@ export default function UnitsPage() {
         await api.patch(`/units/${editing.id}`, {
           name,
           cnpj: cnpj || undefined,
+          imageUrl: imageUrl || undefined,
           companyId,
           status,
         });
@@ -178,6 +184,7 @@ export default function UnitsPage() {
         await api.post('/units', {
           name,
           cnpj: cnpj || undefined,
+          imageUrl: imageUrl || undefined,
           companyId,
           status,
         });
@@ -520,6 +527,18 @@ export default function UnitsPage() {
               onChange={(event) => setCnpj(event.target.value)}
             />
           </AdminField>
+          <div className="md:col-span-3">
+            <AdminField label="Imagem" htmlFor="unit-image" hint="Opcional">
+              <div id="unit-image">
+                <ImageSelector
+                  value={imageUrl}
+                  onChange={(url) => setImageUrl(url)}
+                  companyId={companyId}
+                  disabled={formLoading}
+                />
+              </div>
+            </AdminField>
+          </div>
         </div>
       </AdminModal>
 

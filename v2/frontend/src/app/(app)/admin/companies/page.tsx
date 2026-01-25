@@ -6,6 +6,7 @@ import FilterDropdown from '@/components/admin/filter-dropdown';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
 import AdminPager from '@/components/admin/pager';
+import ImageSelector from '@/components/admin/image-selector';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
 
@@ -13,6 +14,7 @@ type Company = {
   id: string;
   name: string;
   cnpj?: string | null;
+  logoUrl?: string | null;
   status?: string | null;
   createdAt?: string | null;
 };
@@ -34,6 +36,7 @@ export default function CompaniesPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [status, setStatus] = useState('ACTIVE');
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -126,6 +129,7 @@ export default function CompaniesPage() {
     setEditing(null);
     setName('');
     setCnpj('');
+    setLogoUrl('');
     setStatus('ACTIVE');
     setFormError(null);
     setModalOpen(true);
@@ -135,6 +139,7 @@ export default function CompaniesPage() {
     setEditing(company);
     setName(company.name);
     setCnpj(company.cnpj || '');
+    setLogoUrl(company.logoUrl || '');
     setStatus(company.status || 'ACTIVE');
     setFormError(null);
     setModalOpen(true);
@@ -148,12 +153,14 @@ export default function CompaniesPage() {
         await api.patch(`/companies/${editing.id}`, {
           name,
           cnpj: cnpj || undefined,
+          logoUrl: logoUrl || undefined,
           status,
         });
       } else {
         await api.post('/companies', {
           name,
           cnpj: cnpj || undefined,
+          logoUrl: logoUrl || undefined,
           status,
         });
       }
@@ -457,6 +464,18 @@ export default function CompaniesPage() {
                 value={cnpj}
                 onChange={(event) => setCnpj(event.target.value)}
               />
+            </AdminField>
+          </div>
+          <div className="md:col-span-3">
+            <AdminField label="Logo" htmlFor="company-logo" hint="Opcional">
+              <div id="company-logo">
+                <ImageSelector
+                  value={logoUrl}
+                  onChange={(url) => setLogoUrl(url)}
+                  companyId={editing?.id || ''}
+                  disabled={formLoading}
+                />
+              </div>
             </AdminField>
           </div>
         </div>

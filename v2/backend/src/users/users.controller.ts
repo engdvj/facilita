@@ -33,6 +33,7 @@ export class UsersController {
   async findAll(
     @Query('companyId') companyId?: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('search') search?: string,
@@ -44,6 +45,7 @@ export class UsersController {
     const { items, total } = await this.usersService.findAll({
       companyId,
       sectorId,
+      unitId,
       search,
       ...(pagination.shouldPaginate
         ? { skip: pagination.skip, take: pagination.take }
@@ -59,6 +61,7 @@ export class UsersController {
   async findAccessItems(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Query('sectorId') sectorId?: string,
+    @Query('unitId') unitId?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Res({ passthrough: true }) res?: Response,
@@ -68,6 +71,7 @@ export class UsersController {
     });
     const { items, total } = await this.usersService.getAccessItems(id, {
       sectorId,
+      unitId,
       page: pagination.page,
       pageSize: pagination.pageSize,
       shouldPaginate: pagination.shouldPaginate,
