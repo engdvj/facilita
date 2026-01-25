@@ -188,6 +188,108 @@ export class UploadedSchedulesService {
     return schedules;
   }
 
+  async findAllPaginated(
+    companyId?: string,
+    filters?: {
+      sectorId?: string;
+      unitId?: string;
+      unitIds?: string[];
+      categoryId?: string;
+      search?: string;
+      isPublic?: boolean;
+      audience?: ContentAudience;
+      includeInactive?: boolean;
+    },
+    viewer?: ScheduleViewer,
+    pagination?: { skip?: number; take?: number },
+  ) {
+    const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+    const search = filters?.search?.trim();
+    const filterUnitIds =
+      filters?.unitId !== undefined
+        ? this.normalizeUnitIds(undefined, filters.unitId)
+        : filters?.unitIds;
+    const unitFilter =
+      filterUnitIds !== undefined
+        ? filterUnitIds.length > 0
+          ? {
+              OR: [
+                { unitId: null, scheduleUnits: { none: {} } },
+                { unitId: { in: filterUnitIds } },
+                { scheduleUnits: { some: { unitId: { in: filterUnitIds } } } },
+              ],
+            }
+          : { OR: [{ unitId: null, scheduleUnits: { none: {} } }] }
+        : undefined;
+
+    const andFilters = [];
+    if (unitFilter) {
+      andFilters.push(unitFilter);
+    }
+    if (shouldFilterPublic) {
+      andFilters.push({
+        OR: [
+          { audience: ContentAudience.PUBLIC },
+          { isPublic: true },
+        ],
+      });
+    }
+    const privateFilter = this.buildPrivateAccessFilter(viewer);
+    if (privateFilter) {
+      andFilters.push(privateFilter);
+    }
+    if (search) {
+      andFilters.push({
+        OR: [
+          { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+        ],
+      });
+    }
+
+    const where = {
+      deletedAt: null,
+      ...(filters?.includeInactive ? {} : { status: EntityStatus.ACTIVE }),
+      ...(companyId ? { companyId } : {}),
+      ...(filters?.sectorId && { sectorId: filters.sectorId }),
+      ...(filters?.categoryId && { categoryId: filters.categoryId }),
+      ...(!shouldFilterPublic &&
+        filters?.audience && { audience: filters.audience }),
+      ...(filters?.isPublic !== undefined &&
+        !shouldFilterPublic && { isPublic: filters.isPublic }),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.uploadedSchedule.findMany({
+        where,
+        include: {
+          category: true,
+          sector: true,
+          scheduleUnits: {
+            include: {
+              unit: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
+        ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
+      }),
+      this.prisma.uploadedSchedule.count({ where }),
+    ]);
+
+    return { items, total };
+  }
+
   async findOne(id: string, viewer?: ScheduleViewer) {
     const schedule = await this.prisma.uploadedSchedule.findUnique({
       where: { id },

@@ -2,7 +2,7 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 REM -----------------------------------------------------------------------------
-REM Facilita V2 - .env setup only (no Docker/Compose)
+REM Facilita V2 - .env setup only
 REM -----------------------------------------------------------------------------
 
 cd /d "%~dp0"
@@ -41,7 +41,7 @@ if exist ".gitignore" (
   if errorlevel 1 echo .env>>".gitignore"
 )
 
-REM Keep POSTGRES_USER=postgres because compose healthcheck uses -U postgres.
+REM Keep POSTGRES_USER=postgres for compatibility with healthchecks.
 call :ensure_kv POSTGRES_USER postgres
 call :ensure_kv POSTGRES_DB facilita_v2
 

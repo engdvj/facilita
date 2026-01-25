@@ -30,8 +30,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         if (!user) {
             throw new common_1.UnauthorizedException();
         }
-        const { passwordHash, ...rest } = user;
-        return rest;
+        return user;
     }
 };
 exports.JwtStrategy = JwtStrategy;

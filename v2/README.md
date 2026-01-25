@@ -35,7 +35,6 @@ Sistema moderno de portal de links, agendas e documentos com arquitetura multi-e
 - Axios (API client com interceptors)
 
 **Infraestrutura:**
-- Docker Compose
 - PostgreSQL
 - Redis (cache)
 - Nginx (reverse proxy)
@@ -43,7 +42,6 @@ Sistema moderno de portal de links, agendas e documentos com arquitetura multi-e
 ## 🚀 Início Rápido
 
 ### Pré-requisitos
-- Docker e Docker Compose
 - Node.js 20+ (para desenvolvimento local)
 
 ### 1. Clone e Configure
@@ -59,23 +57,13 @@ cp .env.example .env
 nano .env
 \`\`\`
 
-### 2. Inicie com Docker
-
-\`\`\`bash
-# Construa e inicie todos os serviços
-docker-compose up -d --build
-
-# Acompanhe os logs
-docker-compose logs -f
-\`\`\`
-
-### 3. Acesse a Aplicação
+### 2. Acesse a Aplicação
 
 - **Frontend**: http://localhost (via Nginx) ou http://localhost:3000 (direto)
 - **Backend API**: http://localhost:3001/api
 - **Swagger Docs**: http://localhost:3001/api/docs (em breve)
 
-### 4. Login Inicial
+### 3. Login Inicial
 
 Use as credenciais do SUPERADMIN definidas no \`.env\`:
 - **Email**: superadmin@facilita.local (padrão)
@@ -102,7 +90,6 @@ v2/
 │   ├── prisma/
 │   │   ├── schema.prisma   # Schema do banco
 │   │   └── seed.ts         # Seed inicial
-│   └── Dockerfile
 ├── frontend/
 │   ├── src/
 │   │   ├── app/
@@ -112,10 +99,8 @@ v2/
 │   │   ├── lib/            # Utilitários (API client)
 │   │   ├── stores/         # Zustand stores
 │   │   └── types/          # Tipos TypeScript
-│   └── Dockerfile
 ├── nginx/
 │   └── nginx.conf          # Configuração do Nginx
-└── docker-compose.yml      # Orquestração completa
 \`\`\`
 
 ## 🔧 Desenvolvimento Local
@@ -172,25 +157,6 @@ npm run build
 
 # Iniciar produção
 npm run start:prod
-\`\`\`
-
-### Docker
-
-\`\`\`bash
-# Iniciar todos os serviços
-docker-compose up -d
-
-# Parar todos os serviços
-docker-compose down
-
-# Ver logs
-docker-compose logs -f [service]
-
-# Reconstruir e iniciar
-docker-compose up -d --build
-
-# Limpar volumes (ATENÇÃO: apaga dados!)
-docker-compose down -v
 \`\`\`
 
 ## 🎨 Hierarquia de Entidades
@@ -269,33 +235,6 @@ Company (Empresa)
 - RefreshToken
 
 ## 🐛 Troubleshooting
-
-### Erro de conexão com o banco
-
-\`\`\`bash
-# Verifique se o PostgreSQL está rodando
-docker-compose ps
-
-# Verifique os logs
-docker-compose logs postgres
-
-# Reinicie o serviço
-docker-compose restart postgres
-\`\`\`
-
-### Erro de migrations
-
-\`\`\`bash
-# Entre no container do backend
-docker-compose exec backend sh
-
-# Execute as migrations manualmente
-npx prisma migrate deploy
-
-# Ou recrie o banco (ATENÇÃO: apaga dados!)
-docker-compose down -v
-docker-compose up -d
-\`\`\`
 
 ### Frontend não conecta ao backend
 

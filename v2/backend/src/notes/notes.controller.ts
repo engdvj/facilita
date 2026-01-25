@@ -9,8 +9,10 @@ import {
   Post,
   Query,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
@@ -20,6 +22,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { ContentAudience, UserRole } from '@prisma/client';
 import { PermissionsService } from '../permissions/permissions.service';
+import { parsePagination } from '../common/utils/pagination';
 
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
@@ -164,6 +167,10 @@ export class NotesController {
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Res({ passthrough: true }) res?: Response,
   ) {
     const normalizedCompanyId = companyId?.trim() || undefined;
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
@@ -185,10 +192,21 @@ export class NotesController {
     };
 
     const { id, canViewPrivate } = await this.getAccessContext(req.user);
-    return this.notesService.findAll(resolvedCompanyId, filters, {
-      id,
-      canViewPrivate,
+    const pagination = parsePagination(page, pageSize, {
+      defaultPageSize: 12,
     });
+    const { items, total } = await this.notesService.findAllPaginated(
+      resolvedCompanyId,
+      { ...filters, search },
+      { id, canViewPrivate },
+      pagination.shouldPaginate
+        ? { skip: pagination.skip, take: pagination.take }
+        : undefined,
+    );
+    if (pagination.shouldPaginate && res) {
+      res.setHeader('X-Total-Count', total.toString());
+    }
+    return items;
   }
 
   @Get('admin')
@@ -202,6 +220,10 @@ export class NotesController {
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Res({ passthrough: true }) res?: Response,
   ) {
     return this.findAllAdmin(
       req,
@@ -211,6 +233,10 @@ export class NotesController {
       categoryId,
       isPublic,
       audience,
+      search,
+      page,
+      pageSize,
+      res,
     );
   }
 

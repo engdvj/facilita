@@ -11,23 +11,52 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SectorsService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 let SectorsService = class SectorsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll() {
-        return this.prisma.sector.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: {
-                company: true,
-                sectorUnits: {
-                    include: {
-                        unit: true,
+    async findAll(options) {
+        const search = options?.search?.trim();
+        const where = {
+            ...(options?.companyId ? { companyId: options.companyId } : {}),
+            ...(options?.unitId
+                ? {
+                    sectorUnits: {
+                        some: { unitId: options.unitId },
+                    },
+                }
+                : {}),
+            ...(search
+                ? {
+                    OR: [
+                        { name: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                        {
+                            description: { contains: search, mode: client_1.Prisma.QueryMode.insensitive },
+                        },
+                    ],
+                }
+                : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.sector.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    company: true,
+                    sectorUnits: {
+                        include: {
+                            unit: true,
+                        },
                     },
                 },
-            },
-        });
+                ...(options?.skip !== undefined ? { skip: options.skip } : {}),
+                ...(options?.take !== undefined ? { take: options.take } : {}),
+            }),
+            this.prisma.sector.count({ where }),
+        ]);
+        return { items, total };
     }
     async findById(id) {
         const sector = await this.prisma.sector.findUnique({

@@ -21,12 +21,27 @@ const roles_guard_1 = require("../common/guards/roles.guard");
 const sectors_service_1 = require("./sectors.service");
 const create_sector_dto_1 = require("./dto/create-sector.dto");
 const update_sector_dto_1 = require("./dto/update-sector.dto");
+const pagination_1 = require("../common/utils/pagination");
 let SectorsController = class SectorsController {
     constructor(sectorsService) {
         this.sectorsService = sectorsService;
     }
-    findAll() {
-        return this.sectorsService.findAll();
+    async findAll(companyId, unitId, page, pageSize, search, res) {
+        const pagination = (0, pagination_1.parsePagination)(page, pageSize, {
+            defaultPageSize: 12,
+        });
+        const { items, total } = await this.sectorsService.findAll({
+            companyId,
+            unitId,
+            search,
+            ...(pagination.shouldPaginate
+                ? { skip: pagination.skip, take: pagination.take }
+                : {}),
+        });
+        if (pagination.shouldPaginate && res) {
+            res.setHeader('X-Total-Count', total.toString());
+        }
+        return items;
     }
     findOne(id) {
         return this.sectorsService.findById(id);
@@ -47,9 +62,15 @@ let SectorsController = class SectorsController {
 exports.SectorsController = SectorsController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('companyId')),
+    __param(1, (0, common_1.Query)('unitId')),
+    __param(2, (0, common_1.Query)('page')),
+    __param(3, (0, common_1.Query)('pageSize')),
+    __param(4, (0, common_1.Query)('search')),
+    __param(5, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, String, String, String, String, Object]),
+    __metadata("design:returntype", Promise)
 ], SectorsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),

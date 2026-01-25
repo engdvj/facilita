@@ -207,6 +207,124 @@ export class LinksService {
     return links;
   }
 
+  async findAllPaginated(
+    companyId?: string,
+    filters?: {
+      sectorId?: string;
+      sectorIds?: string[];
+      unitId?: string;
+      unitIds?: string[];
+      categoryId?: string;
+      search?: string;
+      isPublic?: boolean;
+      audience?: ContentAudience;
+      includeInactive?: boolean;
+    },
+    viewer?: LinkViewer,
+    pagination?: { skip?: number; take?: number },
+  ) {
+    const shouldFilterPublic = filters?.audience === ContentAudience.PUBLIC;
+    const search = filters?.search?.trim();
+
+    const sectorFilter = filters?.sectorIds
+      ? { sectorId: { in: filters.sectorIds } }
+      : filters?.sectorId
+      ? { sectorId: filters.sectorId }
+      : {};
+
+    const filterUnitIds =
+      filters?.unitId !== undefined
+        ? this.normalizeUnitIds(undefined, filters.unitId)
+        : filters?.unitIds;
+    const unitFilter =
+      filterUnitIds !== undefined
+        ? filterUnitIds.length > 0
+          ? {
+              OR: [
+                { unitId: null, linkUnits: { none: {} } },
+                { unitId: { in: filterUnitIds } },
+                { linkUnits: { some: { unitId: { in: filterUnitIds } } } },
+              ],
+            }
+          : { OR: [{ unitId: null, linkUnits: { none: {} } }] }
+        : undefined;
+
+    const andFilters = [];
+    if (unitFilter) {
+      andFilters.push(unitFilter);
+    }
+    if (shouldFilterPublic) {
+      andFilters.push({
+        OR: [
+          { audience: ContentAudience.PUBLIC },
+          { isPublic: true },
+        ],
+      });
+    }
+    const privateFilter = this.buildPrivateAccessFilter(viewer);
+    if (privateFilter) {
+      andFilters.push(privateFilter);
+    }
+    if (search) {
+      andFilters.push({
+        OR: [
+          { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+          { url: { contains: search, mode: Prisma.QueryMode.insensitive } },
+          {
+            description: {
+              contains: search,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+        ],
+      });
+    }
+
+    const where = {
+      deletedAt: null,
+      ...(filters?.includeInactive ? {} : { status: EntityStatus.ACTIVE }),
+      ...(companyId ? { companyId } : {}),
+      ...sectorFilter,
+      ...(filters?.categoryId && { categoryId: filters.categoryId }),
+      ...(!shouldFilterPublic &&
+        filters?.audience && { audience: filters.audience }),
+      ...(filters?.isPublic !== undefined &&
+        !shouldFilterPublic && { isPublic: filters.isPublic }),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.link.findMany({
+        where,
+        include: {
+          category: true,
+          sector: true,
+          linkUnits: {
+            include: {
+              unit: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: [
+          { order: 'asc' },
+          { createdAt: 'desc' },
+        ],
+        ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
+        ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
+      }),
+      this.prisma.link.count({ where }),
+    ]);
+
+    return { items, total };
+  }
+
   // Método helper para buscar links de todos os setores de um usuário
   async findAllByUser(userId: string, companyId?: string) {
     // Busca todos os setores do usuário

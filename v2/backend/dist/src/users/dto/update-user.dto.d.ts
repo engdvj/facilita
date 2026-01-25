@@ -1,6 +1,7 @@
 import { UserRole, UserStatus, SectorRole } from '@prisma/client';
 export declare class UpdateUserSectorDto {
     sectorId: string;
+    unitIds?: string[];
     isPrimary?: boolean;
     role?: SectorRole;
 }

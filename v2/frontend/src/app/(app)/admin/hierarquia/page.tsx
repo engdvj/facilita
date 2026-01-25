@@ -1,25 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
 import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
 import { useAuthStore } from '@/stores/auth-store';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
-import { getUserUnitsBySector } from '@/lib/user-scope';
-
-type ContentAudience =
-  | 'PUBLIC'
-  | 'COMPANY'
-  | 'SECTOR'
-  | 'PRIVATE'
-  | 'ADMIN'
-  | 'SUPERADMIN';
 
 type Company = {
   id: string;
   name: string;
   cnpj?: string | null;
+  logoUrl?: string | null;
   status?: string | null;
 };
 
@@ -50,75 +42,7 @@ type User = {
   role: string;
   status: string;
   companyId?: string | null;
-  userSectors?: {
-    sectorId: string;
-    isPrimary?: boolean | null;
-    role?: string | null;
-    userSectorUnits?: {
-      unitId: string;
-    }[] | null;
-    sector?: {
-      id: string;
-      name: string;
-      companyId?: string | null;
-      sectorUnits?: {
-        unitId: string;
-        isPrimary?: boolean | null;
-        unit?: { id: string; name: string } | null;
-      }[] | null;
-    } | null;
-  }[] | null;
-};
-
-type LinkItem = {
-  id: string;
-  title: string;
-  companyId?: string | null;
-  sectorId?: string | null;
-  unitId?: string | null;
-  linkUnits?: { unitId: string }[] | null;
-  userId?: string | null;
-  isPublic?: boolean | null;
-  audience?: ContentAudience | null;
-  imageUrl?: string | null;
-  imagePosition?: string | null;
-  imageScale?: number | null;
-  status?: string | null;
-  createdAt?: string | null;
-};
-
-type ScheduleItem = {
-  id: string;
-  title: string;
-  companyId?: string | null;
-  sectorId?: string | null;
-  unitId?: string | null;
-  scheduleUnits?: { unitId: string }[] | null;
-  userId?: string | null;
-  isPublic?: boolean | null;
-  audience?: ContentAudience | null;
-  imageUrl?: string | null;
-  imagePosition?: string | null;
-  imageScale?: number | null;
-  status?: string | null;
-  createdAt?: string | null;
-};
-
-type NoteItem = {
-  id: string;
-  title: string;
-  companyId?: string | null;
-  sectorId?: string | null;
-  unitId?: string | null;
-  noteUnits?: { unitId: string }[] | null;
-  userId?: string | null;
-  isPublic?: boolean | null;
-  audience?: ContentAudience | null;
-  imageUrl?: string | null;
-  imagePosition?: string | null;
-  imageScale?: number | null;
-  status?: string | null;
-  createdAt?: string | null;
+  avatarUrl?: string | null;
 };
 
 type UserItem = {
@@ -132,45 +56,53 @@ type UserItem = {
   createdAt?: string | null;
 };
 
+type HeaderValue = string | string[] | number | boolean | null | undefined;
+type ResponseHeaders =
+  | Record<string, HeaderValue>
+  | { get?: (name: string) => HeaderValue };
+
 const pageSize = 6;
+
+const resolveTotalCount = (response: {
+  headers?: ResponseHeaders;
+  data?: unknown;
+}) => {
+  const headerSource = response.headers;
+  const rawHeader =
+    headerSource &&
+    typeof (headerSource as { get?: (name: string) => HeaderValue }).get ===
+      'function'
+      ? (headerSource as { get: (name: string) => HeaderValue }).get(
+          'x-total-count',
+        )
+      : (headerSource as Record<string, HeaderValue> | undefined)?.[
+          'x-total-count'
+        ];
+  const raw = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  const parsed =
+    typeof raw === 'number'
+      ? raw
+      : typeof raw === 'string'
+        ? Number.parseInt(raw, 10)
+        : Number.NaN;
+  if (!Number.isNaN(parsed)) {
+    return parsed;
+  }
+  return Array.isArray(response.data) ? response.data.length : 0;
+};
+
+const buildQuery = (params: Record<string, string | number | undefined>) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === '') return;
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+};
 
 const getPrimarySectorUnit = (sector?: Sector | null) =>
   sector?.sectorUnits?.find((unit) => unit.isPrimary) || sector?.sectorUnits?.[0];
-
-const sectorMatchesUnit = (sector: Sector, selectedUnitId: string) =>
-  Boolean(sector.sectorUnits?.some((unit) => unit.unitId === selectedUnitId));
-
-const getLinkUnitIds = (link: LinkItem) =>
-  link.linkUnits?.length
-    ? link.linkUnits.map((unit) => unit.unitId)
-    : link.unitId
-      ? [link.unitId]
-      : [];
-
-const getScheduleUnitIds = (schedule: ScheduleItem) =>
-  schedule.scheduleUnits?.length
-    ? schedule.scheduleUnits.map((unit) => unit.unitId)
-    : schedule.unitId
-      ? [schedule.unitId]
-      : [];
-
-const getNoteUnitIds = (note: NoteItem) =>
-  note.noteUnits?.length
-    ? note.noteUnits.map((unit) => unit.unitId)
-    : note.unitId
-      ? [note.unitId]
-      : [];
-
-const userMatchesSector = (user: User, selectedSectorId: string) =>
-  Boolean(
-    user.userSectors?.some((userSector) => userSector.sectorId === selectedSectorId),
-  );
-
-const matchesSelectedSector = (sectorId?: string | null, selectedSectorId?: string) =>
-  !selectedSectorId || sectorId === selectedSectorId;
-
-const parseTimestamp = (value?: string | null) =>
-  value ? Date.parse(value) : 0;
 
 const normalizeImagePosition = (position?: string | null) => {
   if (!position) return '50% 50%';
@@ -185,78 +117,100 @@ const resolveImageUrl = (imageUrl?: string | null) => {
   return imageUrl.startsWith('http') ? imageUrl : `${serverURL}${imageUrl}`;
 };
 
-const getLinkAudience = (link: LinkItem): ContentAudience => {
-  if (link.isPublic) return 'PUBLIC';
-  if (link.audience) return link.audience;
-  if (link.sectorId) return 'SECTOR';
-  return 'COMPANY';
+const cardGradients = [
+  'from-[#f4b26b]/70 via-[#fdf7ef]/70 to-[#9bb3aa]/70',
+  'from-[#102c32]/35 via-[#fdf7ef]/70 to-[#f4b26b]/60',
+  'from-[#9bb3aa]/55 via-[#fdf7ef]/70 to-[#102c32]/35',
+  'from-[#f4b26b]/55 via-[#fdf7ef]/70 to-[#102c32]/30',
+];
+
+const hashString = (value: string) =>
+  value.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+
+const getCardGradient = (seed: string) =>
+  cardGradients[Math.abs(hashString(seed)) % cardGradients.length];
+
+const getInitial = (value: string) =>
+  value.trim().charAt(0).toUpperCase() || '?';
+
+type VisualCardProps = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  typeLabel: string;
+  status?: string | null;
+  imageUrl?: string | null;
+  selected?: boolean;
+  onClick: () => void;
 };
 
-const getScheduleAudience = (schedule: ScheduleItem): ContentAudience => {
-  if (schedule.isPublic) return 'PUBLIC';
-  if (schedule.audience) return schedule.audience;
-  if (schedule.sectorId) return 'SECTOR';
-  return 'COMPANY';
-};
+function VisualCard({
+  id,
+  title,
+  subtitle,
+  typeLabel,
+  status,
+  imageUrl,
+  selected,
+  onClick,
+}: VisualCardProps) {
+  const resolvedImageUrl = resolveImageUrl(imageUrl);
+  const gradient = getCardGradient(id);
+  const initial = getInitial(title);
 
-const getNoteAudience = (note: NoteItem): ContentAudience => {
-  if (note.isPublic) return 'PUBLIC';
-  if (note.audience) return note.audience;
-  if (note.sectorId) return 'SECTOR';
-  return 'COMPANY';
-};
-
-const canUserAccessItem = (
-  subject: User,
-  audience: ContentAudience,
-  item: {
-    companyId?: string | null;
-    sectorId?: string | null;
-    userId?: string | null;
-    unitIds?: string[];
-  },
-  sectorIds: Set<string>,
-  unitsBySector: Map<string, Set<string>>,
-) => {
-  if (audience === 'PUBLIC') return true;
-  if (subject.role === 'SUPERADMIN') return true;
-  if (audience === 'SUPERADMIN') return false;
-
-  const hasCompanyMatch =
-    Boolean(subject.companyId && item.companyId && subject.companyId === item.companyId);
-
-  if (item.companyId && subject.companyId && !hasCompanyMatch) {
-    return false;
-  }
-
-  if (audience === 'ADMIN') {
-    return subject.role === 'ADMIN';
-  }
-
-  if (audience === 'PRIVATE') {
-    return item.userId === subject.id;
-  }
-
-  if (audience === 'SECTOR') {
-    if (subject.role === 'ADMIN') return true;
-    if (!item.sectorId || !sectorIds.has(item.sectorId)) {
-      return false;
-    }
-    if (item.unitIds && item.unitIds.length > 0) {
-      const allowedUnits = unitsBySector.get(item.sectorId);
-      if (allowedUnits && allowedUnits.size > 0) {
-        return item.unitIds.some((unitId) => allowedUnits.has(unitId));
-      }
-    }
-    return true;
-  }
-
-  if (audience === 'COMPANY') {
-    return hasCompanyMatch;
-  }
-
-  return false;
-};
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`motion-item group flex w-full flex-col gap-3 rounded-xl border bg-card/95 p-3 text-left shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 ${
+        selected
+          ? 'border-foreground/50 shadow-[0_18px_36px_rgba(16,44,50,0.18)] ring-2 ring-primary/20'
+          : 'border-border/70 hover:-translate-y-0.5 hover:border-foreground/30'
+      }`}
+    >
+      <div className="relative h-28 w-full overflow-hidden rounded-lg bg-secondary/60">
+        {resolvedImageUrl ? (
+          <img
+            src={resolvedImageUrl}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-500 contrast-110 saturate-110 group-hover:scale-105 group-hover:contrast-125 group-hover:saturate-125"
+          />
+        ) : (
+          <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+        )}
+        {!resolvedImageUrl && (
+          <span className="pointer-events-none absolute -right-3 -top-4 text-6xl font-display text-white/25">
+            {initial}
+          </span>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
+        <div
+          className="absolute left-3 top-3 z-10 max-w-[calc(100%-120px)] truncate rounded-[12px] border border-black/5 bg-white/95 px-2 py-1 text-[11px] font-semibold text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+          title={title}
+        >
+          {title}
+        </div>
+        {status && (
+          <div className="absolute right-3 top-3 z-10">
+            <StatusBadge status={status} />
+          </div>
+        )}
+        {subtitle && (
+          <div className="absolute bottom-3 left-3 z-10 max-w-[calc(100%-120px)] truncate rounded-[10px] border border-black/5 bg-white/90 px-2 py-1 text-[10px] text-[#111] shadow-[0_2px_5px_rgba(0,0,0,0.06)]">
+            {subtitle}
+          </div>
+        )}
+        <div className="absolute bottom-3 right-3 z-10 rounded-[10px] border border-black/5 bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#111] shadow-[0_2px_5px_rgba(0,0,0,0.06)]">
+          {typeLabel}
+        </div>
+        <div className="pointer-events-none absolute inset-0 ring-1 ring-white/25" />
+      </div>
+    </button>
+  );
+}
 
 export default function HierarquiaPage() {
   const user = useAuthStore((state) => state.user);
@@ -267,10 +221,17 @@ export default function HierarquiaPage() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [links, setLinks] = useState<LinkItem[]>([]);
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<UserItem[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
+  const [unitsLoading, setUnitsLoading] = useState(false);
+  const [sectorsLoading, setSectorsLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [companyTotalCount, setCompanyTotalCount] = useState(0);
+  const [unitTotalCount, setUnitTotalCount] = useState(0);
+  const [sectorTotalCount, setSectorTotalCount] = useState(0);
+  const [userTotalCount, setUserTotalCount] = useState(0);
+  const [itemTotalCount, setItemTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [selectedUnitId, setSelectedUnitId] = useState('');
@@ -281,52 +242,33 @@ export default function HierarquiaPage() {
   const [sectorPage, setSectorPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
   const [itemPage, setItemPage] = useState(1);
+  const [sectorSearch, setSectorSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   useNotifyOnChange(error);
-
-  const loadHierarchy = async () => {
-    const [
-      companiesResponse,
-      unitsResponse,
-      sectorsResponse,
-      usersResponse,
-      linksResponse,
-      schedulesResponse,
-      notesResponse,
-    ] = await Promise.all([
-      api.get('/companies'),
-      api.get('/units'),
-      api.get('/sectors'),
-      api.get('/users'),
-      api.get('/links/admin/list'),
-      api.get('/schedules/admin/list'),
-      api.get('/notes/admin/list'),
-    ]);
-    setCompanies(companiesResponse.data);
-    setUnits(unitsResponse.data);
-    setSectors(sectorsResponse.data);
-    setUsers(usersResponse.data);
-    setLinks(linksResponse.data);
-    setSchedules(schedulesResponse.data);
-    setNotes(notesResponse.data);
-  };
+  const canLoad = hasHydrated && Boolean(accessToken) && isSuperAdmin;
 
   useEffect(() => {
     let active = true;
 
-    const load = async () => {
+    const loadCompanies = async () => {
       if (!accessToken) {
-        setLoading(false);
+        setCompaniesLoading(false);
         setError('Faca login para acessar a hierarquia.');
         return;
       }
       if (!isSuperAdmin) {
-        setLoading(false);
+        setCompaniesLoading(false);
         return;
       }
       try {
-        await loadHierarchy();
+        setCompaniesLoading(true);
+        const response = await api.get(
+          `/companies${buildQuery({ page: companyPage, pageSize })}`,
+        );
         if (!active) return;
+        setCompanies(response.data);
+        setCompanyTotalCount(resolveTotalCount(response));
         setError(null);
       } catch (err: any) {
         if (active) {
@@ -339,170 +281,237 @@ export default function HierarquiaPage() {
         }
       } finally {
         if (active) {
-          setLoading(false);
+          setCompaniesLoading(false);
         }
       }
     };
 
     if (hasHydrated) {
-      load();
+      loadCompanies();
     }
     return () => {
       active = false;
     };
-  }, [accessToken, hasHydrated, isSuperAdmin]);
+  }, [accessToken, companyPage, hasHydrated, isSuperAdmin]);
 
-  const selectedCompany = useMemo(
-    () => companies.find((company) => company.id === selectedCompanyId) || null,
-    [companies, selectedCompanyId],
-  );
-  const selectedUnit = useMemo(
-    () => units.find((unit) => unit.id === selectedUnitId) || null,
-    [selectedUnitId, units],
-  );
-  const selectedSector = useMemo(
-    () => sectors.find((sector) => sector.id === selectedSectorId) || null,
-    [selectedSectorId, sectors],
-  );
-  const selectedUser = useMemo(
-    () => users.find((item) => item.id === selectedUserId) || null,
-    [selectedUserId, users],
-  );
+  useEffect(() => {
+    let active = true;
 
-  const filteredUnits = useMemo(() => {
-    if (!selectedCompanyId) return [];
-    return units.filter((unit) => unit.companyId === selectedCompanyId);
-  }, [selectedCompanyId, units]);
+    if (!canLoad) return () => {
+      active = false;
+    };
 
-  const filteredSectors = useMemo(() => {
-    if (!selectedUnitId) return [];
-    return sectors.filter((sector) => sectorMatchesUnit(sector, selectedUnitId));
-  }, [selectedUnitId, sectors]);
+    if (!selectedCompanyId) {
+      setUnits([]);
+      setUnitTotalCount(0);
+      setUnitsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
 
-  const filteredUsers = useMemo(() => {
-    if (!selectedSectorId) return [];
-    return users.filter((item) => userMatchesSector(item, selectedSectorId));
-  }, [selectedSectorId, users]);
+    const loadUnits = async () => {
+      try {
+        setUnitsLoading(true);
+        const response = await api.get(
+          `/units${buildQuery({
+            companyId: selectedCompanyId,
+            page: unitPage,
+            pageSize,
+          })}`,
+        );
+        if (!active) return;
+        setUnits(response.data);
+        setUnitTotalCount(resolveTotalCount(response));
+        setError(null);
+      } catch (err: any) {
+        if (active) {
+          const statusCode = err?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            setError('Sessao expirada. Faca login novamente.');
+          } else {
+            setError('Nao foi possivel carregar as unidades.');
+          }
+        }
+      } finally {
+        if (active) {
+          setUnitsLoading(false);
+        }
+      }
+    };
 
-  const filteredItems = useMemo<UserItem[]>(() => {
-    if (!selectedUser) return [];
-    const sectorIds = new Set(
-      selectedUser.userSectors?.map((userSector) => userSector.sectorId) ?? [],
-    );
-    const unitsBySector = getUserUnitsBySector(selectedUser);
+    loadUnits();
+    return () => {
+      active = false;
+    };
+  }, [canLoad, selectedCompanyId, unitPage]);
 
-    const userLinks = links
-      .filter((link) =>
-        matchesSelectedSector(link.sectorId, selectedSectorId) &&
-        canUserAccessItem(
-          selectedUser,
-          getLinkAudience(link),
-          {
-            companyId: link.companyId,
-            sectorId: link.sectorId,
-            userId: link.userId,
-            unitIds: getLinkUnitIds(link),
-          },
-          sectorIds,
-          unitsBySector,
-        ),
-      )
-      .map((link) => ({
-        id: link.id,
-        title: link.title,
-        type: 'link' as const,
-        imageUrl: link.imageUrl,
-        imagePosition: link.imagePosition,
-        imageScale: link.imageScale,
-        status: link.status,
-        createdAt: link.createdAt,
-      }));
-    const userSchedules = schedules
-      .filter((schedule) =>
-        matchesSelectedSector(schedule.sectorId, selectedSectorId) &&
-        canUserAccessItem(
-          selectedUser,
-          getScheduleAudience(schedule),
-          {
-            companyId: schedule.companyId,
-            sectorId: schedule.sectorId,
-            userId: schedule.userId,
-            unitIds: getScheduleUnitIds(schedule),
-          },
-          sectorIds,
-          unitsBySector,
-        ),
-      )
-      .map((schedule) => ({
-        id: schedule.id,
-        title: schedule.title,
-        type: 'document' as const,
-        imageUrl: schedule.imageUrl,
-        imagePosition: schedule.imagePosition,
-        imageScale: schedule.imageScale,
-        status: schedule.status,
-        createdAt: schedule.createdAt,
-      }));
-    const userNotes = notes
-      .filter((note) =>
-        matchesSelectedSector(note.sectorId, selectedSectorId) &&
-        canUserAccessItem(
-          selectedUser,
-          getNoteAudience(note),
-          {
-            companyId: note.companyId,
-            sectorId: note.sectorId,
-            userId: note.userId,
-            unitIds: getNoteUnitIds(note),
-          },
-          sectorIds,
-          unitsBySector,
-        ),
-      )
-      .map((note) => ({
-        id: note.id,
-        title: note.title,
-        type: 'note' as const,
-        imageUrl: note.imageUrl,
-        imagePosition: note.imagePosition,
-        imageScale: note.imageScale,
-        status: note.status,
-        createdAt: note.createdAt,
-      }));
-    const items = [...userLinks, ...userSchedules, ...userNotes];
-    return items.sort((a, b) => {
-      const diff = parseTimestamp(b.createdAt) - parseTimestamp(a.createdAt);
-      if (diff !== 0) return diff;
-      return a.title.localeCompare(b.title);
-    });
-  }, [links, notes, schedules, selectedSectorId, selectedUser]);
+  useEffect(() => {
+    let active = true;
 
-  const companyTotalPages = Math.max(1, Math.ceil(companies.length / pageSize));
-  const unitTotalPages = Math.max(1, Math.ceil(filteredUnits.length / pageSize));
-  const sectorTotalPages = Math.max(1, Math.ceil(filteredSectors.length / pageSize));
-  const userTotalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  const itemTotalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+    if (!canLoad) return () => {
+      active = false;
+    };
 
-  const paginatedCompanies = companies.slice(
-    (companyPage - 1) * pageSize,
-    companyPage * pageSize,
+    if (!selectedUnitId) {
+      setSectors([]);
+      setSectorTotalCount(0);
+      setSectorsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadSectors = async () => {
+      try {
+        setSectorsLoading(true);
+        const response = await api.get(
+          `/sectors${buildQuery({
+            unitId: selectedUnitId,
+            page: sectorPage,
+            pageSize,
+            search: sectorSearch,
+          })}`,
+        );
+        if (!active) return;
+        setSectors(response.data);
+        setSectorTotalCount(resolveTotalCount(response));
+        setError(null);
+      } catch (err: any) {
+        if (active) {
+          const statusCode = err?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            setError('Sessao expirada. Faca login novamente.');
+          } else {
+            setError('Nao foi possivel carregar os setores.');
+          }
+        }
+      } finally {
+        if (active) {
+          setSectorsLoading(false);
+        }
+      }
+    };
+
+    loadSectors();
+    return () => {
+      active = false;
+    };
+  }, [canLoad, sectorPage, sectorSearch, selectedUnitId]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canLoad) return () => {
+      active = false;
+    };
+
+    if (!selectedSectorId) {
+      setUsers([]);
+      setUserTotalCount(0);
+      setUsersLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadUsers = async () => {
+      try {
+        setUsersLoading(true);
+        const response = await api.get(
+          `/users${buildQuery({
+            sectorId: selectedSectorId,
+            page: userPage,
+            pageSize,
+            search: userSearch,
+          })}`,
+        );
+        if (!active) return;
+        setUsers(response.data);
+        setUserTotalCount(resolveTotalCount(response));
+        setError(null);
+      } catch (err: any) {
+        if (active) {
+          const statusCode = err?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            setError('Sessao expirada. Faca login novamente.');
+          } else {
+            setError('Nao foi possivel carregar os usuarios.');
+          }
+        }
+      } finally {
+        if (active) {
+          setUsersLoading(false);
+        }
+      }
+    };
+
+    loadUsers();
+    return () => {
+      active = false;
+    };
+  }, [canLoad, selectedSectorId, userPage, userSearch]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canLoad) return () => {
+      active = false;
+    };
+
+    if (!selectedUserId || !selectedSectorId) {
+      setItems([]);
+      setItemTotalCount(0);
+      setItemsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadItems = async () => {
+      try {
+        setItemsLoading(true);
+        const response = await api.get(
+          `/users/${selectedUserId}/access-items${buildQuery({
+            sectorId: selectedSectorId,
+            page: itemPage,
+            pageSize,
+          })}`,
+        );
+        if (!active) return;
+        setItems(response.data);
+        setItemTotalCount(resolveTotalCount(response));
+        setError(null);
+      } catch (err: any) {
+        if (active) {
+          const statusCode = err?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            setError('Sessao expirada. Faca login novamente.');
+          } else {
+            setError('Nao foi possivel carregar os itens.');
+          }
+        }
+      } finally {
+        if (active) {
+          setItemsLoading(false);
+        }
+      }
+    };
+
+    loadItems();
+    return () => {
+      active = false;
+    };
+  }, [canLoad, itemPage, selectedSectorId, selectedUserId]);
+
+  const companyTotalPages = Math.max(
+    1,
+    Math.ceil(companyTotalCount / pageSize),
   );
-  const paginatedUnits = filteredUnits.slice(
-    (unitPage - 1) * pageSize,
-    unitPage * pageSize,
-  );
-  const paginatedSectors = filteredSectors.slice(
-    (sectorPage - 1) * pageSize,
-    sectorPage * pageSize,
-  );
-  const paginatedUsers = filteredUsers.slice(
-    (userPage - 1) * pageSize,
-    userPage * pageSize,
-  );
-  const paginatedItems = filteredItems.slice(
-    (itemPage - 1) * pageSize,
-    itemPage * pageSize,
-  );
+  const unitTotalPages = Math.max(1, Math.ceil(unitTotalCount / pageSize));
+  const sectorTotalPages = Math.max(1, Math.ceil(sectorTotalCount / pageSize));
+  const userTotalPages = Math.max(1, Math.ceil(userTotalCount / pageSize));
+  const itemTotalPages = Math.max(1, Math.ceil(itemTotalCount / pageSize));
 
   useEffect(() => {
     if (companyPage > companyTotalPages) {
@@ -535,35 +544,66 @@ export default function HierarquiaPage() {
   }, [itemPage, itemTotalPages]);
 
   const handleSelectCompany = (companyId: string) => {
-    setSelectedCompanyId((current) => (current === companyId ? '' : companyId));
+    const nextCompanyId = selectedCompanyId === companyId ? '' : companyId;
+    setSelectedCompanyId(nextCompanyId);
     setSelectedUnitId('');
     setSelectedSectorId('');
     setSelectedUserId('');
+    setSectorSearch('');
+    setUserSearch('');
     setUnitPage(1);
     setSectorPage(1);
     setUserPage(1);
     setItemPage(1);
+    setUnits([]);
+    setSectors([]);
+    setUsers([]);
+    setItems([]);
+    setUnitTotalCount(0);
+    setSectorTotalCount(0);
+    setUserTotalCount(0);
+    setItemTotalCount(0);
   };
 
   const handleSelectUnit = (unitId: string) => {
-    setSelectedUnitId((current) => (current === unitId ? '' : unitId));
+    const nextUnitId = selectedUnitId === unitId ? '' : unitId;
+    setSelectedUnitId(nextUnitId);
     setSelectedSectorId('');
     setSelectedUserId('');
+    setSectorSearch('');
+    setUserSearch('');
     setSectorPage(1);
     setUserPage(1);
     setItemPage(1);
+    setSectors([]);
+    setUsers([]);
+    setItems([]);
+    setSectorTotalCount(0);
+    setUserTotalCount(0);
+    setItemTotalCount(0);
   };
 
   const handleSelectSector = (sectorId: string) => {
-    setSelectedSectorId((current) => (current === sectorId ? '' : sectorId));
+    const nextSectorId = selectedSectorId === sectorId ? '' : sectorId;
+    setSelectedSectorId(nextSectorId);
     setSelectedUserId('');
+    setUserSearch('');
     setUserPage(1);
     setItemPage(1);
+    setUsers([]);
+    setItems([]);
+    setUserTotalCount(0);
+    setItemTotalCount(0);
   };
 
   const handleSelectUser = (userId: string) => {
-    setSelectedUserId((current) => (current === userId ? '' : userId));
+    const nextUserId = selectedUserId === userId ? '' : userId;
+    setSelectedUserId(nextUserId);
     setItemPage(1);
+    if (!nextUserId) {
+      setItems([]);
+      setItemTotalCount(0);
+    }
   };
 
   if (hasHydrated && user && user.role !== 'SUPERADMIN') {
@@ -595,37 +635,30 @@ export default function HierarquiaPage() {
               Empresas
             </p>
             <p className="text-xs text-muted-foreground">
-              {loading ? 'Carregando...' : `${companies.length} registros`}
+              {companiesLoading
+                ? 'Carregando...'
+                : `${companyTotalCount} registros`}
             </p>
           </div>
-          <div className="space-y-3 p-4 sm:p-6">
-            {paginatedCompanies.map((company) => {
+          <div className="grid gap-3 p-4 sm:p-6 sm:grid-cols-2">
+            {companies.map((company) => {
               const isSelected = company.id === selectedCompanyId;
               return (
-                <button
+                <VisualCard
                   key={company.id}
-                  type="button"
+                  id={company.id}
+                  title={company.name}
+                  subtitle={company.cnpj || undefined}
+                  status={company.status}
+                  imageUrl={company.logoUrl || undefined}
+                  typeLabel="EMPRESA"
+                  selected={isSelected}
                   onClick={() => handleSelectCompany(company.id)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                    isSelected
-                      ? 'border-foreground/50 bg-card shadow-[0_12px_24px_rgba(16,44,50,0.12)]'
-                      : 'border-border/80 bg-card/90 hover:border-foreground/30 hover:bg-card'
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground line-clamp-2">
-                      {company.name}
-                    </p>
-                    {company.cnpj && (
-                      <p className="text-[11px] text-muted-foreground">{company.cnpj}</p>
-                    )}
-                  </div>
-                  <StatusBadge status={company.status} />
-                </button>
+                />
               );
             })}
-            {!loading && paginatedCompanies.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+            {!companiesLoading && companies.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Nenhuma empresa encontrada.
               </div>
             )}
@@ -643,45 +676,37 @@ export default function HierarquiaPage() {
               Unidades
             </p>
             <p className="text-xs text-muted-foreground">
-              {selectedCompany
-                ? `${filteredUnits.length} registros`
+              {selectedCompanyId
+                ? unitsLoading
+                  ? 'Carregando...'
+                  : `${unitTotalCount} registros`
                 : 'Selecione uma empresa'}
             </p>
           </div>
-          <div className="space-y-3 p-4 sm:p-6">
-            {!selectedCompanyId && !loading && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+          <div className="grid gap-3 p-4 sm:p-6 sm:grid-cols-2">
+            {!selectedCompanyId && !companiesLoading && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Selecione uma empresa para listar unidades.
               </div>
             )}
             {selectedCompanyId &&
-              paginatedUnits.map((unit) => {
+              units.map((unit) => {
                 const isSelected = unit.id === selectedUnitId;
                 return (
-                  <button
+                  <VisualCard
                     key={unit.id}
-                    type="button"
+                    id={unit.id}
+                    title={unit.name}
+                    subtitle={unit.cnpj || undefined}
+                    status={unit.status}
+                    typeLabel="UNIDADE"
+                    selected={isSelected}
                     onClick={() => handleSelectUnit(unit.id)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                      isSelected
-                        ? 'border-foreground/50 bg-card shadow-[0_12px_24px_rgba(16,44,50,0.12)]'
-                        : 'border-border/80 bg-card/90 hover:border-foreground/30 hover:bg-card'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground line-clamp-2">
-                        {unit.name}
-                      </p>
-                      {unit.cnpj && (
-                        <p className="text-[11px] text-muted-foreground">{unit.cnpj}</p>
-                      )}
-                    </div>
-                    <StatusBadge status={unit.status} />
-                  </button>
+                  />
                 );
               })}
-            {selectedCompanyId && !loading && paginatedUnits.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+            {selectedCompanyId && !unitsLoading && units.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Nenhuma unidade encontrada para esta empresa.
               </div>
             )}
@@ -701,48 +726,59 @@ export default function HierarquiaPage() {
               Setores
             </p>
             <p className="text-xs text-muted-foreground">
-              {selectedUnit
-                ? `${filteredSectors.length} registros`
+              {selectedUnitId
+                ? sectorsLoading
+                  ? 'Carregando...'
+                  : `${sectorTotalCount} registros`
                 : 'Selecione uma unidade'}
             </p>
           </div>
-          <div className="space-y-3 p-4 sm:p-6">
-            {!selectedUnitId && !loading && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+          <div className="px-4 pt-4 sm:px-6">
+            <input
+              value={sectorSearch}
+              onChange={(event) => {
+                setSectorSearch(event.target.value);
+                setSectorPage(1);
+                setSelectedSectorId('');
+                setSelectedUserId('');
+                setUserSearch('');
+                setUsers([]);
+                setItems([]);
+                setUserTotalCount(0);
+                setItemTotalCount(0);
+              }}
+              placeholder={
+                selectedUnitId ? 'Buscar setor' : 'Selecione uma unidade'
+              }
+              disabled={!selectedUnitId}
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+            />
+          </div>
+          <div className="grid gap-3 p-4 sm:p-6 sm:grid-cols-2">
+            {!selectedUnitId && !unitsLoading && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Selecione uma unidade para listar setores.
               </div>
             )}
             {selectedUnitId &&
-              paginatedSectors.map((sector) => {
+              sectors.map((sector) => {
                 const primaryUnit = getPrimarySectorUnit(sector);
                 const isSelected = sector.id === selectedSectorId;
                 return (
-                  <button
+                  <VisualCard
                     key={sector.id}
-                    type="button"
+                    id={sector.id}
+                    title={sector.name}
+                    subtitle={primaryUnit?.unit?.name || undefined}
+                    status={sector.status}
+                    typeLabel="SETOR"
+                    selected={isSelected}
                     onClick={() => handleSelectSector(sector.id)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                      isSelected
-                        ? 'border-foreground/50 bg-card shadow-[0_12px_24px_rgba(16,44,50,0.12)]'
-                        : 'border-border/80 bg-card/90 hover:border-foreground/30 hover:bg-card'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground line-clamp-2">
-                        {sector.name}
-                      </p>
-                      {primaryUnit?.unit?.name && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {primaryUnit.unit.name}
-                        </p>
-                      )}
-                    </div>
-                    <StatusBadge status={sector.status} />
-                  </button>
+                  />
                 );
               })}
-            {selectedUnitId && !loading && paginatedSectors.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+            {selectedUnitId && !sectorsLoading && sectors.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Nenhum setor encontrado para esta unidade.
               </div>
             )}
@@ -760,48 +796,55 @@ export default function HierarquiaPage() {
               Usuarios
             </p>
             <p className="text-xs text-muted-foreground">
-              {selectedSector
-                ? `${filteredUsers.length} registros`
+              {selectedSectorId
+                ? usersLoading
+                  ? 'Carregando...'
+                  : `${userTotalCount} registros`
                 : 'Selecione um setor'}
             </p>
           </div>
-          <div className="space-y-3 p-4 sm:p-6">
-            {!selectedSectorId && !loading && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+          <div className="px-4 pt-4 sm:px-6">
+            <input
+              value={userSearch}
+              onChange={(event) => {
+                setUserSearch(event.target.value);
+                setUserPage(1);
+                setSelectedUserId('');
+                setItems([]);
+                setItemTotalCount(0);
+              }}
+              placeholder={
+                selectedSectorId ? 'Buscar usuario' : 'Selecione um setor'
+              }
+              disabled={!selectedSectorId}
+              className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+            />
+          </div>
+          <div className="grid gap-3 p-4 sm:p-6 sm:grid-cols-2">
+            {!selectedSectorId && !sectorsLoading && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Selecione um setor para listar usuarios.
               </div>
             )}
             {selectedSectorId &&
-              paginatedUsers.map((item) => {
+              users.map((item) => {
                 const isSelected = item.id === selectedUserId;
                 return (
-                  <button
+                  <VisualCard
                     key={item.id}
-                    type="button"
+                    id={item.id}
+                    title={item.name}
+                    subtitle={item.email}
+                    status={item.status}
+                    imageUrl={item.avatarUrl || undefined}
+                    typeLabel={item.role}
+                    selected={isSelected}
                     onClick={() => handleSelectUser(item.id)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                      isSelected
-                        ? 'border-foreground/50 bg-card shadow-[0_12px_24px_rgba(16,44,50,0.12)]'
-                        : 'border-border/80 bg-card/90 hover:border-foreground/30 hover:bg-card'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground line-clamp-2">
-                        {item.name}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {item.email}
-                      </p>
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        {item.role}
-                      </p>
-                    </div>
-                    <StatusBadge status={item.status} />
-                  </button>
+                  />
                 );
               })}
-            {selectedSectorId && !loading && paginatedUsers.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
+            {selectedSectorId && !usersLoading && users.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
                 Nenhum usuario encontrado para este setor.
               </div>
             )}
@@ -820,20 +863,22 @@ export default function HierarquiaPage() {
             Itens
           </p>
           <p className="text-xs text-muted-foreground">
-            {selectedUser
-              ? `${filteredItems.length} registros`
+            {selectedUserId
+              ? itemsLoading
+                ? 'Carregando...'
+                : `${itemTotalCount} registros`
               : 'Selecione um usuario'}
           </p>
         </div>
         <div className="space-y-4 p-4 sm:p-6">
-          {!selectedUserId && !loading && (
+          {!selectedUserId && !usersLoading && (
             <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
               Selecione um usuario para listar itens.
             </div>
           )}
-          {selectedUserId && paginatedItems.length > 0 && (
+          {selectedUserId && items.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {paginatedItems.map((item) => {
+              {items.map((item) => {
                 const typeLabel =
                   item.type === 'link'
                     ? 'LINK'
@@ -884,7 +929,7 @@ export default function HierarquiaPage() {
               })}
             </div>
           )}
-          {selectedUserId && !loading && paginatedItems.length === 0 && (
+          {selectedUserId && !itemsLoading && items.length === 0 && (
             <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
               Nenhum item encontrado para este usuario.
             </div>

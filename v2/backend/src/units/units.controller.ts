@@ -7,8 +7,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -16,6 +19,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { UnitsService } from './units.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
+import { parsePagination } from '../common/utils/pagination';
 
 @Controller('units')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,8 +28,27 @@ export class UnitsController {
   constructor(private readonly unitsService: UnitsService) {}
 
   @Get()
-  findAll() {
-    return this.unitsService.findAll();
+  async findAll(
+    @Query('companyId') companyId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const pagination = parsePagination(page, pageSize, {
+      defaultPageSize: 12,
+    });
+    const { items, total } = await this.unitsService.findAll({
+      companyId,
+      search,
+      ...(pagination.shouldPaginate
+        ? { skip: pagination.skip, take: pagination.take }
+        : {}),
+    });
+    if (pagination.shouldPaginate && res) {
+      res.setHeader('X-Total-Count', total.toString());
+    }
+    return items;
   }
 
   @Get(':id')

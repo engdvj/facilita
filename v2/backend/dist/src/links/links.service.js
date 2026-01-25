@@ -87,7 +87,7 @@ let LinksService = class LinksService {
         }
         return link;
     }
-    async findAll(companyId, filters) {
+    async findAll(companyId, filters, viewer) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
         const sectorFilter = filters?.sectorIds
             ? { sectorId: { in: filters.sectorIds } }
@@ -120,8 +120,13 @@ let LinksService = class LinksService {
                 ],
             });
         }
+        const privateFilter = this.buildPrivateAccessFilter(viewer);
+        if (privateFilter) {
+            andFilters.push(privateFilter);
+        }
         const where = {
             deletedAt: null,
+            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
             ...(companyId ? { companyId } : {}),
             ...sectorFilter,
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
@@ -158,6 +163,100 @@ let LinksService = class LinksService {
         console.log('LinksService.findAll - links encontrados:', links.length);
         return links;
     }
+    async findAllPaginated(companyId, filters, viewer, pagination) {
+        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
+        const search = filters?.search?.trim();
+        const sectorFilter = filters?.sectorIds
+            ? { sectorId: { in: filters.sectorIds } }
+            : filters?.sectorId
+                ? { sectorId: filters.sectorId }
+                : {};
+        const filterUnitIds = filters?.unitId !== undefined
+            ? this.normalizeUnitIds(undefined, filters.unitId)
+            : filters?.unitIds;
+        const unitFilter = filterUnitIds !== undefined
+            ? filterUnitIds.length > 0
+                ? {
+                    OR: [
+                        { unitId: null, linkUnits: { none: {} } },
+                        { unitId: { in: filterUnitIds } },
+                        { linkUnits: { some: { unitId: { in: filterUnitIds } } } },
+                    ],
+                }
+                : { OR: [{ unitId: null, linkUnits: { none: {} } }] }
+            : undefined;
+        const andFilters = [];
+        if (unitFilter) {
+            andFilters.push(unitFilter);
+        }
+        if (shouldFilterPublic) {
+            andFilters.push({
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            });
+        }
+        const privateFilter = this.buildPrivateAccessFilter(viewer);
+        if (privateFilter) {
+            andFilters.push(privateFilter);
+        }
+        if (search) {
+            andFilters.push({
+                OR: [
+                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    { url: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    {
+                        description: {
+                            contains: search,
+                            mode: client_1.Prisma.QueryMode.insensitive,
+                        },
+                    },
+                ],
+            });
+        }
+        const where = {
+            deletedAt: null,
+            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
+            ...(companyId ? { companyId } : {}),
+            ...sectorFilter,
+            ...(filters?.categoryId && { categoryId: filters.categoryId }),
+            ...(!shouldFilterPublic &&
+                filters?.audience && { audience: filters.audience }),
+            ...(filters?.isPublic !== undefined &&
+                !shouldFilterPublic && { isPublic: filters.isPublic }),
+            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.link.findMany({
+                where,
+                include: {
+                    category: true,
+                    sector: true,
+                    linkUnits: {
+                        include: {
+                            unit: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+                orderBy: [
+                    { order: 'asc' },
+                    { createdAt: 'desc' },
+                ],
+                ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
+                ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
+            }),
+            this.prisma.link.count({ where }),
+        ]);
+        return { items, total };
+    }
     async findAllByUser(userId, companyId) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -165,6 +264,11 @@ let LinksService = class LinksService {
                 userSectors: {
                     select: {
                         sectorId: true,
+                        userSectorUnits: {
+                            select: {
+                                unitId: true,
+                            },
+                        },
                         sector: {
                             select: {
                                 sectorUnits: {
@@ -182,10 +286,28 @@ let LinksService = class LinksService {
             return [];
         }
         const sectorIds = user.userSectors.map((us) => us.sectorId);
-        const unitIds = Array.from(new Set(user.userSectors.flatMap((userSector) => userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || [])));
-        return this.findAll(companyId, {
+        const sectorUnitsBySector = new Map();
+        user.userSectors.forEach((userSector) => {
+            const explicitUnitIds = userSector.userSectorUnits?.map((unit) => unit.unitId) || [];
+            const fallbackUnitIds = userSector.sector?.sectorUnits?.map((unit) => unit.unitId) || [];
+            const unitIds = explicitUnitIds.length > 0 ? explicitUnitIds : fallbackUnitIds;
+            sectorUnitsBySector.set(userSector.sectorId, new Set(unitIds));
+        });
+        const links = await this.findAll(companyId, {
             sectorIds: sectorIds.length > 0 ? sectorIds : undefined,
-            unitIds,
+        }, { id: userId });
+        return links.filter((link) => {
+            if (!link.sectorId)
+                return true;
+            const allowedUnits = sectorUnitsBySector.get(link.sectorId);
+            if (!allowedUnits || allowedUnits.size === 0)
+                return true;
+            const linkUnitIds = link.linkUnits?.length
+                ? link.linkUnits.map((unit) => unit.unitId)
+                : this.normalizeUnitIds(undefined, link.unitId ?? undefined);
+            if (linkUnitIds.length === 0)
+                return true;
+            return linkUnitIds.some((unitId) => allowedUnits.has(unitId));
         });
     }
     async userHasSector(userId, sectorId) {
@@ -197,7 +319,7 @@ let LinksService = class LinksService {
         });
         return count > 0;
     }
-    async findOne(id) {
+    async findOne(id, viewer) {
         const link = await this.prisma.link.findUnique({
             where: { id },
             include: {
@@ -233,6 +355,9 @@ let LinksService = class LinksService {
         if (!link || link.deletedAt) {
             throw new common_1.NotFoundException(`Link with ID ${id} not found`);
         }
+        if (viewer !== undefined) {
+            this.assertPrivateAccess(link, viewer);
+        }
         return link;
     }
     async update(id, updateLinkDto, actor) {
@@ -260,7 +385,7 @@ let LinksService = class LinksService {
                 },
             });
         }
-        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateLinkDto;
+        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateLinkDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingLink.sectorId ?? undefined
             : undefined;
@@ -299,6 +424,11 @@ let LinksService = class LinksService {
                 ? { connect: { id: unitId } }
                 : { disconnect: true },
         };
+        if (_categoryId !== undefined) {
+            updateData.category = _categoryId
+                ? { connect: { id: _categoryId } }
+                : { disconnect: true };
+        }
         const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
         if (shouldUpdateUnits) {
             updateData.linkUnits = {
@@ -453,9 +583,39 @@ let LinksService = class LinksService {
             throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
         }
     }
+    buildPrivateAccessFilter(viewer) {
+        if (viewer?.canViewPrivate) {
+            return undefined;
+        }
+        if (viewer?.id) {
+            return {
+                OR: [
+                    { audience: { not: client_1.ContentAudience.PRIVATE } },
+                    { userId: viewer.id },
+                ],
+            };
+        }
+        return { audience: { not: client_1.ContentAudience.PRIVATE } };
+    }
+    assertPrivateAccess(link, viewer) {
+        if (link.audience !== client_1.ContentAudience.PRIVATE) {
+            return;
+        }
+        if (!viewer.id) {
+            throw new common_1.ForbiddenException('Link nao autorizado.');
+        }
+        if (link.userId !== viewer.id && !viewer.canViewPrivate) {
+            throw new common_1.ForbiddenException('Link nao autorizado.');
+        }
+    }
     assertCanMutate(link, actor) {
         if (!actor)
             return;
+        if (link.audience === client_1.ContentAudience.PRIVATE &&
+            link.userId !== actor.id &&
+            !actor.canViewPrivate) {
+            throw new common_1.ForbiddenException('Link nao autorizado.');
+        }
         if (actor.role === client_1.UserRole.SUPERADMIN) {
             return;
         }
@@ -507,7 +667,7 @@ let LinksService = class LinksService {
             return;
         }
     }
-    async restore(id) {
+    async restore(id, actor) {
         const link = await this.prisma.link.findUnique({
             where: { id },
             include: {
@@ -529,6 +689,9 @@ let LinksService = class LinksService {
         });
         if (!link) {
             throw new common_1.NotFoundException(`Link with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(link, actor);
         }
         const restored = await this.prisma.link.update({
             where: { id },

@@ -21,15 +21,27 @@ const roles_guard_1 = require("../common/guards/roles.guard");
 const companies_service_1 = require("./companies.service");
 const create_company_dto_1 = require("./dto/create-company.dto");
 const update_company_dto_1 = require("./dto/update-company.dto");
+const pagination_1 = require("../common/utils/pagination");
 let CompaniesController = class CompaniesController {
     constructor(companiesService) {
         this.companiesService = companiesService;
     }
-    findAll(req) {
+    async findAll(req, page, pageSize, search, res) {
         const isSuperAdmin = req.user?.role === client_1.UserRole.SUPERADMIN;
-        return this.companiesService.findAll({
-            excludeInternal: !isSuperAdmin,
+        const pagination = (0, pagination_1.parsePagination)(page, pageSize, {
+            defaultPageSize: 12,
         });
+        const { items, total } = await this.companiesService.findAll({
+            excludeInternal: !isSuperAdmin,
+            search,
+            ...(pagination.shouldPaginate
+                ? { skip: pagination.skip, take: pagination.take }
+                : {}),
+        });
+        if (pagination.shouldPaginate && res) {
+            res.setHeader('X-Total-Count', total.toString());
+        }
+        return items;
     }
     findOne(id) {
         return this.companiesService.findById(id);
@@ -51,9 +63,13 @@ exports.CompaniesController = CompaniesController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('pageSize')),
+    __param(3, (0, common_1.Query)('search')),
+    __param(4, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, String, String, String, Object]),
+    __metadata("design:returntype", Promise)
 ], CompaniesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),

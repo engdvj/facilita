@@ -39,6 +39,3 @@ v2/backend/backups/*
 !v2/backend/backups/auto/.gitkeep
 !v2/backend/backups/tmp/.gitkeep
 
-# Docker volumes data (if using bind mounts locally)
-v2/postgres_data/
-v2/redis_data/

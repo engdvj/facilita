@@ -78,6 +78,11 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
+], UpdateRolePermissionDto.prototype, "canViewPrivateContent", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
 ], UpdateRolePermissionDto.prototype, "canBackupSystem", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),

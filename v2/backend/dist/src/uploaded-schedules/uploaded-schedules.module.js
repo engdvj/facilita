@@ -12,12 +12,13 @@ const uploaded_schedules_service_1 = require("./uploaded-schedules.service");
 const uploaded_schedules_controller_1 = require("./uploaded-schedules.controller");
 const prisma_module_1 = require("../prisma/prisma.module");
 const notifications_module_1 = require("../notifications/notifications.module");
+const permissions_module_1 = require("../permissions/permissions.module");
 let UploadedSchedulesModule = class UploadedSchedulesModule {
 };
 exports.UploadedSchedulesModule = UploadedSchedulesModule;
 exports.UploadedSchedulesModule = UploadedSchedulesModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, notifications_module_1.NotificationsModule],
+        imports: [prisma_module_1.PrismaModule, notifications_module_1.NotificationsModule, permissions_module_1.PermissionsModule],
         controllers: [uploaded_schedules_controller_1.UploadedSchedulesController],
         providers: [uploaded_schedules_service_1.UploadedSchedulesService],
         exports: [uploaded_schedules_service_1.UploadedSchedulesService],

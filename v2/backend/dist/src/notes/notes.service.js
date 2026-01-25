@@ -80,7 +80,7 @@ let NotesService = class NotesService {
         }
         return note;
     }
-    async findAll(companyId, filters) {
+    async findAll(companyId, filters, viewer) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
         const filterUnitIds = filters?.unitId !== undefined
             ? this.normalizeUnitIds(undefined, filters.unitId)
@@ -108,8 +108,13 @@ let NotesService = class NotesService {
                 ],
             });
         }
+        const privateFilter = this.buildPrivateAccessFilter(viewer);
+        if (privateFilter) {
+            andFilters.push(privateFilter);
+        }
         const where = {
             deletedAt: null,
+            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
             ...(companyId ? { companyId } : {}),
             ...(filters?.sectorId && { sectorId: filters.sectorId }),
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
@@ -142,6 +147,87 @@ let NotesService = class NotesService {
             },
         });
     }
+    async findAllPaginated(companyId, filters, viewer, pagination) {
+        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
+        const search = filters?.search?.trim();
+        const filterUnitIds = filters?.unitId !== undefined
+            ? this.normalizeUnitIds(undefined, filters.unitId)
+            : filters?.unitIds;
+        const unitFilter = filterUnitIds !== undefined
+            ? filterUnitIds.length > 0
+                ? {
+                    OR: [
+                        { unitId: null, noteUnits: { none: {} } },
+                        { unitId: { in: filterUnitIds } },
+                        { noteUnits: { some: { unitId: { in: filterUnitIds } } } },
+                    ],
+                }
+                : { OR: [{ unitId: null, noteUnits: { none: {} } }] }
+            : undefined;
+        const andFilters = [];
+        if (unitFilter) {
+            andFilters.push(unitFilter);
+        }
+        if (shouldFilterPublic) {
+            andFilters.push({
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            });
+        }
+        const privateFilter = this.buildPrivateAccessFilter(viewer);
+        if (privateFilter) {
+            andFilters.push(privateFilter);
+        }
+        if (search) {
+            andFilters.push({
+                OR: [
+                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                ],
+            });
+        }
+        const where = {
+            deletedAt: null,
+            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
+            ...(companyId ? { companyId } : {}),
+            ...(filters?.sectorId && { sectorId: filters.sectorId }),
+            ...(filters?.categoryId && { categoryId: filters.categoryId }),
+            ...(!shouldFilterPublic &&
+                filters?.audience && { audience: filters.audience }),
+            ...(filters?.isPublic !== undefined &&
+                !shouldFilterPublic && { isPublic: filters.isPublic }),
+            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.note.findMany({
+                where,
+                include: {
+                    category: true,
+                    sector: true,
+                    noteUnits: {
+                        include: {
+                            unit: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    createdAt: 'desc',
+                },
+                ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
+                ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
+            }),
+            this.prisma.note.count({ where }),
+        ]);
+        return { items, total };
+    }
     async userHasSector(userId, sectorId) {
         const count = await this.prisma.userSector.count({
             where: {
@@ -151,7 +237,7 @@ let NotesService = class NotesService {
         });
         return count > 0;
     }
-    async findOne(id) {
+    async findOne(id, viewer) {
         const note = await this.prisma.note.findUnique({
             where: { id },
             include: {
@@ -174,6 +260,9 @@ let NotesService = class NotesService {
         if (!note || note.deletedAt) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
+        if (viewer !== undefined) {
+            this.assertPrivateAccess(note, viewer);
+        }
         return note;
     }
     async update(id, updateNoteDto, actor) {
@@ -189,7 +278,7 @@ let NotesService = class NotesService {
         }
         const hasChanges = updateNoteDto.title !== existingNote.title ||
             updateNoteDto.content !== existingNote.content;
-        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateNoteDto;
+        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateNoteDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingNote.sectorId ?? undefined
             : undefined;
@@ -228,6 +317,11 @@ let NotesService = class NotesService {
                 ? { connect: { id: unitId } }
                 : { disconnect: true },
         };
+        if (_categoryId !== undefined) {
+            updateData.category = _categoryId
+                ? { connect: { id: _categoryId } }
+                : { disconnect: true };
+        }
         const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
         if (shouldUpdateUnits) {
             updateData.noteUnits = {
@@ -357,7 +451,7 @@ let NotesService = class NotesService {
         }
         return deleted;
     }
-    async restore(id) {
+    async restore(id, actor) {
         const note = await this.prisma.note.findUnique({
             where: { id },
             include: {
@@ -379,6 +473,9 @@ let NotesService = class NotesService {
         });
         if (!note) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(note, actor);
         }
         const restored = await this.prisma.note.update({
             where: { id },
@@ -607,9 +704,39 @@ let NotesService = class NotesService {
             throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
         }
     }
+    buildPrivateAccessFilter(viewer) {
+        if (viewer?.canViewPrivate) {
+            return undefined;
+        }
+        if (viewer?.id) {
+            return {
+                OR: [
+                    { audience: { not: client_1.ContentAudience.PRIVATE } },
+                    { userId: viewer.id },
+                ],
+            };
+        }
+        return { audience: { not: client_1.ContentAudience.PRIVATE } };
+    }
+    assertPrivateAccess(note, viewer) {
+        if (note.audience !== client_1.ContentAudience.PRIVATE) {
+            return;
+        }
+        if (!viewer.id) {
+            throw new common_1.ForbiddenException('Nota nao autorizada.');
+        }
+        if (note.userId !== viewer.id && !viewer.canViewPrivate) {
+            throw new common_1.ForbiddenException('Nota nao autorizada.');
+        }
+    }
     assertCanMutate(note, actor) {
         if (!actor)
             return;
+        if (note.audience === client_1.ContentAudience.PRIVATE &&
+            note.userId !== actor.id &&
+            !actor.canViewPrivate) {
+            throw new common_1.ForbiddenException('Nota nao autorizada.');
+        }
         if (actor.role === client_1.UserRole.SUPERADMIN) {
             return;
         }

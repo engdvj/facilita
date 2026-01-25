@@ -8,77 +8,18 @@ type ScheduleActor = {
     id: string;
     role: UserRole;
     companyId?: string | null;
+    canViewPrivate?: boolean;
+};
+type ScheduleViewer = {
+    id?: string;
+    canViewPrivate?: boolean;
 };
 export declare class UploadedSchedulesService {
     private prisma;
     private notificationsService;
     private notificationsGateway;
     constructor(prisma: PrismaService, notificationsService: NotificationsService, notificationsGateway: NotificationsGateway);
-    create(createScheduleDto: CreateScheduleDto): Promise<{
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    }>;
+    create(createScheduleDto: CreateScheduleDto): Promise<any>;
     findAll(companyId?: string, filters?: {
         sectorId?: string;
         unitId?: string;
@@ -87,420 +28,33 @@ export declare class UploadedSchedulesService {
         isPublic?: boolean;
         audience?: ContentAudience;
         includeInactive?: boolean;
-    }): Promise<({
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    })[]>;
-    findOne(id: string): Promise<{
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
+    }, viewer?: ScheduleViewer): Promise<any>;
+    findAllPaginated(companyId?: string, filters?: {
+        sectorId?: string;
+        unitId?: string;
+        unitIds?: string[];
+        categoryId?: string;
+        search?: string;
+        isPublic?: boolean;
+        audience?: ContentAudience;
+        includeInactive?: boolean;
+    }, viewer?: ScheduleViewer, pagination?: {
+        skip?: number;
+        take?: number;
+    }): Promise<{
+        items: any;
+        total: any;
     }>;
-    update(id: string, updateScheduleDto: UpdateScheduleDto, actor?: ScheduleActor): Promise<{
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    }>;
-    remove(id: string, actor?: ScheduleActor, adminMessage?: string): Promise<{
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    }>;
-    restore(id: string): Promise<{
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    }>;
-    activate(id: string, actor?: ScheduleActor): Promise<{
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    }>;
-    deactivate(id: string, actor?: ScheduleActor): Promise<{
-        user: {
-            id: string;
-            name: string;
-            email: string;
-        } | null;
-        category: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            color: string | null;
-            icon: string | null;
-            adminOnly: boolean;
-        } | null;
-        sector: {
-            id: string;
-            name: string;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-        } | null;
-        scheduleUnits: ({
-            unit: {
-                id: string;
-                cnpj: string | null;
-                name: string;
-                status: import(".prisma/client").$Enums.EntityStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                companyId: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            unitId: string;
-            scheduleId: string;
-        })[];
-    } & {
-        id: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        sectorId: string | null;
-        userId: string | null;
-        title: string;
-        color: string | null;
-        imageUrl: string | null;
-        imagePosition: string | null;
-        imageScale: number | null;
-        audience: import(".prisma/client").$Enums.ContentAudience;
-        isPublic: boolean;
-        deletedAt: Date | null;
-        unitId: string | null;
-        categoryId: string | null;
-        fileUrl: string;
-        fileName: string;
-        fileSize: number;
-    }>;
+    findOne(id: string, viewer?: ScheduleViewer): Promise<any>;
+    update(id: string, updateScheduleDto: UpdateScheduleDto, actor?: ScheduleActor): Promise<any>;
+    remove(id: string, actor?: ScheduleActor, adminMessage?: string): Promise<any>;
+    restore(id: string, actor?: ScheduleActor): Promise<any>;
+    activate(id: string, actor?: ScheduleActor): Promise<any>;
+    deactivate(id: string, actor?: ScheduleActor): Promise<any>;
     private normalizeUnitIds;
     private assertUnitsAllowed;
+    private buildPrivateAccessFilter;
+    private assertPrivateAccess;
     private assertCanMutate;
     private resolveAudienceFromExisting;
     private resolveAudienceForUpdate;

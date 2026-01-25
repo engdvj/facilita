@@ -7,9 +7,12 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  UseGuards,
+  Query,
   Request,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -17,6 +20,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { parsePagination } from '../common/utils/pagination';
 
 @Controller('companies')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,11 +29,28 @@ export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Get()
-  findAll(@Request() req: any) {
+  async findAll(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
-    return this.companiesService.findAll({
-      excludeInternal: !isSuperAdmin,
+    const pagination = parsePagination(page, pageSize, {
+      defaultPageSize: 12,
     });
+    const { items, total } = await this.companiesService.findAll({
+      excludeInternal: !isSuperAdmin,
+      search,
+      ...(pagination.shouldPaginate
+        ? { skip: pagination.skip, take: pagination.take }
+        : {}),
+    });
+    if (pagination.shouldPaginate && res) {
+      res.setHeader('X-Total-Count', total.toString());
+    }
+    return items;
   }
 
   @Get(':id')

@@ -21,12 +21,26 @@ const roles_guard_1 = require("../common/guards/roles.guard");
 const units_service_1 = require("./units.service");
 const create_unit_dto_1 = require("./dto/create-unit.dto");
 const update_unit_dto_1 = require("./dto/update-unit.dto");
+const pagination_1 = require("../common/utils/pagination");
 let UnitsController = class UnitsController {
     constructor(unitsService) {
         this.unitsService = unitsService;
     }
-    findAll() {
-        return this.unitsService.findAll();
+    async findAll(companyId, page, pageSize, search, res) {
+        const pagination = (0, pagination_1.parsePagination)(page, pageSize, {
+            defaultPageSize: 12,
+        });
+        const { items, total } = await this.unitsService.findAll({
+            companyId,
+            search,
+            ...(pagination.shouldPaginate
+                ? { skip: pagination.skip, take: pagination.take }
+                : {}),
+        });
+        if (pagination.shouldPaginate && res) {
+            res.setHeader('X-Total-Count', total.toString());
+        }
+        return items;
     }
     findOne(id) {
         return this.unitsService.findById(id);
@@ -47,9 +61,14 @@ let UnitsController = class UnitsController {
 exports.UnitsController = UnitsController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('companyId')),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('pageSize')),
+    __param(3, (0, common_1.Query)('search')),
+    __param(4, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, String, String, String, Object]),
+    __metadata("design:returntype", Promise)
 ], UnitsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),

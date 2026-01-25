@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
@@ -7,18 +8,54 @@ import { UpdateSectorDto } from './dto/update-sector.dto';
 export class SectorsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.sector.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        company: true,
-        sectorUnits: {
-          include: {
-            unit: true,
+  async findAll(options?: {
+    companyId?: string;
+    unitId?: string;
+    search?: string;
+    skip?: number;
+    take?: number;
+  }) {
+    const search = options?.search?.trim();
+    const where = {
+      ...(options?.companyId ? { companyId: options.companyId } : {}),
+      ...(options?.unitId
+        ? {
+            sectorUnits: {
+              some: { unitId: options.unitId },
+            },
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+              {
+                description: { contains: search, mode: Prisma.QueryMode.insensitive },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.sector.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          company: true,
+          sectorUnits: {
+            include: {
+              unit: true,
+            },
           },
         },
-      },
-    });
+        ...(options?.skip !== undefined ? { skip: options.skip } : {}),
+        ...(options?.take !== undefined ? { take: options.take } : {}),
+      }),
+      this.prisma.sector.count({ where }),
+    ]);
+
+    return { items, total };
   }
 
   async findById(id: string) {

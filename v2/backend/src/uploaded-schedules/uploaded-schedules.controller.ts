@@ -10,7 +10,9 @@ import {
   Query,
   Request,
   ForbiddenException,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { UploadedSchedulesService } from './uploaded-schedules.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
@@ -20,6 +22,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { ContentAudience, UserRole } from '@prisma/client';
 import { PermissionsService } from '../permissions/permissions.service';
+import { parsePagination } from '../common/utils/pagination';
 
 const defaultAudienceByRole: Record<UserRole, ContentAudience> = {
   [UserRole.SUPERADMIN]: ContentAudience.COMPANY,
@@ -174,6 +177,10 @@ export class UploadedSchedulesController {
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Res({ passthrough: true }) res?: Response,
   ) {
     const normalizedCompanyId = companyId?.trim() || undefined;
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
@@ -194,12 +201,22 @@ export class UploadedSchedulesController {
     };
 
     const { id, canViewPrivate } = await this.getAccessContext(req.user);
-    const result = await this.schedulesService.findAll(resolvedCompanyId, filters, {
-      id,
-      canViewPrivate,
+    const pagination = parsePagination(page, pageSize, {
+      defaultPageSize: 12,
     });
-    console.log('SchedulesController.findAllAdmin - resultado:', result.length, 'schedules');
-    return result;
+    const { items, total } = await this.schedulesService.findAllPaginated(
+      resolvedCompanyId,
+      { ...filters, search },
+      { id, canViewPrivate },
+      pagination.shouldPaginate
+        ? { skip: pagination.skip, take: pagination.take }
+        : undefined,
+    );
+    if (pagination.shouldPaginate && res) {
+      res.setHeader('X-Total-Count', total.toString());
+    }
+    console.log('SchedulesController.findAllAdmin - resultado:', items.length, 'schedules');
+    return items;
   }
 
   @Get('admin')
@@ -213,6 +230,10 @@ export class UploadedSchedulesController {
     @Query('categoryId') categoryId?: string,
     @Query('isPublic') isPublic?: string,
     @Query('audience') audience?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Res({ passthrough: true }) res?: Response,
   ) {
     return this.findAllAdmin(
       req,
@@ -222,6 +243,10 @@ export class UploadedSchedulesController {
       categoryId,
       isPublic,
       audience,
+      search,
+      page,
+      pageSize,
+      res,
     );
   }
 

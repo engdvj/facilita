@@ -7,6 +7,8 @@ import api from '@/lib/api';
 import AppNav from '@/components/app-nav';
 import MaxWidth from '@/components/max-width';
 import NotificationBell from '@/components/notification-bell';
+import UserAvatar from '@/components/user-avatar';
+import UserProfileModal from '@/components/user-profile-modal';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function AppHeader() {
@@ -15,10 +17,12 @@ export default function AppHeader() {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setMenuOpen(false);
+      setProfileOpen(false);
     }
   }, [user]);
 
@@ -51,6 +55,18 @@ export default function AppHeader() {
                 <NotificationBell />
                 <button
                   type="button"
+                  onClick={() => setProfileOpen(true)}
+                  className="motion-press rounded-full p-0.5 transition hover:scale-105"
+                  aria-label="Abrir perfil"
+                >
+                  <UserAvatar
+                    name={user.name}
+                    avatarUrl={user.avatarUrl}
+                    size="sm"
+                  />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setMenuOpen((prev) => !prev)}
                   aria-expanded={menuOpen}
                   aria-controls="app-mobile-nav"
@@ -63,9 +79,14 @@ export default function AppHeader() {
                   </span>
                   Menu
                 </button>
-                <span className="hidden max-w-[160px] truncate sm:inline text-foreground">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen(true)}
+                  className="hidden max-w-[160px] truncate sm:inline text-foreground transition hover:text-foreground"
+                  title="Abrir perfil"
+                >
                   {user.name}
-                </span>
+                </button>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -100,6 +121,12 @@ export default function AppHeader() {
             </div>
           </MaxWidth>
         </div>
+      ) : null}
+      {hasHydrated && user ? (
+        <UserProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+        />
       ) : null}
     </header>
   );

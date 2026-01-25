@@ -31,6 +31,8 @@ export type AuthUser = {
   unitId?: string;
   sectorId?: string;
   userSectors?: AuthUserSector[];
+  avatarUrl?: string | null;
+  theme?: Record<string, unknown> | null;
 };
 
 type AuthState = {

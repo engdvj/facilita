@@ -7,8 +7,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -16,6 +19,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { SectorsService } from './sectors.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
+import { parsePagination } from '../common/utils/pagination';
 
 @Controller('sectors')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,8 +28,29 @@ export class SectorsController {
   constructor(private readonly sectorsService: SectorsService) {}
 
   @Get()
-  findAll() {
-    return this.sectorsService.findAll();
+  async findAll(
+    @Query('companyId') companyId?: string,
+    @Query('unitId') unitId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const pagination = parsePagination(page, pageSize, {
+      defaultPageSize: 12,
+    });
+    const { items, total } = await this.sectorsService.findAll({
+      companyId,
+      unitId,
+      search,
+      ...(pagination.shouldPaginate
+        ? { skip: pagination.skip, take: pagination.take }
+        : {}),
+    });
+    if (pagination.shouldPaginate && res) {
+      res.setHeader('X-Total-Count', total.toString());
+    }
+    return items;
   }
 
   @Get(':id')

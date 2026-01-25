@@ -80,7 +80,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         }
         return schedule;
     }
-    async findAll(companyId, filters) {
+    async findAll(companyId, filters, viewer) {
         const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
         const filterUnitIds = filters?.unitId !== undefined
             ? this.normalizeUnitIds(undefined, filters.unitId)
@@ -108,8 +108,13 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 ],
             });
         }
+        const privateFilter = this.buildPrivateAccessFilter(viewer);
+        if (privateFilter) {
+            andFilters.push(privateFilter);
+        }
         const where = {
             deletedAt: null,
+            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
             ...(companyId ? { companyId } : {}),
             ...(filters?.sectorId && { sectorId: filters.sectorId }),
             ...(filters?.categoryId && { categoryId: filters.categoryId }),
@@ -145,7 +150,88 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         console.log('SchedulesService.findAll - schedules encontrados:', schedules.length);
         return schedules;
     }
-    async findOne(id) {
+    async findAllPaginated(companyId, filters, viewer, pagination) {
+        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
+        const search = filters?.search?.trim();
+        const filterUnitIds = filters?.unitId !== undefined
+            ? this.normalizeUnitIds(undefined, filters.unitId)
+            : filters?.unitIds;
+        const unitFilter = filterUnitIds !== undefined
+            ? filterUnitIds.length > 0
+                ? {
+                    OR: [
+                        { unitId: null, scheduleUnits: { none: {} } },
+                        { unitId: { in: filterUnitIds } },
+                        { scheduleUnits: { some: { unitId: { in: filterUnitIds } } } },
+                    ],
+                }
+                : { OR: [{ unitId: null, scheduleUnits: { none: {} } }] }
+            : undefined;
+        const andFilters = [];
+        if (unitFilter) {
+            andFilters.push(unitFilter);
+        }
+        if (shouldFilterPublic) {
+            andFilters.push({
+                OR: [
+                    { audience: client_1.ContentAudience.PUBLIC },
+                    { isPublic: true },
+                ],
+            });
+        }
+        const privateFilter = this.buildPrivateAccessFilter(viewer);
+        if (privateFilter) {
+            andFilters.push(privateFilter);
+        }
+        if (search) {
+            andFilters.push({
+                OR: [
+                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                ],
+            });
+        }
+        const where = {
+            deletedAt: null,
+            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
+            ...(companyId ? { companyId } : {}),
+            ...(filters?.sectorId && { sectorId: filters.sectorId }),
+            ...(filters?.categoryId && { categoryId: filters.categoryId }),
+            ...(!shouldFilterPublic &&
+                filters?.audience && { audience: filters.audience }),
+            ...(filters?.isPublic !== undefined &&
+                !shouldFilterPublic && { isPublic: filters.isPublic }),
+            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.uploadedSchedule.findMany({
+                where,
+                include: {
+                    category: true,
+                    sector: true,
+                    scheduleUnits: {
+                        include: {
+                            unit: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    createdAt: 'desc',
+                },
+                ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
+                ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
+            }),
+            this.prisma.uploadedSchedule.count({ where }),
+        ]);
+        return { items, total };
+    }
+    async findOne(id, viewer) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
             include: {
@@ -168,6 +254,9 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         if (!schedule || schedule.deletedAt) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
+        if (viewer !== undefined) {
+            this.assertPrivateAccess(schedule, viewer);
+        }
         return schedule;
     }
     async update(id, updateScheduleDto, actor) {
@@ -183,7 +272,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             this.assertAudienceAllowed(actor.role, resolvedAudience);
         }
         const hasChanges = updateScheduleDto.title !== existingSchedule.title;
-        const { companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateScheduleDto;
+        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateScheduleDto;
         const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
             ? _sectorId ?? existingSchedule.sectorId ?? undefined
             : undefined;
@@ -222,6 +311,11 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 ? { connect: { id: unitId } }
                 : { disconnect: true },
         };
+        if (_categoryId !== undefined) {
+            updateData.category = _categoryId
+                ? { connect: { id: _categoryId } }
+                : { disconnect: true };
+        }
         const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
         if (shouldUpdateUnits) {
             updateData.scheduleUnits = {
@@ -351,7 +445,7 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         }
         return deleted;
     }
-    async restore(id) {
+    async restore(id, actor) {
         const schedule = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
             include: {
@@ -373,6 +467,9 @@ let UploadedSchedulesService = class UploadedSchedulesService {
         });
         if (!schedule) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
+        }
+        if (actor) {
+            this.assertCanMutate(schedule, actor);
         }
         const restored = await this.prisma.uploadedSchedule.update({
             where: { id },
@@ -601,9 +698,39 @@ let UploadedSchedulesService = class UploadedSchedulesService {
             throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
         }
     }
+    buildPrivateAccessFilter(viewer) {
+        if (viewer?.canViewPrivate) {
+            return undefined;
+        }
+        if (viewer?.id) {
+            return {
+                OR: [
+                    { audience: { not: client_1.ContentAudience.PRIVATE } },
+                    { userId: viewer.id },
+                ],
+            };
+        }
+        return { audience: { not: client_1.ContentAudience.PRIVATE } };
+    }
+    assertPrivateAccess(schedule, viewer) {
+        if (schedule.audience !== client_1.ContentAudience.PRIVATE) {
+            return;
+        }
+        if (!viewer.id) {
+            throw new common_1.ForbiddenException('Documento nao autorizado.');
+        }
+        if (schedule.userId !== viewer.id && !viewer.canViewPrivate) {
+            throw new common_1.ForbiddenException('Documento nao autorizado.');
+        }
+    }
     assertCanMutate(schedule, actor) {
         if (!actor)
             return;
+        if (schedule.audience === client_1.ContentAudience.PRIVATE &&
+            schedule.userId !== actor.id &&
+            !actor.canViewPrivate) {
+            throw new common_1.ForbiddenException('Documento nao autorizado.');
+        }
         if (actor.role === client_1.UserRole.SUPERADMIN) {
             return;
         }

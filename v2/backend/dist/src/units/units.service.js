@@ -11,16 +11,36 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnitsService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 let UnitsService = class UnitsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll() {
-        return this.prisma.unit.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: { company: true },
-        });
+    async findAll(options) {
+        const search = options?.search?.trim();
+        const where = {
+            ...(options?.companyId ? { companyId: options.companyId } : {}),
+            ...(search
+                ? {
+                    OR: [
+                        { name: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                        { cnpj: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    ],
+                }
+                : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.unit.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                include: { company: true },
+                ...(options?.skip !== undefined ? { skip: options.skip } : {}),
+                ...(options?.take !== undefined ? { take: options.take } : {}),
+            }),
+            this.prisma.unit.count({ where }),
+        ]);
+        return { items, total };
     }
     async findById(id) {
         const unit = await this.prisma.unit.findUnique({

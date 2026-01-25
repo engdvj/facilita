@@ -20,7 +20,7 @@ Este plano detalha a **reescrita completa** do projeto FACILITA em **NestJS + Ne
 **Stack Tecnológica:**
 - Backend: NestJS 11 + Prisma 5 + PostgreSQL 16 + Redis 7
 - Frontend: Next.js 15 (App Router) + TypeScript + Zustand + Shadcn/ui
-- Infraestrutura: Docker Compose + Nginx
+- Infraestrutura: Nginx
 
 **Estimativa:** 4 meses (16 semanas) | 1 desenvolvedor full-stack
 **Custo Infraestrutura:** ~R$50/mês (início) | ~R$200/mês (escalado)
@@ -33,11 +33,10 @@ Este plano detalha a **reescrita completa** do projeto FACILITA em **NestJS + Ne
 
 **Stack Tecnológico:**
 - **Backend**: Flask (Python 3.10+)
-- **Banco de Dados**: SQLite (dev) / PostgreSQL configurado no Docker
+- **Banco de Dados**: SQLite (dev) / PostgreSQL
 - **ORM**: Flask-SQLAlchemy
 - **Autenticação**: Session-based (Flask Sessions)
 - **Frontend**: React 18 + TypeScript + Vite
-- **Infraestrutura**: Docker Compose
 
 **Estrutura Atual:**
 ```
@@ -82,7 +81,6 @@ backend/
 - **ORM**: Prisma 5.14
 - **Autenticação**: JWT (httpOnly cookies + Bearer)
 - **Frontend**: Next.js (App Router)
-- **Infraestrutura**: Docker Compose
 
 **Funcionalidades Avançadas:**
 - ✅ Sistema de setores com geolocalização
@@ -305,7 +303,6 @@ backend/
 - Páginas de auth: login, register, forgot-password
 
 **DevOps:**
-- Docker Compose (postgres, redis, backend, frontend, nginx)
 - .env.example completo
 - Scripts de setup
 
@@ -399,7 +396,6 @@ backend/
 
 **DevOps:**
 - Nginx otimizado (gzip, cache, SSL)
-- Docker multi-stage builds
 - CI/CD pipeline (GitHub Actions)
 - Backup automático diário (cron)
 - Monitoramento básico (logs, health)
@@ -1757,93 +1753,6 @@ function MyComponent() {
 }
 ```
 
-### FASE 5: Docker e Deploy (1-2 dias)
-
-#### 5.1 Atualizar Docker Compose
-
-**Verificar `docker-compose.yml`:**
-
-```yaml
-services:
-  db:
-    image: postgres:15-alpine
-    container_name: facilita-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: facilita
-    ports:
-      - "5432:5432"
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build: ./backend
-    container_name: facilita-backend
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/facilita
-      SECRET_KEY: ${SECRET_KEY}
-      FLASK_DEBUG: ${FLASK_DEBUG}
-      BACKUP_DIRECTORY: /app/backups
-      UPLOAD_DIRECTORY: /app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./backups:/app/backups
-      - ./uploads:/app/uploads
-      - ./exports:/app/exports
-    command: >
-      sh -c "
-        flask db upgrade &&
-        python scripts/seed.py &&
-        python wsgi.py
-      "
-
-  frontend:
-    build: ./frontend
-    container_name: facilita-frontend
-    environment:
-      VITE_API_URL: /api
-    ports:
-      - "5173:5173"
-
-  nginx:
-    image: nginx:alpine
-    container_name: facilita-nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - backend
-      - frontend
-
-volumes:
-  db-data:
-```
-
-#### 5.2 Testar Deploy Completo
-
-```bash
-docker compose down -v
-docker compose up --build
-```
-
-**Validações:**
-1. Backend inicia e executa migrations
-2. Seed cria admin e permissões
-3. Frontend se comunica com backend
-4. Nginx roteia corretamente
-5. Volumes de backup/uploads funcionam
-
 ### FASE 6: Documentação e Entrega (1 dia)
 
 #### 6.1 Atualizar README.md
@@ -1919,9 +1828,8 @@ docker compose up --build
 3. `backend/app/routes/__init__.py` - Adaptar rotas existentes
 4. `backend/requirements.txt` - Adicionar dependências
 5. `.env` e `.env.example` - Novas variáveis
-6. `docker-compose.yml` - Validar configuração PostgreSQL
-7. `frontend/src/globals.d.ts` - Novos tipos
-8. `frontend/src/App.tsx` - Novas rotas
+6. `frontend/src/globals.d.ts` - Novos tipos
+7. `frontend/src/App.tsx` - Novas rotas
 
 ### Criar:
 1. `backend/app/enums.py` - Enums UserRole e UserStatus
@@ -1983,7 +1891,7 @@ docker compose up --build
 | 2 | Configuração Backend | 3-5 dias | Fase 1 |
 | 3 | Testes e Migração de Dados | 2-3 dias | Fase 2 |
 | 4 | Atualização Frontend | 3-4 dias | Fase 2 |
-| 5 | Docker e Deploy | 1-2 dias | Fases 2, 3, 4 |
+| 5 | Deploy | 1-2 dias | Fases 2, 3, 4 |
 | 6 | Documentação e Entrega | 1 dia | Todas |
 | **TOTAL** | | **11-17 dias** | |
 
@@ -2013,7 +1921,6 @@ docker compose up --build
 - [ ] Permissões ocultam/mostram elementos corretamente
 
 ### Infraestrutura:
-- [ ] Docker Compose sobe todos os serviços
 - [ ] PostgreSQL aceita conexões
 - [ ] Volumes persistem dados
 - [ ] Nginx roteia corretamente
@@ -2249,7 +2156,7 @@ enum EntityType {
 
 ### Decisões Necessárias
 1. ✅ Aprovação do plano arquitetural
-2. ⏳ Escolha de ambiente: produção (VPS) ou local (Docker)
+2. ⏳ Escolha de ambiente: produção (VPS) ou local
 3. ⏳ Repositório: novo repo ou branch no FACILITA atual?
 4. ⏳ Domínio: escolher domínio (ex: facilita.chvc.com.br)
 
@@ -2257,7 +2164,7 @@ enum EntityType {
 1. Criar estrutura de pastas (monorepo)
 2. Setup NestJS backend + Prisma
 3. Setup Next.js frontend + Shadcn/ui
-4. Docker Compose (postgres, redis, backend, frontend, nginx)
+4. Infraestrutura base (postgres, redis, backend, frontend, nginx)
 5. Schema Prisma inicial
 6. Auth JWT + Guards
 7. Login page funcional
@@ -2330,7 +2237,6 @@ enum EntityType {
 - `backend/prisma/schema.prisma` - Schema completo com 20+ models
 
 ### Configuração
-- `docker-compose.yml` - Orquestração completa
 - `.env.example` - Variáveis de ambiente
 - `nginx/nginx.conf` - Proxy reverso
 

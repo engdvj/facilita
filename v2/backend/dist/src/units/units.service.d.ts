@@ -4,104 +4,22 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 export declare class UnitsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    findAll(): import(".prisma/client").Prisma.PrismaPromise<({
-        company: {
-            id: string;
-            cnpj: string | null;
-            name: string;
-            logoUrl: string | null;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-    } & {
-        id: string;
-        cnpj: string | null;
-        name: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-    })[]>;
-    findById(id: string): Promise<{
-        company: {
-            id: string;
-            cnpj: string | null;
-            name: string;
-            logoUrl: string | null;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-    } & {
-        id: string;
-        cnpj: string | null;
-        name: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
+    findAll(options?: {
+        companyId?: string;
+        search?: string;
+        skip?: number;
+        take?: number;
+    }): Promise<{
+        items: any;
+        total: any;
     }>;
-    create(data: CreateUnitDto): import(".prisma/client").Prisma.Prisma__UnitClient<{
-        company: {
-            id: string;
-            cnpj: string | null;
-            name: string;
-            logoUrl: string | null;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-    } & {
-        id: string;
-        cnpj: string | null;
-        name: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-    }, never, import("@prisma/client/runtime/client").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
-    update(id: string, data: UpdateUnitDto): Promise<{
-        company: {
-            id: string;
-            cnpj: string | null;
-            name: string;
-            logoUrl: string | null;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-    } & {
-        id: string;
-        cnpj: string | null;
-        name: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-    }>;
+    findById(id: string): Promise<any>;
+    create(data: CreateUnitDto): any;
+    update(id: string, data: UpdateUnitDto): Promise<any>;
     getDependencies(id: string): Promise<{
-        sectors: number;
-        users: number;
+        sectors: any;
+        users: any;
         hasAny: boolean;
     }>;
-    remove(id: string): Promise<{
-        company: {
-            id: string;
-            cnpj: string | null;
-            name: string;
-            logoUrl: string | null;
-            status: import(".prisma/client").$Enums.EntityStatus;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-    } & {
-        id: string;
-        cnpj: string | null;
-        name: string;
-        status: import(".prisma/client").$Enums.EntityStatus;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-    }>;
+    remove(id: string): Promise<any>;
 }

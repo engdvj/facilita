@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -7,19 +8,42 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 export class CompaniesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(options?: { excludeInternal?: boolean }) {
-    return this.prisma.company.findMany({
+  async findAll(options?: {
+    excludeInternal?: boolean;
+    search?: string;
+    skip?: number;
+    take?: number;
+  }) {
+    const search = options?.search?.trim();
+    const where = {
       ...(options?.excludeInternal
         ? {
-            where: {
-              NOT: {
-                name: 'ADM',
-              },
+            NOT: {
+              name: 'ADM',
             },
           }
         : {}),
-      orderBy: { createdAt: 'desc' },
-    });
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+              { cnpj: { contains: search, mode: Prisma.QueryMode.insensitive } },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.company.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        ...(options?.skip !== undefined ? { skip: options.skip } : {}),
+        ...(options?.take !== undefined ? { take: options.take } : {}),
+      }),
+      this.prisma.company.count({ where }),
+    ]);
+
+    return { items, total };
   }
 
   async findById(id: string) {

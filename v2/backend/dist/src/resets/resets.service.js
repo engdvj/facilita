@@ -207,6 +207,7 @@ let ResetsService = class ResetsService {
                 role: client_1.UserRole.COLLABORATOR,
                 canViewLinks: true,
                 canManageLinks: true,
+                canViewPrivateContent: false,
                 restrictToOwnSector: true,
             },
             {
@@ -223,6 +224,7 @@ let ResetsService = class ResetsService {
                 canManageLinks: true,
                 canManageCategories: true,
                 canManageSchedules: true,
+                canViewPrivateContent: false,
                 canBackupSystem: true,
                 canResetSystem: true,
                 canViewAuditLogs: true,
@@ -243,6 +245,7 @@ let ResetsService = class ResetsService {
                 canManageLinks: true,
                 canManageCategories: true,
                 canManageSchedules: true,
+                canViewPrivateContent: false,
                 canBackupSystem: true,
                 canResetSystem: true,
                 canViewAuditLogs: true,

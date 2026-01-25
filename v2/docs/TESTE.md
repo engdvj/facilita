@@ -2,7 +2,6 @@
 
 ## 📋 Checklist Pré-Teste
 
-- [ ] Docker e Docker Compose instalados
 - [ ] Portas 80, 3000, 3001, 5432, 6379 disponíveis
 - [ ] Arquivo `.env` criado e configurado
 
@@ -29,26 +28,11 @@ cp .env.example .env
 
 ### 2. Iniciar Aplicação
 
-\`\`\`bash
-# Construa e inicie todos os serviços
-docker-compose up -d --build
-
-# Acompanhe os logs para ver se tudo iniciou
-docker-compose logs -f
-\`\`\`
-
-**Aguarde até ver:**
-- ✅ PostgreSQL: "database system is ready to accept connections"
-- ✅ Backend: "🚀 Application is running on: http://localhost:3001"
-- ✅ Frontend: "Ready"
-- ✅ Nginx: "start worker processes"
+Siga o fluxo de desenvolvimento local em `v2/README.md` para iniciar backend e frontend.
 
 ### 3. Verificar Serviços
 
 \`\`\`bash
-# Verifique se todos estão rodando
-docker-compose ps
-
 # Teste os endpoints
 curl http://localhost:3001/api/health  # Backend
 curl http://localhost:3000              # Frontend
@@ -288,8 +272,8 @@ curl http://localhost/health            # Nginx
 ## 📊 Verificação de Dados no Banco
 
 \`\`\`bash
-# Entre no container do Postgres
-docker-compose exec postgres psql -U postgres -d facilita_v2
+# Conecte ao PostgreSQL e execute:
+psql -U postgres -d facilita_v2
 
 # Liste as empresas
 SELECT id, name, status FROM "Company";
@@ -316,28 +300,13 @@ SELECT id, title, "fileName", "fileSize" FROM "UploadedSchedule";
    curl http://localhost:3001/api/health
    \`\`\`
 
-2. Verifique os logs do backend:
-   \`\`\`bash
-   docker-compose logs backend
-   \`\`\`
-
-3. Verifique se o seed foi executado:
-   \`\`\`bash
-   docker-compose exec backend npx prisma studio
-   \`\`\`
+2. Verifique os logs do backend conforme o ambiente de execução.
 
 ### Problema: Upload de arquivos não funciona
 
 **Soluções:**
-1. Verifique se os diretórios existem:
-   \`\`\`bash
-   docker-compose exec backend ls -la uploads/
-   \`\`\`
-
-2. Verifique os logs:
-   \`\`\`bash
-   docker-compose logs backend | grep -i upload
-   \`\`\`
+1. Verifique se os diretórios existem: `uploads/images` e `uploads/documents`
+2. Verifique os logs do backend conforme o ambiente de execução.
 
 ### Problema: Erro 401 (Unauthorized)
 
@@ -355,10 +324,7 @@ SELECT id, title, "fileName", "fileSize" FROM "UploadedSchedule";
    CORS_ORIGIN=*
    \`\`\`
 
-2. Reinicie o backend:
-   \`\`\`bash
-   docker-compose restart backend
-   \`\`\`
+2. Reinicie o backend conforme o ambiente de execução.
 
 ---
 
@@ -381,18 +347,7 @@ Após completar todos os testes, você deve ter:
 
 ## 🧹 Limpar Dados de Teste
 
-\`\`\`bash
-# ATENÇÃO: Isso vai APAGAR TODOS OS DADOS!
-
-# Pare os containers
-docker-compose down
-
-# Remova os volumes (apaga o banco de dados)
-docker-compose down -v
-
-# Inicie novamente do zero
-docker-compose up -d --build
-\`\`\`
+Para limpar os dados de teste, remova o banco de dados e os uploads conforme o ambiente de execução.
 
 ---
 
