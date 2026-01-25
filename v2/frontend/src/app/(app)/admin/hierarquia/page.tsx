@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api, { serverURL } from '@/lib/api';
 import AdminPager from '@/components/admin/pager';
 import StatusBadge from '@/components/admin/status-badge';
@@ -59,6 +59,16 @@ type UserItem = {
 };
 
 type HeaderValue = string | string[] | number | boolean | null | undefined;
+type ItemScope = 'public' | 'company' | 'sector' | 'user';
+type ContentItemSource = {
+  id: string;
+  title: string;
+  imageUrl?: string | null;
+  imagePosition?: string | null;
+  imageScale?: number | null;
+  status?: string | null;
+  createdAt?: string | null;
+};
 
 const pageSize = 6;
 
@@ -106,6 +116,31 @@ const buildQuery = (params: Record<string, string | number | undefined>) => {
   const query = searchParams.toString();
   return query ? `?${query}` : '';
 };
+
+const mapContentItems = (
+  items: ContentItemSource[],
+  type: UserItem['type'],
+) =>
+  items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    type,
+    imageUrl: item.imageUrl ?? null,
+    imagePosition: item.imagePosition ?? null,
+    imageScale: item.imageScale ?? null,
+    status: item.status ?? null,
+    createdAt: item.createdAt ?? null,
+  }));
+
+const sortItemsByDate = (items: UserItem[]) =>
+  [...items].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+    return a.title.localeCompare(b.title);
+  });
 
 const getPrimarySectorUnit = (sector?: Sector | null) =>
   sector?.sectorUnits?.find((unit) => unit.isPrimary) || sector?.sectorUnits?.[0];
@@ -250,6 +285,12 @@ export default function HierarquiaPage() {
   const [itemPage, setItemPage] = useState(1);
   const [sectorSearch, setSectorSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const itemScope = useMemo<ItemScope>(() => {
+    if (selectedUserId && selectedSectorId) return 'user';
+    if (selectedSectorId) return 'sector';
+    if (selectedCompanyId) return 'company';
+    return 'public';
+  }, [selectedCompanyId, selectedSectorId, selectedUserId]);
 
   useNotifyOnChange(error);
   const canLoad = hasHydrated && Boolean(accessToken) && isSuperAdmin;
@@ -462,9 +503,11 @@ export default function HierarquiaPage() {
   useEffect(() => {
     let active = true;
 
-    if (!canLoad) return () => {
-      active = false;
-    };
+    if (!canLoad || itemScope !== 'user') {
+      return () => {
+        active = false;
+      };
+    }
 
     if (!selectedUserId || !selectedSectorId) {
       setItems([]);
@@ -510,7 +553,81 @@ export default function HierarquiaPage() {
     return () => {
       active = false;
     };
-  }, [canLoad, itemPage, selectedSectorId, selectedUnitId, selectedUserId]);
+  }, [
+    canLoad,
+    itemPage,
+    itemScope,
+    selectedSectorId,
+    selectedUnitId,
+    selectedUserId,
+  ]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canLoad || itemScope === 'user') {
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadItems = async () => {
+      try {
+        setItemsLoading(true);
+        const query = buildQuery({
+          ...(itemScope === 'public' ? { audience: 'PUBLIC' } : {}),
+          ...(itemScope === 'company'
+            ? { companyId: selectedCompanyId, audience: 'COMPANY' }
+            : {}),
+          ...(itemScope === 'sector'
+            ? {
+                sectorId: selectedSectorId,
+                unitId: selectedUnitId,
+                audience: 'SECTOR',
+              }
+            : {}),
+        });
+        const linksEndpoint = '/links/admin/list';
+        const schedulesEndpoint = '/schedules/admin/list';
+        const notesEndpoint = '/notes/admin/list';
+        const [linksResponse, schedulesResponse, notesResponse] =
+          await Promise.all([
+            api.get(query ? `${linksEndpoint}${query}` : linksEndpoint),
+            api.get(query ? `${schedulesEndpoint}${query}` : schedulesEndpoint),
+            api.get(query ? `${notesEndpoint}${query}` : notesEndpoint),
+          ]);
+        if (!active) return;
+        const nextItems = sortItemsByDate([
+          ...mapContentItems(linksResponse.data, 'link'),
+          ...mapContentItems(schedulesResponse.data, 'document'),
+          ...mapContentItems(notesResponse.data, 'note'),
+        ]);
+        setItems(nextItems);
+        setItemTotalCount(nextItems.length);
+        setError(null);
+      } catch (err: any) {
+        if (active) {
+          const statusCode = err?.response?.status;
+          if (statusCode === 401 || statusCode === 403) {
+            setError('Sessao expirada. Faca login novamente.');
+          } else {
+            setError('Nao foi possivel carregar os itens.');
+          }
+          setItems([]);
+          setItemTotalCount(0);
+        }
+      } finally {
+        if (active) {
+          setItemsLoading(false);
+        }
+      }
+    };
+
+    loadItems();
+    return () => {
+      active = false;
+    };
+  }, [canLoad, itemScope, selectedCompanyId, selectedSectorId, selectedUnitId]);
 
   const companyTotalPages = Math.max(
     1,
@@ -520,6 +637,29 @@ export default function HierarquiaPage() {
   const sectorTotalPages = Math.max(1, Math.ceil(sectorTotalCount / pageSize));
   const userTotalPages = Math.max(1, Math.ceil(userTotalCount / pageSize));
   const itemTotalPages = Math.max(1, Math.ceil(itemTotalCount / pageSize));
+  const displayItems = useMemo(() => {
+    if (itemScope === 'user') {
+      return items;
+    }
+    const start = (itemPage - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [itemPage, itemScope, items]);
+  const itemScopeLabel =
+    itemScope === 'public'
+      ? 'PUBLICOS'
+      : itemScope === 'company'
+        ? 'EMPRESA'
+        : itemScope === 'sector'
+          ? 'SETOR'
+          : 'USUARIO';
+  const emptyItemsMessage =
+    itemScope === 'public'
+      ? 'Nenhum item publico encontrado.'
+      : itemScope === 'company'
+        ? 'Nenhum item encontrado para esta empresa.'
+        : itemScope === 'sector'
+          ? 'Nenhum item encontrado para este setor.'
+          : 'Nenhum item encontrado para este usuario.';
 
   useEffect(() => {
     if (companyPage > companyTotalPages) {
@@ -608,10 +748,8 @@ export default function HierarquiaPage() {
     const nextUserId = selectedUserId === userId ? '' : userId;
     setSelectedUserId(nextUserId);
     setItemPage(1);
-    if (!nextUserId) {
-      setItems([]);
-      setItemTotalCount(0);
-    }
+    setItems([]);
+    setItemTotalCount(0);
   };
 
   if (hasHydrated && user && user.role !== 'SUPERADMIN') {
@@ -870,25 +1008,16 @@ export default function HierarquiaPage() {
       <div className="surface">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 px-4 py-4 sm:px-6">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Itens
+            Itens - {itemScopeLabel}
           </p>
           <p className="text-xs text-muted-foreground">
-            {selectedUserId
-              ? itemsLoading
-                ? 'Carregando...'
-                : `${itemTotalCount} registros`
-              : 'Selecione um usuario'}
+            {itemsLoading ? 'Carregando...' : `${itemTotalCount} registros`}
           </p>
         </div>
         <div className="space-y-4 p-4 sm:p-6">
-          {!selectedUserId && !usersLoading && (
-            <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
-              Selecione um usuario para listar itens.
-            </div>
-          )}
-          {selectedUserId && items.length > 0 && (
+          {displayItems.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((item) => {
+              {displayItems.map((item) => {
                 const typeLabel =
                   item.type === 'link'
                     ? 'LINK'
@@ -939,9 +1068,9 @@ export default function HierarquiaPage() {
               })}
             </div>
           )}
-          {selectedUserId && !itemsLoading && items.length === 0 && (
+          {!itemsLoading && displayItems.length === 0 && (
             <div className="rounded-2xl border border-dashed border-border/70 px-6 py-8 text-center text-sm text-muted-foreground">
-              Nenhum item encontrado para este usuario.
+              {emptyItemsMessage}
             </div>
           )}
         </div>
