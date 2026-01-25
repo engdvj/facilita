@@ -4,8 +4,8 @@
 .env.*.local
 
 # Keep example files
-!.env.example
-!.env.production
+# !.env.example
+# !.env.production
 
 # Node modules
 node_modules/
