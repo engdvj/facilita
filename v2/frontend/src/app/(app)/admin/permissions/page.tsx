@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { RolePermission, UserRole } from '@/types';
@@ -37,6 +37,8 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true);
   const [savingRole, setSavingRole] = useState<UserRole | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
 
@@ -108,12 +110,19 @@ export default function PermissionsPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
+    <div className="space-y-5 motion-stagger">
+      <div className="motion-item space-y-2" style={staggerStyle(1)}>
         <h1 className="font-display text-3xl text-foreground">Permissoes</h1>
         <p className="text-sm text-muted-foreground">
           Matriz editavel para os papeis SUPERADMIN e USER.
         </p>
+      </div>
+
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Altere uma role por vez e salve em seguida. Evite mudanças em lote sem validar o impacto no fluxo diario.
       </div>
 
       {loading ? (
@@ -125,11 +134,12 @@ export default function PermissionsPage() {
           {error}
         </div>
       ) : (
-        <div className="space-y-4">
-          {rows.map((row) => (
+        <div className="motion-item space-y-4" style={staggerStyle(3)}>
+          {rows.map((row, index) => (
             <section
               key={row.role}
-              className="rounded-2xl border border-border/70 bg-card/85 p-4 shadow-sm"
+              className="motion-item rounded-2xl border border-border/70 bg-card/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.12)]"
+              style={staggerStyle(index + 4)}
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>

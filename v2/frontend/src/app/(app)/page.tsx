@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import AdminModal from '@/components/admin/modal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import api, { serverURL } from '@/lib/api';
@@ -53,6 +53,8 @@ export default function HomePage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | ItemType>('ALL');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   useEffect(() => {
     let active = true;
@@ -155,6 +157,14 @@ export default function HomePage() {
     [notes],
   );
 
+  const counts = useMemo(() => {
+    const base = { LINK: 0, SCHEDULE: 0, NOTE: 0 };
+    items.forEach((item) => {
+      base[item.type] += 1;
+    });
+    return base;
+  }, [items]);
+
   const openItem = (item: HomeItem) => {
     if (item.status !== 'ACTIVE') return;
 
@@ -178,8 +188,8 @@ export default function HomePage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
+    <div className="space-y-5 motion-stagger">
+      <div className="motion-item space-y-2" style={staggerStyle(1)}>
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Inicio
         </p>
@@ -187,11 +197,31 @@ export default function HomePage() {
           Seus links, documentos e notas
         </h1>
         <p className="text-sm text-muted-foreground">
-          Conteudos proprios e publicos, sem itens compartilhados nesta tela.
+          Central de consulta rapida para o seu conteudo proprio e publico.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_190px]">
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Filtre por tipo, pesquise por palavras-chave e abra itens em um clique.
+        Notas abrem em modal para leitura sem sair da tela.
+      </div>
+
+      <div className="motion-item grid gap-2 sm:grid-cols-3" style={staggerStyle(3)}>
+        <div className="rounded-xl border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
+          Links: <span className="font-semibold text-foreground">{counts.LINK}</span>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
+          Documentos: <span className="font-semibold text-foreground">{counts.SCHEDULE}</span>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
+          Notas: <span className="font-semibold text-foreground">{counts.NOTE}</span>
+        </div>
+      </div>
+
+      <div className="motion-item grid gap-3 sm:grid-cols-[1fr_190px]" style={staggerStyle(4)}>
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -213,20 +243,20 @@ export default function HomePage() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
+        <div className="motion-fade rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
           Carregando conteudo...
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+        <div className="motion-fade rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-sm text-destructive">
           {error}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
+        <div className="motion-fade rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
           Nenhum item encontrado.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => {
+        <div className="motion-item grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={staggerStyle(5)}>
+          {items.map((item, index) => {
             const image = item.imageUrl ? resolveFileUrl(item.imageUrl) : '';
             const isInactive = item.status !== 'ACTIVE';
             return (
@@ -241,11 +271,12 @@ export default function HomePage() {
                     openItem(item);
                   }
                 }}
-                className={`group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition ${
+                className={`motion-item group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition ${
                   isInactive
                     ? 'cursor-not-allowed opacity-60'
-                    : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md'
+                    : 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)]'
                 }`}
+                style={staggerStyle(index + 6)}
               >
                 <div className="relative h-40 w-full overflow-hidden bg-secondary/50">
                   {image ? (

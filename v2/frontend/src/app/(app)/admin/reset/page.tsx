@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import api from '@/lib/api';
 import {
@@ -17,6 +17,8 @@ export default function ResetPage() {
   const [selection, setSelection] = useState<BackupSelection>(buildInitialSelection(false));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -75,25 +77,32 @@ export default function ResetPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
+    <div className="space-y-5 motion-stagger">
+      <div className="motion-item space-y-2" style={staggerStyle(1)}>
         <h1 className="font-display text-3xl text-foreground">Reset do sistema</h1>
         <p className="text-sm text-muted-foreground">
           Limpe entidades especificas e mantenha seed de usuarios/permissoes.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Operacao destrutiva: revise a selecao antes de executar. Use reset parcial sempre que possivel.
+      </div>
+
+      <div className="motion-item flex flex-wrap gap-2" style={staggerStyle(3)}>
         <button
           type="button"
-          className="rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
+          className="motion-press rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
           onClick={() => toggleAll(true)}
         >
           Selecionar tudo
         </button>
         <button
           type="button"
-          className="rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
+          className="motion-press rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
           onClick={() => toggleAll(false)}
         >
           Limpar
@@ -103,7 +112,7 @@ export default function ResetPage() {
         </span>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="motion-item grid gap-2 sm:grid-cols-2 xl:grid-cols-3" style={staggerStyle(4)}>
         {backupOptions.map((option) => (
           <label
             key={option.key}
@@ -132,7 +141,7 @@ export default function ResetPage() {
 
       <button
         type="button"
-        className="rounded-lg bg-destructive px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
+        className="motion-press rounded-lg bg-destructive px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
         onClick={executeReset}
         disabled={loading || !hasSelection}
       >

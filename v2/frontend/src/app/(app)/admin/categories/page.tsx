@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import api from '@/lib/api';
 import AdminModal from '@/components/admin/modal';
 import { Category } from '@/types';
@@ -22,6 +22,8 @@ export default function CategoriesPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const load = async () => {
     setLoading(true);
@@ -112,26 +114,39 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5 motion-stagger">
+      <div
+        className="motion-item flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+        style={staggerStyle(1)}
+      >
         <div className="space-y-2">
           <h1 className="font-display text-3xl text-foreground">Categorias</h1>
-          <p className="text-sm text-muted-foreground">Organize links, documentos e notas.</p>
+          <p className="text-sm text-muted-foreground">
+            Organize links, documentos e notas com uma estrutura facil de manter.
+          </p>
         </div>
         <button
           type="button"
-          className="rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
+          className="motion-press rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
           onClick={openCreate}
         >
           Nova categoria
         </button>
       </div>
 
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Dica: prefira poucos grupos claros. Categorias inativas ajudam no historico sem poluir o uso diario.
+      </div>
+
       <input
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         placeholder="Buscar categoria"
-        className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
+        className="motion-item w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
+        style={staggerStyle(3)}
       />
 
       {loading ? (
@@ -147,11 +162,12 @@ export default function CategoriesPage() {
           Nenhuma categoria encontrada.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((category) => (
+        <div className="motion-item grid gap-3 sm:grid-cols-2 xl:grid-cols-3" style={staggerStyle(4)}>
+          {filtered.map((category, index) => (
             <article
               key={category.id}
-              className="rounded-2xl border border-border/70 bg-card/85 p-4 shadow-sm"
+              className="motion-item rounded-2xl border border-border/70 bg-card/85 p-4 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)]"
+              style={staggerStyle(index + 5)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

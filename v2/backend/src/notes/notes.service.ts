@@ -115,6 +115,7 @@ export class NotesService {
   async findAll(viewer?: { id: string; role: UserRole }, filters?: {
     categoryId?: string;
     search?: string;
+    includeInactive?: boolean;
   }) {
     if (!viewer) return [];
 
@@ -122,7 +123,6 @@ export class NotesService {
     const and: Prisma.NoteWhereInput[] = [
       {
         deletedAt: null,
-        status: EntityStatus.ACTIVE,
       },
     ];
 
@@ -140,7 +140,23 @@ export class NotesService {
       });
     }
 
-    if (viewer.role !== UserRole.SUPERADMIN) {
+    if (viewer.role === UserRole.SUPERADMIN) {
+      if (!filters?.includeInactive) {
+        and.push({ status: EntityStatus.ACTIVE });
+      }
+    } else if (filters?.includeInactive) {
+      and.push({
+        OR: [
+          { ownerId: viewer.id },
+          {
+            visibility: ContentVisibility.PUBLIC,
+            owner: { role: UserRole.SUPERADMIN },
+            status: EntityStatus.ACTIVE,
+          },
+        ],
+      });
+    } else {
+      and.push({ status: EntityStatus.ACTIVE });
       and.push({
         OR: [
           { ownerId: viewer.id },

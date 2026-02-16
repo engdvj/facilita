@@ -40,8 +40,13 @@ export class LinksController {
     @Request() req?: any,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
-    return this.linksService.findAll(req?.user, { categoryId, search });
+    return this.linksService.findAll(req?.user, {
+      categoryId,
+      search,
+      includeInactive: includeInactive === 'true',
+    });
   }
 
   @Get('admin/list')

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import api, { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -14,6 +14,8 @@ export default function ImagesPage() {
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mounted, setMounted] = useState(typeof window !== 'undefined');
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const filters = useMemo(
     () => ({
@@ -84,15 +86,22 @@ export default function ImagesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="space-y-6 motion-stagger">
+      <div className="motion-item space-y-2" style={staggerStyle(1)}>
         <h1 className="font-display text-3xl text-foreground">Galeria de imagens</h1>
         <p className="text-sm text-muted-foreground">
           Gerencie imagens enviadas pelos usuarios.
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Use esta galeria para reaproveitar capas e manter padrao visual entre links, documentos e notas.
+      </div>
+
+      <div className="motion-item flex flex-col sm:flex-row gap-3" style={staggerStyle(3)}>
         <input
           type="text"
           placeholder="Buscar por nome ou descricao..."
@@ -111,7 +120,7 @@ export default function ImagesPage() {
         </label>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="motion-item flex items-center justify-between text-sm text-muted-foreground" style={staggerStyle(4)}>
         <span>{total} imagens encontradas</span>
         <span>Pagina {page} de {Math.max(totalPages, 1)}</span>
       </div>
@@ -135,13 +144,14 @@ export default function ImagesPage() {
       )}
 
       {!loading && !error && images.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {images.map((image) => (
+        <div className="motion-item grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" style={staggerStyle(5)}>
+          {images.map((image, index) => (
             <button
               key={image.id}
               type="button"
               onClick={() => loadImageDetails(image.id)}
-              className="group relative aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted hover:border-foreground/30 transition-colors"
+              className="motion-item group relative aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted shadow-[0_10px_22px_rgba(16,44,50,0.12)] hover:border-foreground/30 transition-colors"
+              style={staggerStyle(index + 6)}
             >
               <img
                 src={`${serverURL}${image.url}`}

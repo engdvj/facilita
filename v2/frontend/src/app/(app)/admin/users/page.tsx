@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import AdminModal from '@/components/admin/modal';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -26,6 +26,8 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const isSuperadmin = authUser?.role === 'SUPERADMIN';
 
@@ -129,22 +131,32 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5 motion-stagger">
+      <div
+        className="motion-item flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+        style={staggerStyle(1)}
+      >
         <div className="space-y-2">
           <h1 className="font-display text-3xl text-foreground">Usuarios</h1>
           <p className="text-sm text-muted-foreground">Gerencie contas da plataforma.</p>
         </div>
         <button
           type="button"
-          className="rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
+          className="motion-press rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
           onClick={openCreate}
         >
           Novo usuario
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_170px_170px]">
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Controle de acesso centralizado. Ajuste role/status com cuidado para evitar bloqueios ou permissoes indevidas.
+      </div>
+
+      <div className="motion-item grid gap-3 sm:grid-cols-[1fr_170px_170px]" style={staggerStyle(3)}>
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -186,7 +198,7 @@ export default function UsersPage() {
           Nenhum usuario encontrado.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/85 shadow-sm">
+        <div className="motion-item overflow-hidden rounded-2xl border border-border/70 bg-card/85 shadow-[0_12px_24px_rgba(16,44,50,0.12)]" style={staggerStyle(4)}>
           <table className="min-w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.14em] text-muted-foreground">
               <tr>
@@ -263,7 +275,11 @@ export default function UsersPage() {
           </>
         }
       >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Para novo usuario, senha e obrigatoria. Em edicao, informe senha apenas se quiser redefinir.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
           <input
             value={form.name}
             onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -307,6 +323,7 @@ export default function UsersPage() {
             <option value="ACTIVE">ACTIVE</option>
             <option value="INACTIVE">INACTIVE</option>
           </select>
+          </div>
         </div>
       </AdminModal>
     </div>

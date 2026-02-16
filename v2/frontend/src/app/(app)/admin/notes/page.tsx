@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
 import ShareContentModal from '@/components/admin/share-content-modal';
@@ -46,6 +46,8 @@ export default function NotesPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const staggerStyle = (index: number) =>
+    ({ '--stagger-index': index } as CSSProperties);
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
 
@@ -54,7 +56,9 @@ export default function NotesPage() {
     setError(null);
     try {
       const [itemsRes, categoriesRes] = await Promise.all([
-        api.get(isSuperadmin ? '/notes/admin/list' : '/notes'),
+        api.get(isSuperadmin ? '/notes/admin/list' : '/notes', {
+          params: { includeInactive: true },
+        }),
         api.get('/categories'),
       ]);
 
@@ -164,8 +168,11 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5 motion-stagger">
+      <div
+        className="motion-item flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+        style={staggerStyle(1)}
+      >
         <div className="space-y-2">
           <h1 className="font-display text-3xl text-foreground">Notas</h1>
           <p className="text-sm text-muted-foreground">
@@ -176,14 +183,21 @@ export default function NotesPage() {
         </div>
         <button
           type="button"
-          className="rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
+          className="motion-press rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
           onClick={openCreate}
         >
           Nova nota
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
+      <div
+        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
+        style={staggerStyle(2)}
+      >
+        Registre conteudo objetivo e use a imagem apenas quando ela realmente explicar melhor a nota.
+      </div>
+
+      <div className="motion-item grid gap-3 sm:grid-cols-[1fr_180px]" style={staggerStyle(3)}>
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -216,11 +230,12 @@ export default function NotesPage() {
           Nenhuma nota encontrada.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((item) => (
+        <div className="motion-item grid gap-3 sm:grid-cols-2 xl:grid-cols-3" style={staggerStyle(4)}>
+          {filtered.map((item, index) => (
             <article
               key={item.id}
-              className="overflow-hidden rounded-2xl border border-border/70 bg-card/85 shadow-sm"
+              className="motion-item overflow-hidden rounded-2xl border border-border/70 bg-card/85 shadow-[0_12px_24px_rgba(16,44,50,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(16,44,50,0.18)]"
+              style={staggerStyle(index + 5)}
             >
               <div className="relative h-36 bg-secondary/40">
                 {item.imageUrl ? (
@@ -333,7 +348,11 @@ export default function NotesPage() {
           </>
         }
       >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Escreva titulo e conteudo primeiro. Categoria e ajustes visuais servem para facilitar a consulta posterior.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
           <input
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
@@ -448,6 +467,7 @@ export default function NotesPage() {
               />
             </>
           )}
+          </div>
         </div>
       </AdminModal>
 

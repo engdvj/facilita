@@ -40,8 +40,13 @@ export class UploadedSchedulesController {
     @Request() req?: any,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
-    return this.schedulesService.findAll(req?.user, { categoryId, search });
+    return this.schedulesService.findAll(req?.user, {
+      categoryId,
+      search,
+      includeInactive: includeInactive === 'true',
+    });
   }
 
   @Get('admin/list')

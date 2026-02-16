@@ -25,6 +25,7 @@ export default function AppNav() {
       return [
         {
           label: 'Navegacao',
+          description: 'Acompanhamento geral',
           items: [
             { href: '/', label: 'Inicio' },
             { href: '/dashboard', label: 'Dashboard' },
@@ -33,6 +34,7 @@ export default function AppNav() {
         },
         {
           label: 'Conteudo',
+          description: 'Gestao de materiais',
           items: [
             { href: '/admin/categories', label: 'Categorias' },
             { href: '/admin/links', label: 'Links' },
@@ -43,6 +45,7 @@ export default function AppNav() {
         },
         {
           label: 'Plataforma',
+          description: 'Configuracoes globais',
           items: [
             { href: '/admin/users', label: 'Usuarios' },
             { href: '/admin/permissions', label: 'Permissoes' },
@@ -58,6 +61,7 @@ export default function AppNav() {
     return [
       {
         label: 'Navegacao',
+        description: 'Acesso rapido',
         items: [
           { href: '/', label: 'Inicio' },
           { href: '/favoritos', label: 'Favoritos' },
@@ -66,6 +70,7 @@ export default function AppNav() {
       },
       {
         label: 'Meu Conteudo',
+        description: 'Area de trabalho',
         items: [
           { href: '/admin/categories', label: 'Categorias' },
           { href: '/admin/links', label: 'Links' },
@@ -88,6 +93,9 @@ export default function AppNav() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] sm:tracking-[0.32em] text-muted-foreground/80 font-display">
             {section.label}
           </p>
+          {section.description && (
+            <p className="text-[11px] text-muted-foreground/80">{section.description}</p>
+          )}
           <nav className="space-y-3">
             {section.items.map((item, itemIndex) => {
               const active = isActive(pathname, item.href);
