@@ -7,7 +7,6 @@ import ImageGallery from './image-gallery';
 interface ImageSelectorProps {
   value: string;
   onChange: (imageUrl: string) => void;
-  companyId: string;
   disabled?: boolean;
 }
 
@@ -16,7 +15,6 @@ type SelectorMode = 'upload' | 'gallery';
 export default function ImageSelector({
   value,
   onChange,
-  companyId,
   disabled = false,
 }: ImageSelectorProps) {
   const [mode, setMode] = useState<SelectorMode>('upload');
@@ -34,11 +32,7 @@ export default function ImageSelector({
 
     try {
       setUploading(true);
-      // Pass companyId as query param so superadmins upload to the correct company
-      const uploadUrl = companyId
-        ? `/uploads/image?companyId=${companyId}`
-        : '/uploads/image';
-      const response = await api.post(uploadUrl, uploadData, {
+      const response = await api.post('/uploads/image', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         skipNotify: true,
       });
@@ -138,7 +132,6 @@ export default function ImageSelector({
       {/* Gallery Modal */}
       {galleryOpen && (
         <ImageGallery
-          companyId={companyId}
           onSelectImage={(imageUrl) => {
             onChange(imageUrl);
             setGalleryOpen(false);

@@ -7,13 +7,11 @@ import { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 
 interface ImageGalleryProps {
-  companyId: string;
   onSelectImage: (imageUrl: string) => void;
   onClose: () => void;
 }
 
 export default function ImageGallery({
-  companyId,
   onSelectImage,
   onClose,
 }: ImageGalleryProps) {
@@ -39,7 +37,7 @@ export default function ImageGallery({
     hasPreviousPage,
     nextPage,
     previousPage,
-  } = useImageGallery(companyId, filters);
+  } = useImageGallery(filters);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';

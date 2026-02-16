@@ -1,7 +1,4 @@
 export const backupEntities = [
-  'companies',
-  'units',
-  'sectors',
   'users',
   'rolePermissions',
   'categories',
@@ -9,6 +6,10 @@ export const backupEntities = [
   'uploadedSchedules',
   'notes',
   'uploadedImages',
+  'shares',
+  'favorites',
+  'notifications',
+  'systemConfig',
 ] as const;
 
 export type BackupEntity = (typeof backupEntities)[number];

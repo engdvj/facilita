@@ -28,32 +28,17 @@ let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
     }
-    async findAll(companyId, sectorId, page, pageSize, search, res) {
+    async findAll(role, status, page, pageSize, search, res) {
         const pagination = (0, pagination_1.parsePagination)(page, pageSize, {
             defaultPageSize: 12,
         });
         const { items, total } = await this.usersService.findAll({
-            companyId,
-            sectorId,
+            role,
+            status,
             search,
             ...(pagination.shouldPaginate
                 ? { skip: pagination.skip, take: pagination.take }
                 : {}),
-        });
-        if (pagination.shouldPaginate && res) {
-            res.setHeader('X-Total-Count', total.toString());
-        }
-        return items;
-    }
-    async findAccessItems(id, sectorId, page, pageSize, res) {
-        const pagination = (0, pagination_1.parsePagination)(page, pageSize, {
-            defaultPageSize: 12,
-        });
-        const { items, total } = await this.usersService.getAccessItems(id, {
-            sectorId,
-            page: pagination.page,
-            pageSize: pagination.pageSize,
-            shouldPaginate: pagination.shouldPaginate,
         });
         if (pagination.shouldPaginate && res) {
             res.setHeader('X-Total-Count', total.toString());
@@ -75,15 +60,15 @@ let UsersController = class UsersController {
     update(id, data) {
         return this.usersService.update(id, data);
     }
-    remove(id) {
-        return this.usersService.remove(id);
+    remove(id, actor) {
+        return this.usersService.remove(id, actor.id);
     }
 };
 exports.UsersController = UsersController;
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Query)('companyId')),
-    __param(1, (0, common_1.Query)('sectorId')),
+    __param(0, (0, common_1.Query)('role', new common_1.ParseEnumPipe(client_1.UserRole, { optional: true }))),
+    __param(1, (0, common_1.Query)('status', new common_1.ParseEnumPipe(client_1.UserStatus, { optional: true }))),
     __param(2, (0, common_1.Query)('page')),
     __param(3, (0, common_1.Query)('pageSize')),
     __param(4, (0, common_1.Query)('search')),
@@ -92,17 +77,6 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String, String, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)(':id/access-items'),
-    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
-    __param(1, (0, common_1.Query)('sectorId')),
-    __param(2, (0, common_1.Query)('page')),
-    __param(3, (0, common_1.Query)('pageSize')),
-    __param(4, (0, common_1.Res)({ passthrough: true })),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, Object]),
-    __metadata("design:returntype", Promise)
-], UsersController.prototype, "findAccessItems", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
@@ -126,7 +100,7 @@ __decorate([
 ], UsersController.prototype, "create", null);
 __decorate([
     (0, common_1.Patch)('me'),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN, client_1.UserRole.COLLABORATOR),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.SUPERADMIN, client_1.UserRole.USER),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -144,14 +118,15 @@ __decorate([
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "remove", null);
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('users'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.SUPERADMIN),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.SUPERADMIN),
     __metadata("design:paramtypes", [users_service_1.UsersService])
 ], UsersController);
 //# sourceMappingURL=users.controller.js.map

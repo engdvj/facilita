@@ -1,64 +1,508 @@
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
-import { ContentAudience, UserRole } from '@prisma/client';
-import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
-type NoteActor = {
-    id: string;
-    role: UserRole;
-    companyId?: string | null;
-    canViewPrivate?: boolean;
-};
-type NoteViewer = {
-    id?: string;
-    canViewPrivate?: boolean;
-};
 export declare class NotesService {
-    private prisma;
-    private notificationsService;
-    private notificationsGateway;
-    constructor(prisma: PrismaService, notificationsService: NotificationsService, notificationsGateway: NotificationsGateway);
-    create(createNoteDto: CreateNoteDto): Promise<any>;
-    findAll(companyId?: string, filters?: {
-        sectorId?: string;
-        unitId?: string;
-        unitIds?: string[];
-        categoryId?: string;
-        isPublic?: boolean;
-        audience?: ContentAudience;
-        includeInactive?: boolean;
-    }, viewer?: NoteViewer): Promise<any>;
-    findAllPaginated(companyId?: string, filters?: {
-        sectorId?: string;
-        unitId?: string;
-        unitIds?: string[];
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    private include;
+    private withShareMetadata;
+    private normalizeVisibility;
+    private ensurePublicToken;
+    private assertCategoryOwner;
+    private assertCanMutate;
+    create(actor: {
+        id: string;
+        role: UserRole;
+    }, dto: CreateNoteDto): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
+    findAll(viewer?: {
+        id: string;
+        role: UserRole;
+    }, filters?: {
         categoryId?: string;
         search?: string;
-        isPublic?: boolean;
-        audience?: ContentAudience;
+    }): Promise<({
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    })[]>;
+    findAllPaginated(filters: {
+        categoryId?: string;
+        search?: string;
         includeInactive?: boolean;
-    }, viewer?: NoteViewer, pagination?: {
+    }, pagination?: {
         skip?: number;
         take?: number;
     }): Promise<{
-        items: any;
-        total: any;
+        items: ({
+            category: {
+                name: string;
+                status: import(".prisma/client").$Enums.EntityStatus;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                color: string | null;
+                icon: string | null;
+                adminOnly: boolean;
+                ownerId: string;
+            } | null;
+            owner: {
+                name: string;
+                role: import(".prisma/client").$Enums.UserRole;
+                id: string;
+                email: string;
+            };
+            shares: {
+                id: string;
+                recipient: {
+                    name: string;
+                    id: string;
+                    email: string;
+                };
+            }[];
+        } & {
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            ownerId: string;
+            title: string;
+            imageUrl: string | null;
+            imagePosition: string | null;
+            imageScale: number | null;
+            visibility: import(".prisma/client").$Enums.ContentVisibility;
+            publicToken: string | null;
+            deletedAt: Date | null;
+            categoryId: string | null;
+            content: string;
+        } & {
+            createdBy: any;
+            shareCount: number;
+            sharedWithPreview: any[];
+        })[];
+        total: number;
     }>;
-    userHasSector(userId: string, sectorId: string): Promise<boolean>;
-    findOne(id: string, viewer?: NoteViewer): Promise<any>;
-    update(id: string, updateNoteDto: UpdateNoteDto, actor?: NoteActor): Promise<any>;
-    remove(id: string, actor?: NoteActor, adminMessage?: string): Promise<any>;
-    restore(id: string, actor?: NoteActor): Promise<any>;
-    activate(id: string, actor?: NoteActor): Promise<any>;
-    deactivate(id: string, actor?: NoteActor): Promise<any>;
-    private normalizeUnitIds;
-    private assertUnitsAllowed;
-    private buildPrivateAccessFilter;
-    private assertPrivateAccess;
-    private assertCanMutate;
-    private resolveAudienceFromExisting;
-    private resolveAudienceForUpdate;
-    private assertAudienceAllowed;
+    findOne(id: string, viewer?: {
+        id?: string;
+        role?: UserRole;
+    }): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
+    findPublicByToken(publicToken: string): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            id: string;
+            email: string;
+        };
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    }>;
+    update(id: string, actor: {
+        id: string;
+        role: UserRole;
+    }, dto: UpdateNoteDto): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
+    remove(id: string, actor: {
+        id: string;
+        role: UserRole;
+    }): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
+    restore(id: string, actor: {
+        id: string;
+        role: UserRole;
+    }): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
+    activate(id: string, actor: {
+        id: string;
+        role: UserRole;
+    }): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
+    deactivate(id: string, actor: {
+        id: string;
+        role: UserRole;
+    }): Promise<{
+        category: {
+            name: string;
+            status: import(".prisma/client").$Enums.EntityStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            color: string | null;
+            icon: string | null;
+            adminOnly: boolean;
+            ownerId: string;
+        } | null;
+        owner: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            email: string;
+        };
+        shares: {
+            id: string;
+            recipient: {
+                name: string;
+                id: string;
+                email: string;
+            };
+        }[];
+    } & {
+        status: import(".prisma/client").$Enums.EntityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        color: string | null;
+        ownerId: string;
+        title: string;
+        imageUrl: string | null;
+        imagePosition: string | null;
+        imageScale: number | null;
+        visibility: import(".prisma/client").$Enums.ContentVisibility;
+        publicToken: string | null;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        content: string;
+    } & {
+        createdBy: any;
+        shareCount: number;
+        sharedWithPreview: any[];
+    }>;
 }
-export {};

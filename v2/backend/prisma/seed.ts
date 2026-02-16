@@ -4,47 +4,27 @@ import { createPrismaAdapter } from '../src/prisma/prisma-adapter';
 import { SYSTEM_CONFIG_DEFAULTS } from '../src/system-config/system-config.defaults';
 
 const prisma = new PrismaClient({ adapter: createPrismaAdapter() });
-const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
-
-async function seedAdmCompany() {
-  await prisma.company.upsert({
-    where: { id: ADM_COMPANY_ID },
-    update: { name: 'ADM', status: 'ACTIVE' },
-    create: {
-      id: ADM_COMPANY_ID,
-      name: 'ADM',
-      status: 'ACTIVE',
-    },
-  });
-}
 
 async function seedRolePermissions() {
   const roles = [
     {
-      role: UserRole.COLLABORATOR,
-      canViewLinks: true,
-      canManageLinks: true,
-      restrictToOwnSector: true,
-    },
-    {
-      role: UserRole.ADMIN,
-      canViewDashboard: true,
-      canAccessAdmin: true,
-      canViewUsers: true,
-      canCreateUsers: true,
-      canEditUsers: true,
-      canDeleteUsers: true,
-      canViewSectors: true,
-      canManageSectors: true,
+      role: UserRole.USER,
+      canViewDashboard: false,
+      canAccessAdmin: false,
+      canViewUsers: false,
+      canCreateUsers: false,
+      canEditUsers: false,
+      canDeleteUsers: false,
       canViewLinks: true,
       canManageLinks: true,
       canManageCategories: true,
       canManageSchedules: true,
-      canBackupSystem: true,
-      canResetSystem: true,
-      canViewAuditLogs: true,
-      canManageSystemConfig: true,
-      restrictToOwnSector: false,
+      canViewPrivateContent: false,
+      canBackupSystem: false,
+      canResetSystem: false,
+      canViewAuditLogs: false,
+      canManageSystemConfig: false,
+      canManageShares: true,
     },
     {
       role: UserRole.SUPERADMIN,
@@ -54,17 +34,16 @@ async function seedRolePermissions() {
       canCreateUsers: true,
       canEditUsers: true,
       canDeleteUsers: true,
-      canViewSectors: true,
-      canManageSectors: true,
       canViewLinks: true,
       canManageLinks: true,
       canManageCategories: true,
       canManageSchedules: true,
+      canViewPrivateContent: true,
       canBackupSystem: true,
       canResetSystem: true,
       canViewAuditLogs: true,
       canManageSystemConfig: true,
-      restrictToOwnSector: false,
+      canManageShares: false,
     },
   ];
 
@@ -78,9 +57,9 @@ async function seedRolePermissions() {
 }
 
 async function seedSuperAdmin() {
-  const email = 'superadmin';
-  const password = 'superadmin';
-  const name = 'Superadmin';
+  const email = process.env.SUPERADMIN_EMAIL || 'superadmin@facilita.local';
+  const password = process.env.SUPERADMIN_PASSWORD || 'superadmin';
+  const name = process.env.SUPERADMIN_NAME || 'Superadmin';
 
   const passwordHash = await bcrypt.hash(password, 12);
 
@@ -91,7 +70,6 @@ async function seedSuperAdmin() {
       passwordHash,
       role: UserRole.SUPERADMIN,
       status: UserStatus.ACTIVE,
-      companyId: ADM_COMPANY_ID,
     },
     create: {
       name,
@@ -99,7 +77,6 @@ async function seedSuperAdmin() {
       passwordHash,
       role: UserRole.SUPERADMIN,
       status: UserStatus.ACTIVE,
-      companyId: ADM_COMPANY_ID,
     },
   });
 }
@@ -120,7 +97,6 @@ async function seedSystemConfig() {
 }
 
 async function main() {
-  await seedAdmCompany();
   await seedRolePermissions();
   await seedSuperAdmin();
   await seedSystemConfig();

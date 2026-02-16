@@ -3,5 +3,4 @@ export interface AuthPayload {
     sub: string;
     role: UserRole;
     email: string;
-    companyId?: string | null;
 }

@@ -48,16 +48,6 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], UpdateRolePermissionDto.prototype, "canViewSectors", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], UpdateRolePermissionDto.prototype, "canManageSectors", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
 ], UpdateRolePermissionDto.prototype, "canViewLinks", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -103,5 +93,5 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], UpdateRolePermissionDto.prototype, "restrictToOwnSector", void 0);
+], UpdateRolePermissionDto.prototype, "canManageShares", void 0);
 //# sourceMappingURL=update-role-permission.dto.js.map

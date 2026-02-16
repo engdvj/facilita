@@ -3,34 +3,13 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export type UserRole =
-  | 'SUPERADMIN'
-  | 'ADMIN'
-  | 'COLLABORATOR';
-
-type AuthUserSector = {
-  sectorId: string;
-  isPrimary?: boolean;
-  role?: string;
-  userSectorUnits?: {
-    unitId: string;
-  }[] | null;
-  sector?: {
-    sectorUnits?: {
-      unitId: string;
-    }[] | null;
-  } | null;
-};
+export type UserRole = 'SUPERADMIN' | 'USER';
 
 export type AuthUser = {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  companyId?: string;
-  unitId?: string;
-  sectorId?: string;
-  userSectors?: AuthUserSector[];
   avatarUrl?: string | null;
   theme?: Record<string, unknown> | null;
 };

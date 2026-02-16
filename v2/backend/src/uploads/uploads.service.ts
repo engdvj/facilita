@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { EntityStatus, Prisma } from '@prisma/client';
 import { unlink } from 'fs/promises';
 import { isAbsolute, resolve } from 'path';
 import { systemConfigStore } from '../system-config/system-config.store';
@@ -45,7 +46,6 @@ export class UploadsService {
   async createImageRecord(dto: CreateImageDto) {
     return this.prisma.uploadedImage.create({
       data: {
-        companyId: dto.companyId,
         uploadedBy: dto.uploadedBy,
         filename: dto.filename,
         originalName: dto.originalName,
@@ -62,17 +62,13 @@ export class UploadsService {
   }
 
   async listImages(query: QueryImagesDto) {
-    const { companyId, uploadedBy, search, tags, page = 1, limit = 20 } = query;
+    const { uploadedBy, search, tags, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      status: 'ACTIVE',
+    const where: Prisma.UploadedImageWhereInput = {
+      status: EntityStatus.ACTIVE,
       deletedAt: null,
     };
-
-    if (companyId) {
-      where.companyId = companyId;
-    }
 
     if (uploadedBy) {
       where.uploadedBy = uploadedBy;

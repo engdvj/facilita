@@ -1,5 +1,5 @@
+import { EntityType, NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationType, EntityType, ContentAudience } from '@prisma/client';
 interface CreateNotificationDto {
     userId: string;
     type: NotificationType;
@@ -8,20 +8,42 @@ interface CreateNotificationDto {
     title: string;
     message: string;
     actionUrl?: string;
-    metadata?: Record<string, any>;
+    metadata?: Prisma.InputJsonValue;
 }
 export declare class NotificationsService {
-    private prisma;
+    private readonly prisma;
     constructor(prisma: PrismaService);
-    create(dto: CreateNotificationDto): Promise<any>;
-    createBulk(userIds: string[], dto: Omit<CreateNotificationDto, 'userId'>): Promise<any>;
-    findByUser(userId: string, limit?: number, offset?: number): Promise<any>;
-    getUnreadCount(userId: string): Promise<any>;
-    markAsRead(id: string, userId: string): Promise<any>;
-    markAllAsRead(userId: string): Promise<any>;
-    delete(id: string, userId: string): Promise<any>;
-    cleanupOld(): Promise<any>;
-    getRecipientsByAudience(companyId: string, sectorId: string | null | undefined, audience: ContentAudience, excludeUserId?: string): Promise<string[]>;
-    getUsersWhoFavorited(entityType: EntityType, entityId: string): Promise<string[]>;
+    create(dto: CreateNotificationDto): Promise<{
+        id: string;
+        createdAt: Date;
+        userId: string;
+        title: string;
+        entityType: import(".prisma/client").$Enums.EntityType;
+        entityId: string;
+        metadata: Prisma.JsonValue | null;
+        type: import(".prisma/client").$Enums.NotificationType;
+        message: string;
+        actionUrl: string | null;
+        read: boolean;
+    }>;
+    createBulk(userIds: string[], dto: Omit<CreateNotificationDto, 'userId'>): Promise<Prisma.BatchPayload>;
+    findByUser(userId: string, limit?: number, offset?: number): Promise<{
+        id: string;
+        createdAt: Date;
+        userId: string;
+        title: string;
+        entityType: import(".prisma/client").$Enums.EntityType;
+        entityId: string;
+        metadata: Prisma.JsonValue | null;
+        type: import(".prisma/client").$Enums.NotificationType;
+        message: string;
+        actionUrl: string | null;
+        read: boolean;
+    }[]>;
+    getUnreadCount(userId: string): Promise<number>;
+    markAsRead(id: string, userId: string): Promise<Prisma.BatchPayload>;
+    markAllAsRead(userId: string): Promise<Prisma.BatchPayload>;
+    delete(id: string, userId: string): Promise<Prisma.BatchPayload>;
+    cleanupOld(): Promise<Prisma.BatchPayload>;
 }
 export {};

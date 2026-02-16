@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
-import { CompaniesModule } from './companies/companies.module';
 import { HealthModule } from './health/health.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { SectorsModule } from './sectors/sectors.module';
-import { UnitsModule } from './units/units.module';
 import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { LinksModule } from './links/links.module';
@@ -19,6 +16,8 @@ import { ResetsModule } from './resets/resets.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { SystemConfigModule } from './system-config/system-config.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PublicModule } from './public/public.module';
+import { SharesModule } from './shares/shares.module';
 
 @Module({
   imports: [
@@ -29,9 +28,6 @@ import { NotificationsModule } from './notifications/notifications.module';
     PrismaModule,
     UsersModule,
     AuthModule,
-    CompaniesModule,
-    UnitsModule,
-    SectorsModule,
     PermissionsModule,
     HealthModule,
     CategoriesModule,
@@ -45,6 +41,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     FavoritesModule,
     SystemConfigModule,
     NotificationsModule,
+    PublicModule,
+    SharesModule,
   ],
 })
 export class AppModule {}

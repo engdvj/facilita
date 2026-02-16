@@ -92,7 +92,6 @@ let AuthService = class AuthService {
             sub: user.id,
             role: user.role,
             email: user.email,
-            companyId: user.companyId,
         };
         const accessToken = await this.jwtService.signAsync(payload);
         const refreshSecret = this.configService.get('JWT_REFRESH_SECRET') || 'dev-refresh';
@@ -123,7 +122,7 @@ let AuthService = class AuthService {
                 secret: refreshSecret,
             });
         }
-        catch (error) {
+        catch {
             throw new common_1.UnauthorizedException('Refresh token invalid');
         }
     }

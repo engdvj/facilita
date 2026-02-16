@@ -100,13 +100,12 @@ export class AuthService {
   }
 
   private async issueTokens(
-    user: Pick<User, 'id' | 'role' | 'email' | 'companyId'>,
+    user: Pick<User, 'id' | 'role' | 'email'>,
   ) {
     const payload: AuthPayload = {
       sub: user.id,
       role: user.role,
       email: user.email,
-      companyId: user.companyId,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
@@ -147,7 +146,7 @@ export class AuthService {
       return await this.jwtService.verifyAsync<AuthPayload>(token, {
         secret: refreshSecret,
       });
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Refresh token invalid');
     }
   }

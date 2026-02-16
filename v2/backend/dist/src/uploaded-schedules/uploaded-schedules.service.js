@@ -11,209 +11,27 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UploadedSchedulesService = void 0;
 const common_1 = require("@nestjs/common");
-const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
-const notifications_service_1 = require("../notifications/notifications.service");
-const notifications_gateway_1 = require("../notifications/notifications.gateway");
+const crypto_1 = require("crypto");
+const prisma_service_1 = require("../prisma/prisma.service");
 let UploadedSchedulesService = class UploadedSchedulesService {
-    constructor(prisma, notificationsService, notificationsGateway) {
+    constructor(prisma) {
         this.prisma = prisma;
-        this.notificationsService = notificationsService;
-        this.notificationsGateway = notificationsGateway;
-    }
-    async create(createScheduleDto) {
-        const { unitIds, unitId, ...data } = createScheduleDto;
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-        const schedule = await this.prisma.uploadedSchedule.create({
-            data: {
-                ...data,
-                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-                scheduleUnits: normalizedUnitIds.length > 0
-                    ? {
-                        create: normalizedUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : undefined,
-            },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
+        this.include = {
+            category: true,
+            owner: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
                 },
             },
-        });
-        try {
-            const recipients = await this.notificationsService.getRecipientsByAudience(schedule.companyId, schedule.sectorId, schedule.audience, schedule.userId || undefined);
-            if (recipients.length > 0) {
-                await this.notificationsService.createBulk(recipients, {
-                    type: client_1.NotificationType.CONTENT_CREATED,
-                    entityType: client_1.EntityType.SCHEDULE,
-                    entityId: schedule.id,
-                    title: 'Novo Documento Disponível',
-                    message: `Documento "${schedule.title}" foi publicado`,
-                    actionUrl: `/?highlight=document-${schedule.id}`,
-                    metadata: { scheduleTitle: schedule.title, creatorName: schedule.user?.name },
-                });
-                this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                    type: 'CONTENT_CREATED',
-                    entityType: 'SCHEDULE',
-                    entityId: schedule.id,
-                    title: 'Novo Documento Disponível',
-                    message: `Documento "${schedule.title}" foi publicado`,
-                });
-            }
-        }
-        catch (error) {
-            console.error('Failed to create notification:', error);
-        }
-        return schedule;
-    }
-    async findAll(companyId, filters, viewer) {
-        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
-        const unitFilter = filterUnitIds !== undefined
-            ? filterUnitIds.length > 0
-                ? {
-                    OR: [
-                        { unitId: null, scheduleUnits: { none: {} } },
-                        { unitId: { in: filterUnitIds } },
-                        { scheduleUnits: { some: { unitId: { in: filterUnitIds } } } },
-                    ],
-                }
-                : { OR: [{ unitId: null, scheduleUnits: { none: {} } }] }
-            : undefined;
-        const andFilters = [];
-        if (unitFilter) {
-            andFilters.push(unitFilter);
-        }
-        if (shouldFilterPublic) {
-            andFilters.push({
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            });
-        }
-        const privateFilter = this.buildPrivateAccessFilter(viewer);
-        if (privateFilter) {
-            andFilters.push(privateFilter);
-        }
-        const where = {
-            deletedAt: null,
-            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
-            ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
-            ...(filters?.categoryId && { categoryId: filters.categoryId }),
-            ...(!shouldFilterPublic &&
-                filters?.audience && { audience: filters.audience }),
-            ...(filters?.isPublic !== undefined &&
-                !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
-        };
-        console.log('SchedulesService.findAll - where clause:', JSON.stringify(where, null, 2));
-        const schedules = await this.prisma.uploadedSchedule.findMany({
-            where,
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-        });
-        console.log('SchedulesService.findAll - schedules encontrados:', schedules.length);
-        return schedules;
-    }
-    async findAllPaginated(companyId, filters, viewer, pagination) {
-        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const search = filters?.search?.trim();
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
-        const unitFilter = filterUnitIds !== undefined
-            ? filterUnitIds.length > 0
-                ? {
-                    OR: [
-                        { unitId: null, scheduleUnits: { none: {} } },
-                        { unitId: { in: filterUnitIds } },
-                        { scheduleUnits: { some: { unitId: { in: filterUnitIds } } } },
-                    ],
-                }
-                : { OR: [{ unitId: null, scheduleUnits: { none: {} } }] }
-            : undefined;
-        const andFilters = [];
-        if (unitFilter) {
-            andFilters.push(unitFilter);
-        }
-        if (shouldFilterPublic) {
-            andFilters.push({
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            });
-        }
-        const privateFilter = this.buildPrivateAccessFilter(viewer);
-        if (privateFilter) {
-            andFilters.push(privateFilter);
-        }
-        if (search) {
-            andFilters.push({
-                OR: [
-                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
-                ],
-            });
-        }
-        const where = {
-            deletedAt: null,
-            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
-            ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
-            ...(filters?.categoryId && { categoryId: filters.categoryId }),
-            ...(!shouldFilterPublic &&
-                filters?.audience && { audience: filters.audience }),
-            ...(filters?.isPublic !== undefined &&
-                !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
-        };
-        const [items, total] = await this.prisma.$transaction([
-            this.prisma.uploadedSchedule.findMany({
-                where,
-                include: {
-                    category: true,
-                    sector: true,
-                    scheduleUnits: {
-                        include: {
-                            unit: true,
-                        },
-                    },
-                    user: {
+            shares: {
+                where: { revokedAt: null },
+                select: {
+                    id: true,
+                    recipient: {
                         select: {
                             id: true,
                             name: true,
@@ -221,28 +39,178 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                         },
                     },
                 },
-                orderBy: {
-                    createdAt: 'desc',
+            },
+            _count: {
+                select: {
+                    favorites: true,
                 },
+            },
+        };
+    }
+    withShareMetadata(item) {
+        const shares = item.shares ?? [];
+        return {
+            ...item,
+            createdBy: item.owner,
+            shareCount: shares.length,
+            sharedWithPreview: shares.slice(0, 5).map((s) => s.recipient),
+        };
+    }
+    normalizeVisibility(actorRole, requested) {
+        if (actorRole === client_1.UserRole.SUPERADMIN) {
+            return requested ?? client_1.ContentVisibility.PRIVATE;
+        }
+        return client_1.ContentVisibility.PRIVATE;
+    }
+    ensurePublicToken(visibility, provided) {
+        if (visibility !== client_1.ContentVisibility.PUBLIC) {
+            return null;
+        }
+        return provided?.trim() || (0, crypto_1.randomUUID)();
+    }
+    async assertCategoryOwner(categoryId, ownerId) {
+        if (!categoryId)
+            return;
+        const category = await this.prisma.category.findUnique({
+            where: { id: categoryId },
+            select: { id: true, ownerId: true },
+        });
+        if (!category || category.ownerId !== ownerId) {
+            throw new common_1.ForbiddenException('Category not authorized');
+        }
+    }
+    assertCanMutate(item, actor) {
+        if (actor.role === client_1.UserRole.SUPERADMIN)
+            return;
+        if (actor.id !== item.ownerId) {
+            throw new common_1.ForbiddenException('Document not authorized');
+        }
+    }
+    async create(actor, dto) {
+        const visibility = this.normalizeVisibility(actor.role, dto.visibility);
+        const publicToken = this.ensurePublicToken(visibility, dto.publicToken);
+        await this.assertCategoryOwner(dto.categoryId, actor.id);
+        const created = await this.prisma.uploadedSchedule.create({
+            data: {
+                ownerId: actor.id,
+                categoryId: dto.categoryId,
+                title: dto.title,
+                fileUrl: dto.fileUrl,
+                fileName: dto.fileName,
+                fileSize: dto.fileSize,
+                color: dto.color,
+                imageUrl: dto.imageUrl,
+                imagePosition: dto.imagePosition,
+                imageScale: dto.imageScale,
+                visibility,
+                publicToken,
+                status: dto.status ?? client_1.EntityStatus.ACTIVE,
+            },
+            include: this.include,
+        });
+        return this.withShareMetadata(created);
+    }
+    async findAll(viewer, filters) {
+        if (!viewer)
+            return [];
+        const search = filters?.search?.trim();
+        const and = [
+            {
+                deletedAt: null,
+                status: client_1.EntityStatus.ACTIVE,
+            },
+        ];
+        if (filters?.categoryId) {
+            and.push({ categoryId: filters.categoryId });
+        }
+        if (search) {
+            and.push({
+                OR: [
+                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    { fileName: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    { owner: { name: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } } },
+                ],
+            });
+        }
+        if (viewer.role !== client_1.UserRole.SUPERADMIN) {
+            and.push({
+                OR: [
+                    { ownerId: viewer.id },
+                    {
+                        visibility: client_1.ContentVisibility.PUBLIC,
+                        owner: { role: client_1.UserRole.SUPERADMIN },
+                    },
+                ],
+            });
+        }
+        const where = { AND: and };
+        const items = await this.prisma.uploadedSchedule.findMany({
+            where,
+            include: this.include,
+            orderBy: { createdAt: 'desc' },
+        });
+        return items.map((item) => this.withShareMetadata(item));
+    }
+    async findAllPaginated(filters, pagination) {
+        const search = filters.search?.trim();
+        const where = {
+            deletedAt: null,
+            ...(filters.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
+            ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+            ...(search
+                ? {
+                    OR: [
+                        { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                        { fileName: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                        { owner: { name: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } } },
+                    ],
+                }
+                : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.uploadedSchedule.findMany({
+                where,
+                include: this.include,
+                orderBy: { createdAt: 'desc' },
                 ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
                 ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
             }),
             this.prisma.uploadedSchedule.count({ where }),
         ]);
-        return { items, total };
+        return { items: items.map((item) => this.withShareMetadata(item)), total };
     }
     async findOne(id, viewer) {
-        const schedule = await this.prisma.uploadedSchedule.findUnique({
+        const item = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
+            include: this.include,
+        });
+        if (!item || item.deletedAt) {
+            throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
+        }
+        if (viewer?.role === client_1.UserRole.SUPERADMIN) {
+            return this.withShareMetadata(item);
+        }
+        if (!viewer?.id) {
+            throw new common_1.ForbiddenException('Document not authorized');
+        }
+        const canView = item.ownerId === viewer.id ||
+            (item.visibility === client_1.ContentVisibility.PUBLIC && item.owner.role === client_1.UserRole.SUPERADMIN);
+        if (!canView) {
+            throw new common_1.ForbiddenException('Document not authorized');
+        }
+        return this.withShareMetadata(item);
+    }
+    async findPublicByToken(publicToken) {
+        const item = await this.prisma.uploadedSchedule.findFirst({
+            where: {
+                publicToken,
+                visibility: client_1.ContentVisibility.PUBLIC,
+                deletedAt: null,
+                status: client_1.EntityStatus.ACTIVE,
+            },
             include: {
                 category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
+                owner: {
                     select: {
                         id: true,
                         name: true,
@@ -251,531 +219,116 @@ let UploadedSchedulesService = class UploadedSchedulesService {
                 },
             },
         });
-        if (!schedule || schedule.deletedAt) {
+        if (!item) {
+            throw new common_1.NotFoundException('Public document not found');
+        }
+        return item;
+    }
+    async update(id, actor, dto) {
+        const existing = await this.prisma.uploadedSchedule.findUnique({
+            where: { id },
+            include: this.include,
+        });
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
-        if (viewer !== undefined) {
-            this.assertPrivateAccess(schedule, viewer);
-        }
-        return schedule;
-    }
-    async update(id, updateScheduleDto, actor) {
-        const existingSchedule = await this.findOne(id);
-        this.assertCanMutate(existingSchedule, actor);
-        const existingAudience = this.resolveAudienceFromExisting(existingSchedule);
-        const shouldUpdateAudience = updateScheduleDto.audience !== undefined ||
-            updateScheduleDto.isPublic !== undefined;
-        const resolvedAudience = shouldUpdateAudience
-            ? this.resolveAudienceForUpdate(existingAudience, updateScheduleDto)
-            : existingAudience;
-        if (shouldUpdateAudience && actor?.role) {
-            this.assertAudienceAllowed(actor.role, resolvedAudience);
-        }
-        const hasChanges = updateScheduleDto.title !== existingSchedule.title;
-        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateScheduleDto;
-        const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
-            ? _sectorId ?? existingSchedule.sectorId ?? undefined
-            : undefined;
-        const existingUnitIds = existingSchedule.scheduleUnits?.length
-            ? existingSchedule.scheduleUnits.map((unit) => unit.unitId)
-            : this.normalizeUnitIds(undefined, existingSchedule.unitId ?? undefined);
-        const unitIdsPayload = _unitIds !== undefined
-            ? _unitIds ?? []
-            : _unitId !== undefined
-                ? this.normalizeUnitIds(undefined, _unitId)
-                : undefined;
-        const sectorChanged = resolvedAudience === client_1.ContentAudience.SECTOR &&
-            sectorId &&
-            sectorId !== existingSchedule.sectorId;
-        let nextUnitIds = unitIdsPayload !== undefined
-            ? this.normalizeUnitIds(unitIdsPayload, undefined)
-            : sectorChanged
-                ? []
-                : existingUnitIds;
-        if (resolvedAudience !== client_1.ContentAudience.SECTOR) {
-            nextUnitIds = [];
-        }
-        const unitId = resolvedAudience === client_1.ContentAudience.SECTOR && nextUnitIds.length === 1
-            ? nextUnitIds[0]
-            : null;
-        if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
-            throw new common_1.ForbiddenException('Setor obrigatorio para documentos de setor.');
-        }
-        await this.assertUnitsAllowed(sectorId, nextUnitIds);
-        const updateData = {
-            ...rest,
-            sector: resolvedAudience === client_1.ContentAudience.SECTOR
-                ? { connect: { id: sectorId } }
-                : { disconnect: true },
-            unit: resolvedAudience === client_1.ContentAudience.SECTOR && unitId
-                ? { connect: { id: unitId } }
-                : { disconnect: true },
-        };
-        if (_categoryId !== undefined) {
-            updateData.category = _categoryId
-                ? { connect: { id: _categoryId } }
-                : { disconnect: true };
-        }
-        const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
-        if (shouldUpdateUnits) {
-            updateData.scheduleUnits = {
-                deleteMany: {},
-                ...(nextUnitIds.length > 0
-                    ? {
-                        create: nextUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : {}),
-            };
-        }
-        if (shouldUpdateAudience) {
-            updateData.audience = resolvedAudience;
-            updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
-        }
+        this.assertCanMutate(existing, actor);
+        const requestedVisibility = dto.visibility ?? existing.visibility;
+        const visibility = this.normalizeVisibility(actor.role, requestedVisibility);
+        const publicToken = this.ensurePublicToken(visibility, dto.publicToken ?? existing.publicToken);
+        const nextCategoryId = dto.categoryId === undefined ? existing.categoryId : dto.categoryId;
+        await this.assertCategoryOwner(nextCategoryId, existing.ownerId);
         const updated = await this.prisma.uploadedSchedule.update({
             where: { id },
-            data: updateData,
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
-        if (hasChanges && actor?.id) {
-            try {
-                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.SCHEDULE, id);
-                const recipients = favoritedBy.filter((uid) => uid !== actor.id);
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.FAVORITE_UPDATED,
-                        entityType: client_1.EntityType.SCHEDULE,
-                        entityId: id,
-                        title: 'Documento Favoritado Atualizado',
-                        message: `Documento "${updated.title}" foi atualizado`,
-                        actionUrl: `/?highlight=document-${id}`,
-                        metadata: { scheduleTitle: updated.title, editorId: actor.id },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'FAVORITE_UPDATED',
-                        entityType: 'SCHEDULE',
-                        entityId: id,
-                        title: 'Documento Favoritado Atualizado',
-                        message: `Documento "${updated.title}" foi atualizado`,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify favorites:', error);
-            }
-        }
-        return updated;
-    }
-    async remove(id, actor, adminMessage) {
-        const existingSchedule = await this.findOne(id);
-        this.assertCanMutate(existingSchedule, actor);
-        const deleted = await this.prisma.uploadedSchedule.update({
-            where: { id },
             data: {
-                deletedAt: new Date(),
-                status: client_1.EntityStatus.INACTIVE,
+                ...(dto.title !== undefined ? { title: dto.title } : {}),
+                ...(dto.fileUrl !== undefined ? { fileUrl: dto.fileUrl } : {}),
+                ...(dto.fileName !== undefined ? { fileName: dto.fileName } : {}),
+                ...(dto.fileSize !== undefined ? { fileSize: dto.fileSize } : {}),
+                ...(dto.color !== undefined ? { color: dto.color } : {}),
+                ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl } : {}),
+                ...(dto.imagePosition !== undefined ? { imagePosition: dto.imagePosition } : {}),
+                ...(dto.imageScale !== undefined ? { imageScale: dto.imageScale } : {}),
+                ...(dto.status !== undefined ? { status: dto.status } : {}),
+                ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
+                visibility,
+                publicToken,
             },
+            include: this.include,
         });
-        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
-            try {
-                const recipients = await this.notificationsService.getRecipientsByAudience(existingSchedule.companyId, existingSchedule.sectorId, existingSchedule.audience, actor.id);
-                const message = adminMessage || `Documento "${existingSchedule.title}" foi removido por um administrador`;
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.CONTENT_DELETED,
-                        entityType: client_1.EntityType.SCHEDULE,
-                        entityId: id,
-                        title: 'Documento Removido',
-                        message,
-                        actionUrl: undefined,
-                        metadata: {
-                            scheduleTitle: existingSchedule.title,
-                            deletedBy: actor.id,
-                            adminMessage,
-                        },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'CONTENT_DELETED',
-                        entityType: 'SCHEDULE',
-                        entityId: id,
-                        title: 'Documento Removido',
-                        message,
-                    });
-                }
-                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.SCHEDULE, id);
-                const favoriteRecipients = favoritedBy.filter((uid) => uid !== actor.id && !recipients.includes(uid));
-                if (favoriteRecipients.length > 0) {
-                    await this.notificationsService.createBulk(favoriteRecipients, {
-                        type: client_1.NotificationType.FAVORITE_DELETED,
-                        entityType: client_1.EntityType.SCHEDULE,
-                        entityId: id,
-                        title: 'Documento Favoritado Removido',
-                        message,
-                        actionUrl: undefined,
-                        metadata: { scheduleTitle: existingSchedule.title, adminMessage },
-                    });
-                    this.notificationsGateway.emitToUsers(favoriteRecipients, 'notification', {
-                        type: 'FAVORITE_DELETED',
-                        entityType: 'SCHEDULE',
-                        entityId: id,
-                        title: 'Documento Favoritado Removido',
-                        message,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify deletion:', error);
-            }
-        }
-        return deleted;
+        return this.withShareMetadata(updated);
     }
-    async restore(id, actor) {
-        const schedule = await this.prisma.uploadedSchedule.findUnique({
+    async remove(id, actor) {
+        const existing = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        if (!schedule) {
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
-        if (actor) {
-            this.assertCanMutate(schedule, actor);
+        this.assertCanMutate(existing, actor);
+        const removed = await this.prisma.uploadedSchedule.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+            include: this.include,
+        });
+        return this.withShareMetadata(removed);
+    }
+    async restore(id, actor) {
+        const existing = await this.prisma.uploadedSchedule.findUnique({
+            where: { id },
+            include: this.include,
+        });
+        if (!existing) {
+            throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
+        this.assertCanMutate(existing, actor);
         const restored = await this.prisma.uploadedSchedule.update({
             where: { id },
             data: {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        try {
-            const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
-            if (recipients.length > 0) {
-                await this.notificationsService.createBulk(recipients, {
-                    type: client_1.NotificationType.CONTENT_RESTORED,
-                    entityType: client_1.EntityType.SCHEDULE,
-                    entityId: restored.id,
-                    title: 'Documento Restaurado',
-                    message: `Documento "${restored.title}" foi restaurado e está disponível novamente`,
-                    actionUrl: `/?highlight=document-${restored.id}`,
-                    metadata: { scheduleTitle: restored.title },
-                });
-                this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                    type: 'CONTENT_RESTORED',
-                    entityType: 'SCHEDULE',
-                    entityId: restored.id,
-                    title: 'Documento Restaurado',
-                    message: `Documento "${restored.title}" foi restaurado e está disponível novamente`,
-                    actionUrl: `/?highlight=document-${restored.id}`,
-                });
-            }
-        }
-        catch (error) {
-            console.error('Failed to notify restoration:', error);
-        }
-        return restored;
+        return this.withShareMetadata(restored);
     }
     async activate(id, actor) {
-        const schedule = await this.prisma.uploadedSchedule.findUnique({
+        const existing = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        if (!schedule) {
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
-        if (actor) {
-            this.assertCanMutate(schedule, actor);
-        }
+        this.assertCanMutate(existing, actor);
         const activated = await this.prisma.uploadedSchedule.update({
             where: { id },
-            data: {
-                status: client_1.EntityStatus.ACTIVE,
-            },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            data: { status: client_1.EntityStatus.ACTIVE },
+            include: this.include,
         });
-        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
-            try {
-                const recipients = await this.notificationsService.getRecipientsByAudience(activated.companyId, activated.sectorId, activated.audience, actor.id);
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.CONTENT_ACTIVATED,
-                        entityType: client_1.EntityType.SCHEDULE,
-                        entityId: activated.id,
-                        title: 'Documento Ativado',
-                        message: `Documento "${activated.title}" foi ativado e está disponível novamente`,
-                        actionUrl: `/?highlight=document-${activated.id}`,
-                        metadata: { scheduleTitle: activated.title },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'CONTENT_ACTIVATED',
-                        entityType: 'SCHEDULE',
-                        entityId: activated.id,
-                        title: 'Documento Ativado',
-                        message: `Documento "${activated.title}" foi ativado e está disponível novamente`,
-                        actionUrl: `/?highlight=document-${activated.id}`,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify activation:', error);
-            }
-        }
-        return activated;
+        return this.withShareMetadata(activated);
     }
     async deactivate(id, actor) {
-        const schedule = await this.prisma.uploadedSchedule.findUnique({
+        const existing = await this.prisma.uploadedSchedule.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        if (!schedule) {
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Schedule with ID ${id} not found`);
         }
-        if (actor) {
-            this.assertCanMutate(schedule, actor);
-        }
+        this.assertCanMutate(existing, actor);
         const deactivated = await this.prisma.uploadedSchedule.update({
             where: { id },
-            data: {
-                status: client_1.EntityStatus.INACTIVE,
-            },
-            include: {
-                category: true,
-                sector: true,
-                scheduleUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            data: { status: client_1.EntityStatus.INACTIVE },
+            include: this.include,
         });
-        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
-            try {
-                const recipients = await this.notificationsService.getRecipientsByAudience(deactivated.companyId, deactivated.sectorId, deactivated.audience, actor.id);
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.CONTENT_DEACTIVATED,
-                        entityType: client_1.EntityType.SCHEDULE,
-                        entityId: deactivated.id,
-                        title: 'Documento Desativado',
-                        message: `Documento "${deactivated.title}" foi temporariamente desativado`,
-                        actionUrl: undefined,
-                        metadata: { scheduleTitle: deactivated.title },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'CONTENT_DEACTIVATED',
-                        entityType: 'SCHEDULE',
-                        entityId: deactivated.id,
-                        title: 'Documento Desativado',
-                        message: `Documento "${deactivated.title}" foi temporariamente desativado`,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify deactivation:', error);
-            }
-        }
-        return deactivated;
-    }
-    normalizeUnitIds(unitIds, unitId) {
-        const combined = [
-            ...(unitIds ?? []),
-            ...(unitId ? [unitId] : []),
-        ].filter(Boolean);
-        return Array.from(new Set(combined));
-    }
-    async assertUnitsAllowed(sectorId, unitIds) {
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
-        if (normalizedUnitIds.length === 0)
-            return;
-        if (!sectorId) {
-            throw new common_1.ForbiddenException('Unidade requer setor.');
-        }
-        const relationCount = await this.prisma.sectorUnit.count({
-            where: {
-                sectorId,
-                unitId: { in: normalizedUnitIds },
-            },
-        });
-        if (relationCount !== normalizedUnitIds.length) {
-            throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
-        }
-    }
-    buildPrivateAccessFilter(viewer) {
-        if (viewer?.canViewPrivate) {
-            return undefined;
-        }
-        if (viewer?.id) {
-            return {
-                OR: [
-                    { audience: { not: client_1.ContentAudience.PRIVATE } },
-                    { userId: viewer.id },
-                ],
-            };
-        }
-        return { audience: { not: client_1.ContentAudience.PRIVATE } };
-    }
-    assertPrivateAccess(schedule, viewer) {
-        if (schedule.audience !== client_1.ContentAudience.PRIVATE) {
-            return;
-        }
-        if (!viewer.id) {
-            throw new common_1.ForbiddenException('Documento nao autorizado.');
-        }
-        if (schedule.userId !== viewer.id && !viewer.canViewPrivate) {
-            throw new common_1.ForbiddenException('Documento nao autorizado.');
-        }
-    }
-    assertCanMutate(schedule, actor) {
-        if (!actor)
-            return;
-        if (schedule.audience === client_1.ContentAudience.PRIVATE &&
-            schedule.userId !== actor.id &&
-            !actor.canViewPrivate) {
-            throw new common_1.ForbiddenException('Documento nao autorizado.');
-        }
-        if (actor.role === client_1.UserRole.SUPERADMIN) {
-            return;
-        }
-        if (actor.role === client_1.UserRole.ADMIN) {
-            if (actor.companyId && actor.companyId !== schedule.companyId) {
-                throw new common_1.ForbiddenException('Empresa nao autorizada.');
-            }
-            return;
-        }
-        throw new common_1.ForbiddenException('Permissao insuficiente.');
-    }
-    resolveAudienceFromExisting(schedule) {
-        if (schedule.isPublic)
-            return client_1.ContentAudience.PUBLIC;
-        if (schedule.audience)
-            return schedule.audience;
-        if (schedule.sectorId)
-            return client_1.ContentAudience.SECTOR;
-        return client_1.ContentAudience.COMPANY;
-    }
-    resolveAudienceForUpdate(existing, updateScheduleDto) {
-        if (updateScheduleDto.audience)
-            return updateScheduleDto.audience;
-        if (updateScheduleDto.isPublic !== undefined) {
-            return updateScheduleDto.isPublic ? client_1.ContentAudience.PUBLIC : existing;
-        }
-        return existing;
-    }
-    assertAudienceAllowed(role, audience) {
-        if (role === client_1.UserRole.SUPERADMIN)
-            return;
-        if (role === client_1.UserRole.ADMIN) {
-            if (audience !== client_1.ContentAudience.COMPANY &&
-                audience !== client_1.ContentAudience.SECTOR) {
-                throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
-            }
-            return;
-        }
+        return this.withShareMetadata(deactivated);
     }
 };
 exports.UploadedSchedulesService = UploadedSchedulesService;
 exports.UploadedSchedulesService = UploadedSchedulesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        notifications_service_1.NotificationsService,
-        notifications_gateway_1.NotificationsGateway])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], UploadedSchedulesService);
 //# sourceMappingURL=uploaded-schedules.service.js.map

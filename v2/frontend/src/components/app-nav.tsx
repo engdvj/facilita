@@ -17,40 +17,39 @@ export default function AppNav() {
   const user = useAuthStore((state) => state.user);
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
+
   const sections = useMemo(() => {
     if (!user) return [];
 
-    if (user.role === 'COLLABORATOR') {
+    if (user.role === 'SUPERADMIN') {
       return [
         {
           label: 'Navegacao',
           items: [
             { href: '/', label: 'Inicio' },
-            { href: '/favoritos', label: 'Favoritos' },
-            { href: '/admin/links', label: 'Meus links' },
-            { href: '/admin/notes', label: 'Minhas notas' },
-          ],
-        },
-      ];
-    }
-
-    if (user.role === 'ADMIN') {
-      return [
-        {
-          label: 'Navegacao',
-          items: [
-            { href: '/', label: 'Inicio' },
+            { href: '/dashboard', label: 'Dashboard' },
             { href: '/favoritos', label: 'Favoritos' },
           ],
         },
         {
-          label: 'Portal',
+          label: 'Conteudo',
           items: [
             { href: '/admin/categories', label: 'Categorias' },
             { href: '/admin/links', label: 'Links' },
             { href: '/admin/schedules', label: 'Documentos' },
             { href: '/admin/notes', label: 'Notas' },
             { href: '/admin/images', label: 'Galeria' },
+          ],
+        },
+        {
+          label: 'Plataforma',
+          items: [
+            { href: '/admin/users', label: 'Usuarios' },
+            { href: '/admin/permissions', label: 'Permissoes' },
+            { href: '/admin/settings', label: 'Configuracoes' },
+            { href: '/admin/backup', label: 'Backup' },
+            { href: '/admin/restore', label: 'Restauracao' },
+            { href: '/admin/reset', label: 'Reset do sistema' },
           ],
         },
       ];
@@ -61,38 +60,18 @@ export default function AppNav() {
         label: 'Navegacao',
         items: [
           { href: '/', label: 'Inicio' },
-          { href: '/dashboard', label: 'Dashboard' },
           { href: '/favoritos', label: 'Favoritos' },
+          { href: '/compartilhados', label: 'Compartilhados' },
         ],
       },
       {
-        label: 'Portal',
+        label: 'Meu Conteudo',
         items: [
           { href: '/admin/categories', label: 'Categorias' },
           { href: '/admin/links', label: 'Links' },
           { href: '/admin/schedules', label: 'Documentos' },
           { href: '/admin/notes', label: 'Notas' },
           { href: '/admin/images', label: 'Galeria' },
-        ],
-      },
-      {
-        label: 'Cadastros',
-        items: [
-          { href: '/admin/hierarquia', label: 'Hierarquia' },
-          { href: '/admin/companies', label: 'Empresas' },
-          { href: '/admin/units', label: 'Unidades' },
-          { href: '/admin/sectors', label: 'Setores' },
-          { href: '/admin/users', label: 'Usuarios' },
-        ],
-      },
-      {
-        label: 'Plataforma',
-        items: [
-          { href: '/admin/permissions', label: 'Permissoes' },
-          { href: '/admin/settings', label: 'Configuracoes' },
-          { href: '/admin/backup', label: 'Backup' },
-          { href: '/admin/restore', label: 'Restauracao' },
-          { href: '/admin/reset', label: 'Reset do sistema' },
         ],
       },
     ];

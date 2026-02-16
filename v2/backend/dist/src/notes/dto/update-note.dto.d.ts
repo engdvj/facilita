@@ -1,4 +1,13 @@
-declare const UpdateNoteDto_base: import("@nestjs/mapped-types").MappedType<any>;
-export declare class UpdateNoteDto extends UpdateNoteDto_base {
+import { ContentVisibility, EntityStatus } from '@prisma/client';
+export declare class UpdateNoteDto {
+    title?: string;
+    content?: string;
+    color?: string;
+    imageUrl?: string;
+    imagePosition?: string;
+    imageScale?: number;
+    categoryId?: string | null;
+    visibility?: ContentVisibility;
+    publicToken?: string | null;
+    status?: EntityStatus;
 }
-export {};

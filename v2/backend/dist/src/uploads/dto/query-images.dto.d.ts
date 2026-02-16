@@ -1,5 +1,4 @@
 export declare class QueryImagesDto {
-    companyId?: string;
     uploadedBy?: string;
     search?: string;
     tags?: string[];

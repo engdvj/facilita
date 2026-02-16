@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -12,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -25,15 +26,14 @@ import { parsePagination } from '../common/utils/pagination';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+@Roles(UserRole.SUPERADMIN)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
   async findAll(
-    @Query('companyId') companyId?: string,
-    @Query('sectorId') sectorId?: string,
-    @Query('unitId') unitId?: string,
+    @Query('role', new ParseEnumPipe(UserRole, { optional: true })) role?: UserRole,
+    @Query('status', new ParseEnumPipe(UserStatus, { optional: true })) status?: UserStatus,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('search') search?: string,
@@ -42,43 +42,20 @@ export class UsersController {
     const pagination = parsePagination(page, pageSize, {
       defaultPageSize: 12,
     });
+
     const { items, total } = await this.usersService.findAll({
-      companyId,
-      sectorId,
-      unitId,
+      role,
+      status,
       search,
       ...(pagination.shouldPaginate
         ? { skip: pagination.skip, take: pagination.take }
         : {}),
     });
-    if (pagination.shouldPaginate && res) {
-      res.setHeader('X-Total-Count', total.toString());
-    }
-    return items;
-  }
 
-  @Get(':id/access-items')
-  async findAccessItems(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Query('sectorId') sectorId?: string,
-    @Query('unitId') unitId?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-    @Res({ passthrough: true }) res?: Response,
-  ) {
-    const pagination = parsePagination(page, pageSize, {
-      defaultPageSize: 12,
-    });
-    const { items, total } = await this.usersService.getAccessItems(id, {
-      sectorId,
-      unitId,
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      shouldPaginate: pagination.shouldPaginate,
-    });
     if (pagination.shouldPaginate && res) {
       res.setHeader('X-Total-Count', total.toString());
     }
+
     return items;
   }
 
@@ -98,7 +75,7 @@ export class UsersController {
   }
 
   @Patch('me')
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.COLLABORATOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.USER)
   updateMe(
     @CurrentUser() user: { id: string },
     @Body() data: UpdateProfileDto,
@@ -115,7 +92,10 @@ export class UsersController {
   }
 
   @Delete(':id')
-  remove(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.usersService.remove(id);
+  remove(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() actor: { id: string },
+  ) {
+    return this.usersService.remove(id, actor.id);
   }
 }

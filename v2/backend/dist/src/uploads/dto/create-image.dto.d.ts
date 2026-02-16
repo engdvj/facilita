@@ -1,6 +1,5 @@
 import { EntityStatus } from '@prisma/client';
 export declare class CreateImageDto {
-    companyId: string;
     uploadedBy: string;
     filename: string;
     originalName: string;

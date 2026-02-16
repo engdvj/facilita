@@ -3,721 +3,168 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import type { RolePermission, UserRole } from '@/types';
-import useNotifyOnChange from '@/hooks/use-notify-on-change';
+import { RolePermission, UserRole } from '@/types';
 
-type PermissionKey = Exclude<
+type EditablePermission = Exclude<
   keyof RolePermission,
   'id' | 'role' | 'createdAt' | 'updatedAt'
 >;
 
-type PermissionItem = {
-  key: PermissionKey | string;
-  label: string;
-  hint: string;
+const permissionLabels: Record<EditablePermission, string> = {
+  canViewDashboard: 'Ver dashboard',
+  canAccessAdmin: 'Acessar admin',
+  canViewUsers: 'Ver usuarios',
+  canCreateUsers: 'Criar usuarios',
+  canEditUsers: 'Editar usuarios',
+  canDeleteUsers: 'Excluir usuarios',
+  canViewLinks: 'Ver links',
+  canManageLinks: 'Gerenciar links',
+  canManageCategories: 'Gerenciar categorias',
+  canManageSchedules: 'Gerenciar documentos',
+  canViewPrivateContent: 'Ver conteudo privado',
+  canBackupSystem: 'Executar backup',
+  canResetSystem: 'Executar reset',
+  canViewAuditLogs: 'Ver auditoria',
+  canManageSystemConfig: 'Gerenciar configuracoes',
+  canManageShares: 'Gerenciar compartilhamentos',
 };
 
-type PermissionGroup = {
-  title: string;
-  description: string;
-  items: PermissionItem[];
-};
-
-const permissionGroups: PermissionGroup[] = [
-  {
-    title: 'Acesso basico',
-    description: 'Controle quem pode entrar nas areas principais.',
-    items: [
-      {
-        key: 'canViewDashboard',
-        label: 'Ver dashboard',
-        hint: 'Exibe indicadores e o resumo da operacao.',
-      },
-      {
-        key: 'canAccessAdmin',
-        label: 'Acessar admin',
-        hint: 'Libera o painel administrativo do portal.',
-      },
-      {
-        key: 'restrictToOwnSector',
-        label: 'Restrito ao setor',
-        hint: 'Limita dados e conteudos ao setor do usuario.',
-      },
-    ],
-  },
-  {
-    title: 'Usuarios',
-    description: 'Permissoes relacionadas a contas e perfis.',
-    items: [
-      {
-        key: 'canViewUsers',
-        label: 'Ver usuarios',
-        hint: 'Lista usuarios e detalhes de perfil.',
-      },
-      {
-        key: 'canCreateUsers',
-        label: 'Criar usuarios',
-        hint: 'Permite cadastrar novos usuarios.',
-      },
-      {
-        key: 'canEditUsers',
-        label: 'Editar usuarios',
-        hint: 'Atualiza dados e atribuicoes.',
-      },
-      {
-        key: 'canDeleteUsers',
-        label: 'Excluir usuarios',
-        hint: 'Remove usuarios do sistema.',
-      },
-    ],
-  },
-  {
-    title: 'Estrutura',
-    description: 'Gestao de empresas, unidades e setores.',
-    items: [
-      {
-        key: 'canViewSectors',
-        label: 'Ver setores',
-        hint: 'Consulta unidades e departamentos.',
-      },
-      {
-        key: 'canManageSectors',
-        label: 'Gerenciar setores',
-        hint: 'Cria, edita ou remove setores.',
-      },
-    ],
-  },
-  {
-    title: 'Conteudo',
-    description: 'Administracao de links, categorias e agendas.',
-    items: [
-      {
-        key: 'canViewLinks',
-        label: 'Ver links',
-        hint: 'Acesso a colecoes e favoritos.',
-      },
-      {
-        key: 'canManageLinks',
-        label: 'Gerenciar links',
-        hint: 'Cria, edita e remove links.',
-      },
-      {
-        key: 'canManageCategories',
-        label: 'Gerenciar categorias',
-        hint: 'Controla categorias do portal.',
-      },
-      {
-        key: 'canManageSchedules',
-        label: 'Gerenciar documentos',
-        hint: 'Publica e remove documentos.',
-      },
-      {
-        key: 'canViewPrivateContent',
-        label: 'Ver conteudo privado',
-        hint: 'Libera acesso a conteudos privados.',
-      },
-    ],
-  },
-  {
-    title: 'Sistema',
-    description: 'Controles sensiveis e operacionais.',
-    items: [
-      {
-        key: 'canBackupSystem',
-        label: 'Backup do sistema',
-        hint: 'Permite exportar dados do portal.',
-      },
-      {
-        key: 'canResetSystem',
-        label: 'Reset do sistema',
-        hint: 'Permite limpar dados e reiniciar.',
-      },
-      {
-        key: 'canViewAuditLogs',
-        label: 'Ver auditoria',
-        hint: 'Consulta trilha de alteracoes.',
-      },
-      {
-        key: 'canManageSystemConfig',
-        label: 'Configurar sistema',
-        hint: 'Ajustes globais do portal.',
-      },
-    ],
-  },
-];
-
-const excludedPermissionKeys = new Set([
-  'id',
-  'role',
-  'createdAt',
-  'updatedAt',
-]);
-
-const knownPermissionKeys: string[] = permissionGroups.flatMap((group) =>
-  group.items.map((item) => item.key),
-);
-
-const knownPermissionKeySet = new Set(knownPermissionKeys);
-
-const permissionWordMap: Record<string, string> = {
-  access: 'Acessar',
-  admin: 'Admin',
-  audit: 'Auditoria',
-  backup: 'Backup',
-  category: 'Categoria',
-  categories: 'Categorias',
-  company: 'Empresa',
-  companies: 'Empresas',
-  config: 'Configuracao',
-  content: 'Conteudo',
-  contents: 'Conteudos',
-  dashboard: 'Dashboard',
-  delete: 'Excluir',
-  document: 'Documento',
-  documents: 'Documentos',
-  edit: 'Editar',
-  gallery: 'Galeria',
-  image: 'Imagem',
-  images: 'Imagens',
-  link: 'Link',
-  links: 'Links',
-  manage: 'Gerenciar',
-  note: 'Nota',
-  notes: 'Notas',
-  permission: 'Permissao',
-  permissions: 'Permissoes',
-  private: 'Privado',
-  reset: 'Reset',
-  role: 'Role',
-  roles: 'Roles',
-  schedule: 'Documento',
-  schedules: 'Documentos',
-  sector: 'Setor',
-  sectors: 'Setores',
-  system: 'Sistema',
-  unit: 'Unidade',
-  units: 'Unidades',
-  use: 'Usar',
-  user: 'Usuario',
-  users: 'Usuarios',
-  view: 'Ver',
-};
-
-const formatPermissionKeyLabel = (key: string) => {
-  const trimmed = key.replace(/^(can|is|has)/, '');
-  const words = trimmed
-    .replace(/([A-Z])/g, ' $1')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (!words.length) return key;
-
-  const mapped = words.map((word) => {
-    const replacement = permissionWordMap[word.toLowerCase()];
-    return replacement ?? word;
-  });
-
-  const label = mapped.join(' ').trim();
-  if (!label) return key;
-
-  return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
-};
-
-const roleLabels: Record<UserRole, string> = {
-  SUPERADMIN: 'Superadmin',
-  ADMIN: 'Admin',
-  COLLABORATOR: 'Colaborador',
-};
-
-const roleDescriptions: Record<UserRole, string> = {
-  SUPERADMIN: 'Acesso total e configuracoes criticas.',
-  ADMIN: 'Gestao do portal e equipes.',
-  COLLABORATOR: 'Acesso operativo do dia a dia.',
-};
-
-const readPermissionValue = (
-  permission: RolePermission | null | undefined,
-  key: string,
-) => Boolean((permission as Record<string, unknown> | null)?.[key]);
-
-const countActivePermissions = (
-  rolePermission: RolePermission,
-  keys: string[],
-) =>
-  keys.reduce(
-    (total, key) => total + Number(readPermissionValue(rolePermission, key)),
-    0,
-  );
-
-const formatDate = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Data invalida';
-  return date.toLocaleDateString('pt-BR');
-};
-
-const isPermissionDirty = (
-  draft: RolePermission | null,
-  baseline: RolePermission | undefined,
-  keys: string[],
-) => {
-  if (!draft || !baseline) return false;
-  return keys.some(
-    (key) => readPermissionValue(draft, key) !== readPermissionValue(baseline, key),
-  );
-};
+const roleOrder: UserRole[] = ['SUPERADMIN', 'USER'];
 
 export default function PermissionsPage() {
-  const [permissions, setPermissions] = useState<RolePermission[]>([]);
-  const [activeRole, setActiveRole] = useState<UserRole>('SUPERADMIN');
-  const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState<RolePermission | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const user = useAuthStore((state) => state.user);
-  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const [rows, setRows] = useState<RolePermission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingRole, setSavingRole] = useState<UserRole | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useNotifyOnChange(error);
-  useNotifyOnChange(saveError);
+  const isSuperadmin = user?.role === 'SUPERADMIN';
 
-  useEffect(() => {
-    let active = true;
-
-    const loadPermissions = async () => {
-      if (!hasHydrated) return;
-
-      if (!user) {
-        setError('Faca login para acessar as permissoes.');
-        setLoading(false);
-        return;
-      }
-
-      if (user.role !== 'SUPERADMIN') {
-        setError('Apenas superadmins podem gerenciar permissoes.');
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await api.get<RolePermission[]>('/permissions');
-        if (!active) return;
-        const roleOrder: Record<UserRole, number> = {
-          SUPERADMIN: 0,
-          ADMIN: 1,
-          COLLABORATOR: 2,
-        };
-        const sorted = response.data
-          .slice()
-          .sort((a, b) => roleOrder[a.role] - roleOrder[b.role]);
-        setPermissions(sorted);
-        setError(null);
-      } catch (err: any) {
-        if (active) {
-          const statusCode = err?.response?.status;
-          if (statusCode === 401 || statusCode === 403) {
-            setError('Sessao expirada. Faca login novamente.');
-          } else {
-            setError('Nao foi possivel carregar as permissoes.');
-          }
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    if (!hasHydrated) return;
-
-    loadPermissions();
-
-    return () => {
-      active = false;
-    };
-  }, [hasHydrated, user]);
-
-  const extraPermissionKeys = useMemo(() => {
-    const extraKeys = new Set<string>();
-    permissions.forEach((permission) => {
-      Object.entries(permission).forEach(([key, value]) => {
-        if (excludedPermissionKeys.has(key)) return;
-        if (typeof value !== 'boolean') return;
-        if (!knownPermissionKeySet.has(key)) {
-          extraKeys.add(key);
-        }
-      });
-    });
-    return Array.from(extraKeys).sort();
-  }, [permissions]);
-
-  const allPermissionKeys = useMemo(
-    () =>
-      extraPermissionKeys.length
-        ? [...knownPermissionKeys, ...extraPermissionKeys]
-        : knownPermissionKeys,
-    [extraPermissionKeys],
-  );
-
-  const extraPermissionItems = useMemo(
-    () =>
-      extraPermissionKeys.map((key) => ({
-        key,
-        label: formatPermissionKeyLabel(key),
-        hint: 'Permissao adicionada nas atualizacoes.',
-      })),
-    [extraPermissionKeys],
-  );
-
-  const permissionGroupList = useMemo(() => {
-    if (!extraPermissionItems.length) return permissionGroups;
-    return [
-      ...permissionGroups,
-      {
-        title: 'Outras',
-        description: 'Permissoes adicionais carregadas da API.',
-        items: extraPermissionItems,
-      },
-    ];
-  }, [extraPermissionItems]);
-
-  const normalizedSearch = search.trim().toLowerCase();
-  const filteredGroups = useMemo(() => {
-    if (!normalizedSearch) return permissionGroupList;
-
-    return permissionGroupList
-      .map((group) => {
-        const groupMatches =
-          group.title.toLowerCase().includes(normalizedSearch) ||
-          group.description.toLowerCase().includes(normalizedSearch);
-        const items = group.items.filter((item) => {
-          if (item.label.toLowerCase().includes(normalizedSearch)) return true;
-          if (item.hint.toLowerCase().includes(normalizedSearch)) return true;
-          return false;
-        });
-
-        if (groupMatches) {
-          return group;
-        }
-
-        return items.length > 0 ? { ...group, items } : null;
-      })
-      .filter((group): group is PermissionGroup => Boolean(group));
-  }, [normalizedSearch, permissionGroupList]);
-
-  useEffect(() => {
-    if (!permissions.length) return;
-    if (!permissions.some((entry) => entry.role === activeRole)) {
-      setActiveRole(permissions[0].role);
-    }
-  }, [activeRole, permissions]);
-
-  const activePermission = permissions.find(
-    (entry) => entry.role === activeRole,
-  );
-  const totalPermissions = allPermissionKeys.length;
-  const displayPermission = draft ?? activePermission;
-  const activeCount = displayPermission
-    ? countActivePermissions(displayPermission, allPermissionKeys)
-    : 0;
-  const isDirty = isPermissionDirty(draft, activePermission, allPermissionKeys);
-  const isReadOnly = loading || saving || Boolean(error);
-
-  useEffect(() => {
-    if (!activePermission) {
-      setDraft(null);
+  const load = async () => {
+    if (!isSuperadmin) {
+      setLoading(false);
       return;
     }
-    setDraft({ ...activePermission });
-    setSaveError(null);
-  }, [activeRole, permissions]);
 
-  const handleSave = async () => {
-    if (!draft) return;
-    setSaving(true);
-    setSaveError(null);
+    setLoading(true);
+    setError(null);
     try {
-      const payload = allPermissionKeys.reduce<Record<string, boolean>>(
-        (acc, key) => {
-          acc[key] = readPermissionValue(draft, key);
-          return acc;
-        },
-        {},
-      );
-      const response = await api.patch<RolePermission>(
-        `/permissions/${draft.role}`,
-        payload,
-      );
-      const updated = response.data;
-      setPermissions((current) =>
-        current.map((rolePermission) =>
-          rolePermission.role === updated.role ? updated : rolePermission,
+      const response = await api.get('/permissions');
+      const data = Array.isArray(response.data) ? response.data : [];
+      setRows(
+        data.sort(
+          (a: RolePermission, b: RolePermission) =>
+            roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role),
         ),
       );
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel salvar as permissoes.';
-      setSaveError(
-        typeof message === 'string'
-          ? message
-          : 'Erro ao salvar permissoes.',
-      );
+      const message = err?.response?.data?.message || 'Nao foi possivel carregar permissoes.';
+      setError(typeof message === 'string' ? message : 'Erro ao carregar permissoes.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const handleToggle = (key: string, value: boolean) => {
-    setDraft((current) => {
-      if (!current) return current;
-      const next = { ...current };
-      (next as Record<string, boolean | string | UserRole>)[key] = value;
-      return next;
-    });
+  useEffect(() => {
+    void load();
+  }, [isSuperadmin]);
+
+  const columns = useMemo(() => Object.keys(permissionLabels) as EditablePermission[], []);
+
+  const toggle = (role: UserRole, key: EditablePermission) => {
+    setRows((prev) =>
+      prev.map((row) =>
+        row.role === role
+          ? {
+              ...row,
+              [key]: !row[key],
+            }
+          : row,
+      ),
+    );
   };
 
+  const saveRole = async (row: RolePermission) => {
+    setSavingRole(row.role);
+    try {
+      const payload = columns.reduce((acc, key) => {
+        acc[key] = Boolean(row[key]);
+        return acc;
+      }, {} as Record<EditablePermission, boolean>);
+
+      await api.patch(`/permissions/${row.role}`, payload);
+      await load();
+    } finally {
+      setSavingRole(null);
+    }
+  };
+
+  if (!isSuperadmin) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-6 text-sm text-muted-foreground">
+        Acesso restrito ao superadmin.
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0 space-y-2 xl:flex-1">
-          <h1 className="font-display text-3xl text-foreground">
-            Permissoes
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Controle quem pode acessar cada area do portal.
-          </p>
-        </div>
-        <div className="w-full xl:w-auto xl:max-w-[420px] xl:shrink-0">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar permissao"
-            className="w-full min-w-0 rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground"
-          />
-        </div>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <h1 className="font-display text-3xl text-foreground">Permissoes</h1>
+        <p className="text-sm text-muted-foreground">
+          Matriz editavel para os papeis SUPERADMIN e USER.
+        </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-        <div className="surface animate-in fade-in slide-in-from-bottom-2 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Perfis
-            </p>
-            <span className="text-xs text-muted-foreground">
-              {loading ? 'Carregando...' : `${permissions.length} perfis`}
-            </span>
-          </div>
-          <div className="mt-4 space-y-3">
-            {permissions.map((rolePermission) => {
-              const isActive = rolePermission.role === activeRole;
-              const previewPermission =
-                isActive && draft ? draft : rolePermission;
-              const roleCount = countActivePermissions(
-                previewPermission,
-                allPermissionKeys,
-              );
-              return (
-                <button
-                  key={rolePermission.role}
-                  type="button"
-                  onClick={() => setActiveRole(rolePermission.role)}
-                  aria-pressed={isActive}
-                  className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-                    isActive
-                      ? 'border-foreground/60 bg-card shadow-md'
-                      : 'border-border/70 bg-card/70 hover:border-foreground/40'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {roleLabels[rolePermission.role]}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {roleDescriptions[rolePermission.role]}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                        isActive
-                          ? 'border-foreground/40 text-foreground'
-                          : 'border-border/70 text-muted-foreground'
-                      }`}
-                    >
-                      {roleCount}/{totalPermissions}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                      {previewPermission.restrictToOwnSector
-                        ? 'Setor'
-                        : 'Global'}
-                    </span>
-                    <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                      {previewPermission.canAccessAdmin ? 'Admin' : 'Sem admin'}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-            {!loading && permissions.length === 0 && (
-              <div className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-xs text-muted-foreground">
-                Nenhum perfil encontrado.
-              </div>
-            )}
-          </div>
+      {loading ? (
+        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
+          Carregando permissoes...
         </div>
-
-        <div className="surface animate-in fade-in slide-in-from-bottom-2">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-6">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                Permissoes
-              </p>
-              <p className="text-lg font-semibold text-foreground">
-                {displayPermission
-                  ? roleLabels[displayPermission.role]
-                  : 'Perfil nao encontrado'}
-              </p>
-              {displayPermission && (
-                <p className="text-xs text-muted-foreground">
-                  {roleDescriptions[displayPermission.role]}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              className="rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_18px_rgba(16,44,50,0.18)]"
-              onClick={handleSave}
-              disabled={!isDirty || isReadOnly || !draft}
+      ) : error ? (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {rows.map((row) => (
+            <section
+              key={row.role}
+              className="rounded-2xl border border-border/70 bg-card/85 p-4 shadow-sm"
             >
-              {saving ? 'Salvando...' : 'Salvar alteracoes'}
-            </button>
-          </div>
-          <div className="grid gap-4 p-4 sm:p-6">
-            {displayPermission && (
-              <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/70 px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                    {activeCount} de {totalPermissions} ativas
-                  </span>
-                  <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                    {displayPermission.restrictToOwnSector
-                      ? 'Restrito ao setor'
-                      : 'Acesso global'}
-                  </span>
-                  {activePermission && (
-                    <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1">
-                      Atualizado em {formatDate(activePermission.updatedAt)}
-                    </span>
-                  )}
-                  {isDirty && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700">
-                      Alteracoes pendentes
-                    </span>
-                  )}
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Role</p>
+                  <h2 className="text-lg font-semibold text-foreground">{row.role}</h2>
                 </div>
-                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {normalizedSearch ? 'Filtro ativo' : 'Todos os grupos'}
-                </span>
-              </div>
-            )}
-
-            {filteredGroups.map((group) => {
-              const groupActiveCount = displayPermission
-                ? group.items.reduce(
-                    (total, item) =>
-                      total + Number(readPermissionValue(displayPermission, item.key)),
-                    0,
-                  )
-                : 0;
-              return (
-                <div
-                  key={group.title}
-                  className="rounded-2xl border border-border/70 bg-card/80 p-4"
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-primary-foreground disabled:opacity-60"
+                  onClick={() => saveRole(row)}
+                  disabled={savingRole === row.role}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                        {group.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {group.description}
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      {groupActiveCount}/{group.items.length}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid gap-2 md:grid-cols-2">
-                    {group.items.map((item) => {
-                      const enabled = displayPermission
-                        ? readPermissionValue(displayPermission, item.key)
-                        : false;
-                      const toggleId = `${activeRole}-${item.key}`;
-                      return (
-                        <div
-                          key={item.key}
-                          className={`flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-white/80 px-3 py-2 ${
-                            isReadOnly ? 'opacity-70' : ''
-                          }`}
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {item.label}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.hint}
-                            </p>
-                          </div>
-                          <label
-                            htmlFor={toggleId}
-                            className="flex items-center gap-2"
-                          >
-                            <span
-                              className={`text-[10px] uppercase tracking-[0.2em] ${
-                                enabled
-                                  ? 'text-emerald-700'
-                                  : 'text-muted-foreground'
-                              }`}
-                            >
-                              {enabled ? 'Ativo' : 'Bloqueado'}
-                            </span>
-                            <span className="relative inline-flex h-6 w-11 items-center">
-                              <input
-                                id={toggleId}
-                                type="checkbox"
-                                className="peer sr-only"
-                                checked={Boolean(enabled)}
-                                onChange={(event) =>
-                                  handleToggle(item.key, event.target.checked)
-                                }
-                                disabled={isReadOnly || !draft}
-                              />
-                              <span className="absolute inset-0 rounded-full border border-border/70 bg-muted/60 transition peer-checked:border-emerald-200 peer-checked:bg-emerald-100" />
-                              <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-muted-foreground transition peer-checked:translate-x-5 peer-checked:bg-emerald-600" />
-                            </span>
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-
-            {!filteredGroups.length && (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center text-sm text-muted-foreground">
-                Nenhuma permissao encontrada.
+                  {savingRole === row.role ? 'Salvando...' : 'Salvar alteracoes'}
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {columns.map((key) => (
+                  <label
+                    key={`${row.role}-${key}`}
+                    className="flex items-center gap-2 rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(row[key])}
+                      onChange={() => toggle(row.role, key)}
+                    />
+                    <span>{permissionLabels[key]}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

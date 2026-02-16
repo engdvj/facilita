@@ -66,9 +66,7 @@ const resolveEntityLabel = (url?: string) => {
   if (normalized.includes('/schedules')) return 'Documento';
   if (normalized.includes('/notes')) return 'Nota';
   if (normalized.includes('/users')) return 'Usuario';
-  if (normalized.includes('/sectors')) return 'Setor';
-  if (normalized.includes('/units')) return 'Unidade';
-  if (normalized.includes('/companies')) return 'Empresa';
+  if (normalized.includes('/shares')) return 'Compartilhamento';
   if (normalized.includes('/uploads')) return 'Arquivo';
   if (normalized.includes('/system-config')) return 'Configuracoes';
   return 'Operacao';

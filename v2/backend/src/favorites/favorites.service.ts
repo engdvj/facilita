@@ -1,117 +1,149 @@
 import {
-  Injectable,
   BadRequestException,
-  NotFoundException,
   ConflictException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
+import { EntityType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
-import { EntityType, EntityStatus, NotificationType } from '@prisma/client';
-import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationsGateway } from '../notifications/notifications.gateway';
+
+type FavoriteEntityType = 'LINK' | 'SCHEDULE' | 'NOTE';
 
 @Injectable()
 export class FavoritesService {
-  constructor(
-    private prisma: PrismaService,
-    private notificationsService: NotificationsService,
-    private notificationsGateway: NotificationsGateway,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  /**
-   * Adiciona um item aos favoritos do usuário
-   */
+  private assertEntityTypeSupported(
+    entityType: EntityType,
+  ): asserts entityType is FavoriteEntityType {
+    if (
+      entityType !== EntityType.LINK &&
+      entityType !== EntityType.SCHEDULE &&
+      entityType !== EntityType.NOTE
+    ) {
+      throw new BadRequestException('Unsupported entity type for favorites');
+    }
+  }
+
+  private async canAccessEntity(
+    userId: string,
+    entityType: FavoriteEntityType,
+    entityId: string,
+  ) {
+    if (entityType === EntityType.LINK) {
+      const link = await this.prisma.link.findUnique({
+        where: { id: entityId },
+        include: {
+          owner: {
+            select: { role: true },
+          },
+        },
+      });
+      if (!link || link.deletedAt) return false;
+
+      if (link.ownerId === userId) return true;
+      if (link.visibility === 'PUBLIC' && link.owner.role === 'SUPERADMIN') return true;
+
+      const shared = await this.prisma.share.findFirst({
+        where: {
+          recipientId: userId,
+          linkId: entityId,
+          revokedAt: null,
+          removedAt: null,
+        },
+      });
+
+      return Boolean(shared);
+    }
+
+    if (entityType === EntityType.SCHEDULE) {
+      const schedule = await this.prisma.uploadedSchedule.findUnique({
+        where: { id: entityId },
+        include: {
+          owner: {
+            select: { role: true },
+          },
+        },
+      });
+      if (!schedule || schedule.deletedAt) return false;
+
+      if (schedule.ownerId === userId) return true;
+      if (schedule.visibility === 'PUBLIC' && schedule.owner.role === 'SUPERADMIN') return true;
+
+      const shared = await this.prisma.share.findFirst({
+        where: {
+          recipientId: userId,
+          scheduleId: entityId,
+          revokedAt: null,
+          removedAt: null,
+        },
+      });
+
+      return Boolean(shared);
+    }
+
+    if (entityType === EntityType.NOTE) {
+      const note = await this.prisma.note.findUnique({
+        where: { id: entityId },
+        include: {
+          owner: {
+            select: { role: true },
+          },
+        },
+      });
+      if (!note || note.deletedAt) return false;
+
+      if (note.ownerId === userId) return true;
+      if (note.visibility === 'PUBLIC' && note.owner.role === 'SUPERADMIN') return true;
+
+      const shared = await this.prisma.share.findFirst({
+        where: {
+          recipientId: userId,
+          noteId: entityId,
+          revokedAt: null,
+          removedAt: null,
+        },
+      });
+
+      return Boolean(shared);
+    }
+
+    return false;
+  }
+
   async create(userId: string, dto: CreateFavoriteDto) {
-    // Validação: apenas um dos IDs deve ser fornecido
-    const idsProvided = [dto.linkId, dto.scheduleId, dto.noteId].filter(Boolean).length;
+    this.assertEntityTypeSupported(dto.entityType);
 
+    const idsProvided = [dto.linkId, dto.scheduleId, dto.noteId].filter(Boolean).length;
     if (idsProvided !== 1) {
       throw new BadRequestException(
-        'Você deve fornecer exatamente um ID (linkId, scheduleId ou noteId)',
+        'Provide exactly one ID (linkId, scheduleId or noteId)',
       );
     }
 
-    // Validação: o ID fornecido deve corresponder ao entityType
     if (dto.entityType === EntityType.LINK && !dto.linkId) {
-      throw new BadRequestException(
-        'linkId é obrigatório quando entityType = LINK',
-      );
+      throw new BadRequestException('linkId is required when entityType = LINK');
     }
 
     if (dto.entityType === EntityType.SCHEDULE && !dto.scheduleId) {
-      throw new BadRequestException(
-        'scheduleId é obrigatório quando entityType = SCHEDULE',
-      );
+      throw new BadRequestException('scheduleId is required when entityType = SCHEDULE');
     }
 
     if (dto.entityType === EntityType.NOTE && !dto.noteId) {
-      throw new BadRequestException(
-        'noteId é obrigatório quando entityType = NOTE',
-      );
+      throw new BadRequestException('noteId is required when entityType = NOTE');
     }
 
-    // Verificar se a entidade existe e guardar dados para notificação
-    let creatorId: string | null = null;
-    let entityTitle = '';
-
-    if (dto.linkId) {
-      const link = await this.prisma.link.findUnique({
-        where: { id: dto.linkId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      });
-      if (!link) {
-        throw new NotFoundException('Link não encontrado');
-      }
-      creatorId = link.userId;
-      entityTitle = link.title;
+    const entityId = dto.linkId || dto.scheduleId || dto.noteId;
+    if (!entityId) {
+      throw new BadRequestException('Entity ID is required');
     }
 
-    if (dto.scheduleId) {
-      const schedule = await this.prisma.uploadedSchedule.findUnique({
-        where: { id: dto.scheduleId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      });
-      if (!schedule) {
-        throw new NotFoundException('Agenda não encontrada');
-      }
-      creatorId = schedule.userId;
-      entityTitle = schedule.title;
+    const canAccess = await this.canAccessEntity(userId, dto.entityType, entityId);
+    if (!canAccess) {
+      throw new NotFoundException('Content not found or not accessible');
     }
 
-    if (dto.noteId) {
-      const note = await this.prisma.note.findUnique({
-        where: { id: dto.noteId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      });
-      if (!note) {
-        throw new NotFoundException('Nota não encontrada');
-      }
-      creatorId = note.userId;
-      entityTitle = note.title;
-    }
-
-    // Verificar se já existe esse favorito
     const existingFavorite = await this.prisma.favorite.findFirst({
       where: {
         userId,
@@ -123,11 +155,10 @@ export class FavoritesService {
     });
 
     if (existingFavorite) {
-      throw new ConflictException('Este item já está nos seus favoritos');
+      throw new ConflictException('This item is already in favorites');
     }
 
-    // Criar favorito
-    const favorite = await this.prisma.favorite.create({
+    return this.prisma.favorite.create({
       data: {
         userId,
         entityType: dto.entityType,
@@ -139,85 +170,52 @@ export class FavoritesService {
         link: {
           include: {
             category: true,
-            sector: true,
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
         schedule: {
           include: {
             category: true,
-            sector: true,
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
         note: {
           include: {
             category: true,
-            sector: true,
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
       },
     });
-
-    // Notificar criador do conteúdo (se existir e for diferente do usuário que favoritou)
-    if (creatorId && creatorId !== userId) {
-      try {
-        const entityId = dto.linkId || dto.scheduleId || dto.noteId || '';
-        const entityTypeLabel = dto.entityType === EntityType.LINK ? 'link' :
-                                dto.entityType === EntityType.SCHEDULE ? 'documento' : 'nota';
-        const actionUrl = dto.entityType === EntityType.LINK ? `/?highlight=link-${entityId}` :
-                          dto.entityType === EntityType.SCHEDULE ? `/?highlight=document-${entityId}` :
-                          `/?highlight=note-${entityId}`;
-
-        const user = await this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { name: true },
-        });
-
-        await this.notificationsService.createBulk([creatorId], {
-          type: NotificationType.CONTENT_FAVORITED,
-          entityType: dto.entityType,
-          entityId,
-          title: 'Conteúdo Favoritado',
-          message: `${user?.name || 'Alguém'} favoritou seu ${entityTypeLabel} "${entityTitle}"`,
-          actionUrl,
-          metadata: {
-            [dto.entityType === EntityType.LINK ? 'linkTitle' :
-             dto.entityType === EntityType.SCHEDULE ? 'scheduleTitle' : 'noteTitle']: entityTitle,
-            favoritedBy: userId,
-            favoritedByName: user?.name,
-          },
-        });
-
-        this.notificationsGateway.emitToUsers([creatorId], 'notification', {
-          type: 'CONTENT_FAVORITED',
-          entityType: dto.entityType,
-          entityId,
-          title: 'Conteúdo Favoritado',
-          message: `${user?.name || 'Alguém'} favoritou seu ${entityTypeLabel} "${entityTitle}"`,
-          actionUrl,
-        });
-      } catch (error) {
-        console.error('Failed to notify content creator about favorite:', error);
-      }
-    }
-
-    return favorite;
   }
 
-  /**
-   * Lista todos os favoritos do usuário
-   */
   async findAllByUser(userId: string) {
     return this.prisma.favorite.findMany({
       where: { userId },
       include: {
         link: {
-          where: {
-            deletedAt: null,
-          },
+          where: { deletedAt: null },
           include: {
             category: true,
-            sector: true,
-            user: {
+            owner: {
               select: {
                 id: true,
                 name: true,
@@ -228,13 +226,10 @@ export class FavoritesService {
           },
         },
         schedule: {
-          where: {
-            deletedAt: null,
-          },
+          where: { deletedAt: null },
           include: {
             category: true,
-            sector: true,
-            user: {
+            owner: {
               select: {
                 id: true,
                 name: true,
@@ -245,13 +240,10 @@ export class FavoritesService {
           },
         },
         note: {
-          where: {
-            deletedAt: null,
-          },
+          where: { deletedAt: null },
           include: {
             category: true,
-            sector: true,
-            user: {
+            owner: {
               select: {
                 id: true,
                 name: true,
@@ -262,64 +254,39 @@ export class FavoritesService {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  /**
-   * Lista favoritos filtrados por tipo
-   */
   async findByUserAndType(userId: string, entityType: EntityType) {
+    this.assertEntityTypeSupported(entityType);
     return this.prisma.favorite.findMany({
-      where: {
-        userId,
-        entityType,
-      },
+      where: { userId, entityType },
       include: {
         link: {
-          where: {
-            deletedAt: null,
-          },
-          include: {
-            category: true,
-            sector: true,
-          },
+          where: { deletedAt: null },
+          include: { category: true, owner: true },
         },
         schedule: {
-          where: {
-            deletedAt: null,
-          },
-          include: {
-            category: true,
-            sector: true,
-          },
+          where: { deletedAt: null },
+          include: { category: true, owner: true },
         },
         note: {
-          where: {
-            deletedAt: null,
-          },
-          include: {
-            category: true,
-            sector: true,
-          },
+          where: { deletedAt: null },
+          include: { category: true, owner: true },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  /**
-   * Verifica se um item está favoritado pelo usuário
-   */
   async isFavorited(
     userId: string,
     entityType: EntityType,
     entityId: string,
   ): Promise<boolean> {
+    this.assertEntityTypeSupported(entityType);
+
     const where: any = {
       userId,
       entityType,
@@ -337,43 +304,26 @@ export class FavoritesService {
     return !!favorite;
   }
 
-  /**
-   * Remove um favorito
-   */
   async remove(id: string, userId: string) {
-    const favorite = await this.prisma.favorite.findUnique({
-      where: { id },
-    });
+    const favorite = await this.prisma.favorite.findUnique({ where: { id } });
 
     if (!favorite) {
-      throw new NotFoundException('Favorito não encontrado');
+      throw new NotFoundException('Favorite not found');
     }
 
     if (favorite.userId !== userId) {
-      throw new BadRequestException(
-        'Você não pode remover favoritos de outros usuários',
-      );
+      throw new BadRequestException('You cannot remove favorites from other users');
     }
 
-    await this.prisma.favorite.delete({
-      where: { id },
-    });
+    await this.prisma.favorite.delete({ where: { id } });
 
-    return { message: 'Favorito removido com sucesso' };
+    return { message: 'Favorite removed successfully' };
   }
 
-  /**
-   * Remove favorito por entidade (alternativa)
-   */
-  async removeByEntity(
-    userId: string,
-    entityType: EntityType,
-    entityId: string,
-  ) {
-    const where: any = {
-      userId,
-      entityType,
-    };
+  async removeByEntity(userId: string, entityType: EntityType, entityId: string) {
+    this.assertEntityTypeSupported(entityType);
+
+    const where: any = { userId, entityType };
 
     if (entityType === EntityType.LINK) {
       where.linkId = entityId;
@@ -386,29 +336,21 @@ export class FavoritesService {
     const favorite = await this.prisma.favorite.findFirst({ where });
 
     if (!favorite) {
-      throw new NotFoundException('Favorito não encontrado');
+      throw new NotFoundException('Favorite not found');
     }
 
-    await this.prisma.favorite.delete({
-      where: { id: favorite.id },
-    });
+    await this.prisma.favorite.delete({ where: { id: favorite.id } });
 
-    return { message: 'Favorito removido com sucesso' };
+    return { message: 'Favorite removed successfully' };
   }
 
-  /**
-   * Conta total de favoritos do usuário
-   */
   async countByUser(userId: string): Promise<number> {
-    return this.prisma.favorite.count({
-      where: { userId },
-    });
+    return this.prisma.favorite.count({ where: { userId } });
   }
 
-  /**
-   * Conta quantas vezes um item foi favoritado (por todos os usuários)
-   */
   async countByEntity(entityType: EntityType, entityId: string): Promise<number> {
+    this.assertEntityTypeSupported(entityType);
+
     const where: any = { entityType };
 
     if (entityType === EntityType.LINK) {

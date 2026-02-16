@@ -8,7 +8,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateLinkDto = void 0;
 const class_validator_1 = require("class-validator");
@@ -17,87 +16,64 @@ class CreateLinkDto {
 }
 exports.CreateLinkDto = CreateLinkDto;
 __decorate([
-    (0, class_validator_1.IsUUID)(),
-    __metadata("design:type", String)
-], CreateLinkDto.prototype, "companyId", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateLinkDto.prototype, "userId", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateLinkDto.prototype, "sectorId", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Object)
-], CreateLinkDto.prototype, "unitId", void 0);
-__decorate([
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayUnique)(),
-    (0, class_validator_1.IsUUID)('4', { each: true }),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Array)
-], CreateLinkDto.prototype, "unitIds", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateLinkDto.prototype, "categoryId", void 0);
-__decorate([
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(2),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "title", void 0);
 __decorate([
-    (0, class_validator_1.IsUrl)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsUrl)({ require_tld: false }),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "url", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "description", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "color", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "imageUrl", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateLinkDto.prototype, "imagePosition", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], CreateLinkDto.prototype, "imageScale", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(client_1.ContentAudience),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", typeof (_a = typeof client_1.ContentAudience !== "undefined" && client_1.ContentAudience) === "function" ? _a : Object)
-], CreateLinkDto.prototype, "audience", void 0);
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateLinkDto.prototype, "categoryId", void 0);
 __decorate([
-    (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Boolean)
-], CreateLinkDto.prototype, "isPublic", void 0);
+    (0, class_validator_1.IsEnum)(client_1.ContentVisibility),
+    __metadata("design:type", String)
+], CreateLinkDto.prototype, "visibility", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateLinkDto.prototype, "publicToken", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], CreateLinkDto.prototype, "order", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(client_1.EntityStatus),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", typeof (_b = typeof client_1.EntityStatus !== "undefined" && client_1.EntityStatus) === "function" ? _b : Object)
+    (0, class_validator_1.IsEnum)(client_1.EntityStatus),
+    __metadata("design:type", String)
 ], CreateLinkDto.prototype, "status", void 0);
 //# sourceMappingURL=create-link.dto.js.map

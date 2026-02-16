@@ -16,42 +16,21 @@ export declare class BackupsService {
     }>;
     restore(payload: BackupPayload, entities?: BackupEntity[], mode?: 'merge'): Promise<{
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages"];
+        skipped: readonly ["users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages", "shares", "favorites", "notifications", "systemConfig"];
     } | {
-        restored: Record<string, number>;
+        restored: Partial<Record<"systemConfig" | "categories" | "favorites" | "uploadedImages" | "notifications" | "links" | "notes" | "shares" | "users" | "rolePermissions" | "uploadedSchedules", number>>;
         skipped?: undefined;
     }>;
     restoreFromArchive(filePath: string, entities?: BackupEntity[], mode?: 'merge'): Promise<{
-        files: {
-            restored: number;
-            skipped: number;
-        };
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages"];
+        skipped: readonly ["users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages", "shares", "favorites", "notifications", "systemConfig"];
     } | {
-        files: {
-            restored: number;
-            skipped: number;
-        };
-        restored: Record<string, number>;
+        restored: Partial<Record<"systemConfig" | "categories" | "favorites" | "uploadedImages" | "notifications" | "links" | "notes" | "shares" | "users" | "rolePermissions" | "uploadedSchedules", number>>;
         skipped?: undefined;
     }>;
     cleanupOldBackups(directory: string, retentionDays: number): Promise<number>;
-    private resolveSelectedEntities;
-    private collectUploadRelativePaths;
-    private reconcileUniqueIds;
-    private buildCompanyIdMap;
-    private buildUnitIdMap;
-    private buildUserIdMap;
-    private buildIdMap;
-    private collectStrings;
-    private applyIdMap;
-    private extractUploadRelativePath;
-    private sanitizeUploadRelativePath;
-    private resolveExistingUploadEntries;
-    private getUploadsRoot;
-    private isWithinRoot;
     private upsertById;
     private upsertByRole;
+    private upsertByKey;
 }
 export {};

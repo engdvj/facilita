@@ -5,8 +5,6 @@ export declare class UpdateRolePermissionDto {
     canCreateUsers?: boolean;
     canEditUsers?: boolean;
     canDeleteUsers?: boolean;
-    canViewSectors?: boolean;
-    canManageSectors?: boolean;
     canViewLinks?: boolean;
     canManageLinks?: boolean;
     canManageCategories?: boolean;
@@ -16,5 +14,5 @@ export declare class UpdateRolePermissionDto {
     canResetSystem?: boolean;
     canViewAuditLogs?: boolean;
     canManageSystemConfig?: boolean;
-    restrictToOwnSector?: boolean;
+    canManageShares?: boolean;
 }

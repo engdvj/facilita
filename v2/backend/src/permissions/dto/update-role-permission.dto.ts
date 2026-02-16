@@ -27,14 +27,6 @@ export class UpdateRolePermissionDto {
 
   @IsOptional()
   @IsBoolean()
-  canViewSectors?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canManageSectors?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   canViewLinks?: boolean;
 
   @IsOptional()
@@ -71,5 +63,5 @@ export class UpdateRolePermissionDto {
 
   @IsOptional()
   @IsBoolean()
-  restrictToOwnSector?: boolean;
+  canManageShares?: boolean;
 }

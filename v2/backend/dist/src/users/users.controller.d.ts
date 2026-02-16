@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { UserRole, UserStatus } from '@prisma/client';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -6,26 +7,88 @@ import { UsersService } from './users.service';
 export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
-    findAll(companyId?: string, sectorId?: string, page?: string, pageSize?: string, search?: string, res?: Response): Promise<any>;
-    findAccessItems(id: string, sectorId?: string, page?: string, pageSize?: string, res?: Response): Promise<any[]>;
-    findOne(id: string): Promise<any>;
+    findAll(role?: UserRole, status?: UserStatus, page?: string, pageSize?: string, search?: string, res?: Response): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    findOne(id: string): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     getDependencies(id: string): Promise<{
-        sectors: any;
-        links: any;
-        schedules: any;
-        notes: any;
-        uploadedImages: any;
-        linkVersions: any;
-        favorites: any;
-        refreshTokens: any;
-        activityLogs: any;
-        auditLogs: any;
+        links: number;
+        schedules: number;
+        notes: number;
+        uploadedImages: number;
+        sharesSent: number;
+        sharesReceived: number;
+        favorites: number;
+        refreshTokens: number;
+        activityLogs: number;
+        auditLogs: number;
+        notifications: number;
         hasAny: boolean;
     }>;
-    create(data: CreateUserDto): Promise<any>;
+    create(data: CreateUserDto): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     updateMe(user: {
         id: string;
-    }, data: UpdateProfileDto): Promise<any>;
-    update(id: string, data: UpdateUserDto): Promise<any>;
-    remove(id: string): Promise<any>;
+    }, data: UpdateProfileDto): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    update(id: string, data: UpdateUserDto): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    remove(id: string, actor: {
+        id: string;
+    }): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: import("@prisma/client/runtime/client").JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
 }

@@ -8,7 +8,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateScheduleDto = void 0;
 const class_validator_1 = require("class-validator");
@@ -17,38 +16,8 @@ class CreateScheduleDto {
 }
 exports.CreateScheduleDto = CreateScheduleDto;
 __decorate([
-    (0, class_validator_1.IsUUID)(),
-    __metadata("design:type", String)
-], CreateScheduleDto.prototype, "companyId", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateScheduleDto.prototype, "userId", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateScheduleDto.prototype, "sectorId", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Object)
-], CreateScheduleDto.prototype, "unitId", void 0);
-__decorate([
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayUnique)(),
-    (0, class_validator_1.IsUUID)('4', { each: true }),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Array)
-], CreateScheduleDto.prototype, "unitIds", void 0);
-__decorate([
-    (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateScheduleDto.prototype, "categoryId", void 0);
-__decorate([
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(2),
     __metadata("design:type", String)
 ], CreateScheduleDto.prototype, "title", void 0);
 __decorate([
@@ -61,41 +30,47 @@ __decorate([
 ], CreateScheduleDto.prototype, "fileName", void 0);
 __decorate([
     (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], CreateScheduleDto.prototype, "fileSize", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateScheduleDto.prototype, "color", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateScheduleDto.prototype, "imageUrl", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateScheduleDto.prototype, "imagePosition", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], CreateScheduleDto.prototype, "imageScale", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(client_1.ContentAudience),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", typeof (_a = typeof client_1.ContentAudience !== "undefined" && client_1.ContentAudience) === "function" ? _a : Object)
-], CreateScheduleDto.prototype, "audience", void 0);
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateScheduleDto.prototype, "categoryId", void 0);
 __decorate([
-    (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Boolean)
-], CreateScheduleDto.prototype, "isPublic", void 0);
+    (0, class_validator_1.IsEnum)(client_1.ContentVisibility),
+    __metadata("design:type", String)
+], CreateScheduleDto.prototype, "visibility", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateScheduleDto.prototype, "publicToken", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(client_1.EntityStatus),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", typeof (_b = typeof client_1.EntityStatus !== "undefined" && client_1.EntityStatus) === "function" ? _b : Object)
+    __metadata("design:type", String)
 ], CreateScheduleDto.prototype, "status", void 0);
 //# sourceMappingURL=create-schedule.dto.js.map

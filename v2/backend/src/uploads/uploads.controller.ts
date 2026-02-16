@@ -14,6 +14,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadsService } from './uploads.service';
 import { imageMulterConfig, documentMulterConfig } from './config/multer.config';
@@ -36,22 +37,14 @@ export class UploadsController {
   async uploadImage(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
-    @Query('companyId') companyIdParam?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Superadmins can specify companyId, others use their own
-    const isSuperAdmin = req.user.role === 'SUPERADMIN';
-    const companyId = isSuperAdmin && companyIdParam
-      ? companyIdParam
-      : req.user.companyId;
-
     const url = this.uploadsService.getFileUrl(file.filename, 'images');
 
     const image = await this.uploadsService.createImageRecord({
-      companyId,
       uploadedBy: req.user.id,
       filename: file.filename,
       originalName: file.originalname,
@@ -65,9 +58,10 @@ export class UploadsController {
 
   @Get('images')
   async listImages(@Query() query: QueryImagesDto, @Req() req: any) {
-    if (!query.companyId) {
-      query.companyId = req.user.companyId;
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      query.uploadedBy = req.user.id;
     }
+
     return this.uploadsService.listImages(query);
   }
 

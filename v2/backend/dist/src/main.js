@@ -13,6 +13,7 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const config = app.get(config_1.ConfigService);
     const systemConfigService = app.get(system_config_service_1.SystemConfigService);
+    app.disable('etag');
     await systemConfigService.syncStore();
     const uploadRoot = systemConfigService.resolvePath('upload_directory', 'uploads');
     const uploadDirs = [

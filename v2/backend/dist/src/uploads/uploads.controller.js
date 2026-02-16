@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UploadsController = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
+const client_1 = require("@prisma/client");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const uploads_service_1 = require("./uploads.service");
 const multer_config_1 = require("./config/multer.config");
@@ -25,17 +26,12 @@ let UploadsController = class UploadsController {
     constructor(uploadsService) {
         this.uploadsService = uploadsService;
     }
-    async uploadImage(file, req, companyIdParam) {
+    async uploadImage(file, req) {
         if (!file) {
             throw new common_1.BadRequestException('No file uploaded');
         }
-        const isSuperAdmin = req.user.role === 'SUPERADMIN';
-        const companyId = isSuperAdmin && companyIdParam
-            ? companyIdParam
-            : req.user.companyId;
         const url = this.uploadsService.getFileUrl(file.filename, 'images');
         const image = await this.uploadsService.createImageRecord({
-            companyId,
             uploadedBy: req.user.id,
             filename: file.filename,
             originalName: file.originalname,
@@ -46,8 +42,8 @@ let UploadsController = class UploadsController {
         return image;
     }
     async listImages(query, req) {
-        if (!query.companyId) {
-            query.companyId = req.user.companyId;
+        if (req.user.role !== client_1.UserRole.SUPERADMIN) {
+            query.uploadedBy = req.user.id;
         }
         return this.uploadsService.listImages(query);
     }
@@ -81,9 +77,8 @@ __decorate([
     })),
     __param(0, (0, common_1.UploadedFile)()),
     __param(1, (0, common_1.Req)()),
-    __param(2, (0, common_1.Query)('companyId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object, String]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], UploadsController.prototype, "uploadImage", null);
 __decorate([

@@ -1,82 +1,63 @@
 import {
-  ArrayUnique,
-  IsArray,
-  IsString,
-  IsOptional,
-  IsBoolean,
-  IsUUID,
-  IsInt,
-  IsUrl,
   IsEnum,
+  IsInt,
   IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
+  Min,
+  MinLength,
 } from 'class-validator';
-import { ContentAudience, EntityStatus } from '@prisma/client';
+import { ContentVisibility, EntityStatus } from '@prisma/client';
 
 export class CreateLinkDto {
-  @IsUUID()
-  companyId!: string;
-
-  @IsUUID()
-  @IsOptional()
-  userId?: string;
-
-  @IsUUID()
-  @IsOptional()
-  sectorId?: string;
-
-  @IsUUID()
-  @IsOptional()
-  unitId?: string | null;
-
-  @IsArray()
-  @ArrayUnique()
-  @IsUUID('4', { each: true })
-  @IsOptional()
-  unitIds?: string[];
-
-  @IsUUID()
-  @IsOptional()
-  categoryId?: string;
-
   @IsString()
+  @MinLength(2)
   title!: string;
 
-  @IsUrl()
+  @IsString()
+  @IsUrl({ require_tld: false })
   url!: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   description?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   color?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   imageUrl?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   imagePosition?: string;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
   imageScale?: number;
 
-  @IsEnum(ContentAudience)
   @IsOptional()
-  audience?: ContentAudience;
+  @IsUUID()
+  categoryId?: string;
 
-  @IsBoolean()
   @IsOptional()
-  isPublic?: boolean;
+  @IsEnum(ContentVisibility)
+  visibility?: ContentVisibility;
 
+  @IsOptional()
+  @IsString()
+  publicToken?: string;
+
+  @IsOptional()
   @IsInt()
-  @IsOptional()
+  @Min(0)
   order?: number;
 
-  @IsEnum(EntityStatus)
   @IsOptional()
+  @IsEnum(EntityStatus)
   status?: EntityStatus;
 }

@@ -1,61 +1,19 @@
-export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'COLLABORATOR';
+export type UserRole = 'SUPERADMIN' | 'USER';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type EntityStatus = 'ACTIVE' | 'INACTIVE';
-export type NotificationType = 'EMAIL' | 'IN_APP';
-export type NotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'READ';
-export type EntityType = 'LINK' | 'SCHEDULE' | 'NOTE' | 'USER' | 'SECTOR' | 'COMPANY';
-export type ContentAudience =
-  | 'PUBLIC'
-  | 'COMPANY'
-  | 'SECTOR'
-  | 'PRIVATE'
-  | 'ADMIN'
-  | 'SUPERADMIN';
+export type ContentVisibility = 'PRIVATE' | 'PUBLIC';
+export type EntityType = 'LINK' | 'SCHEDULE' | 'NOTE' | 'USER';
 
-export interface Company {
+export type UserPreview = {
   id: string;
   name: string;
-  cnpj?: string;
-  logoUrl?: string;
-  status: EntityStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Unit {
-  id: string;
-  companyId: string;
-  name: string;
-  cnpj?: string;
-  imageUrl?: string;
-  status: EntityStatus;
-  createdAt: string;
-  updatedAt: string;
-  company?: Company;
-}
-
-export interface Sector {
-  id: string;
-  companyId: string;
-  name: string;
-  description?: string;
-  imageUrl?: string;
-  status: EntityStatus;
-  createdAt: string;
-  updatedAt: string;
-  company?: Company;
-  sectorUnits?: {
-    unitId: string;
-    isPrimary?: boolean;
-    unit?: Unit;
-  }[];
-}
+  email: string;
+  role?: UserRole;
+  avatarUrl?: string | null;
+};
 
 export interface User {
   id: string;
-  companyId?: string;
-  unitId?: string;
-  sectorId?: string;
   name: string;
   email: string;
   cpf?: string;
@@ -65,14 +23,11 @@ export interface User {
   theme?: any;
   createdAt: string;
   updatedAt: string;
-  company?: Company;
-  unit?: Unit;
-  sector?: Sector;
 }
 
 export interface Category {
   id: string;
-  companyId: string;
+  ownerId: string;
   name: string;
   color?: string;
   icon?: string;
@@ -83,50 +38,33 @@ export interface Category {
   _count?: {
     links: number;
     schedules: number;
-    notes?: number;
+    notes: number;
   };
-}
-
-export interface Tag {
-  id: string;
-  name: string;
-  color?: string;
-  createdAt: string;
 }
 
 export interface Link {
   id: string;
-  companyId: string;
-  userId?: string;
-  sectorId?: string;
-  unitId?: string;
-  linkUnits?: {
-    unitId: string;
-    unit?: Unit;
-  }[];
-  categoryId?: string;
+  ownerId: string;
+  categoryId?: string | null;
   title: string;
   url: string;
-  description?: string;
-  color?: string;
-  imageUrl?: string;
-  imagePosition?: string;
-  imageScale?: number;
-  isPublic: boolean;
-  audience?: ContentAudience;
+  description?: string | null;
+  color?: string | null;
+  imageUrl?: string | null;
+  imagePosition?: string | null;
+  imageScale?: number | null;
+  visibility: ContentVisibility;
+  publicToken?: string | null;
   order: number;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
-  category?: Category;
-  sector?: Sector;
-  unit?: Unit;
-  user?: Pick<User, 'id' | 'name' | 'email'>;
-  tags?: {
-    tag: Tag;
-  }[];
-  versions?: LinkVersion[];
+  deletedAt?: string | null;
+  category?: Category | null;
+  owner?: UserPreview;
+  createdBy?: UserPreview;
+  shareCount?: number;
+  sharedWithPreview?: UserPreview[];
   _count?: {
     favorites: number;
   };
@@ -134,36 +72,27 @@ export interface Link {
 
 export interface UploadedSchedule {
   id: string;
-  companyId: string;
-  userId?: string;
-  sectorId?: string;
-  unitId?: string;
-  scheduleUnits?: {
-    unitId: string;
-    unit?: Unit;
-  }[];
-  categoryId?: string;
+  ownerId: string;
+  categoryId?: string | null;
   title: string;
   fileUrl: string;
   fileName: string;
   fileSize: number;
-  color?: string;
-  imageUrl?: string;
-  imagePosition?: string;
-  imageScale?: number;
-  isPublic: boolean;
-  audience?: ContentAudience;
+  color?: string | null;
+  imageUrl?: string | null;
+  imagePosition?: string | null;
+  imageScale?: number | null;
+  visibility: ContentVisibility;
+  publicToken?: string | null;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
-  category?: Category;
-  sector?: Sector;
-  unit?: Unit;
-  user?: Pick<User, 'id' | 'name' | 'email'>;
-  tags?: {
-    tag: Tag;
-  }[];
+  deletedAt?: string | null;
+  category?: Category | null;
+  owner?: UserPreview;
+  createdBy?: UserPreview;
+  shareCount?: number;
+  sharedWithPreview?: UserPreview[];
   _count?: {
     favorites: number;
   };
@@ -171,66 +100,69 @@ export interface UploadedSchedule {
 
 export interface Note {
   id: string;
-  companyId: string;
-  userId?: string;
-  sectorId?: string;
-  unitId?: string;
-  noteUnits?: {
-    unitId: string;
-    unit?: Unit;
-  }[];
-  categoryId?: string;
+  ownerId: string;
+  categoryId?: string | null;
   title: string;
   content: string;
-  color?: string;
-  imageUrl?: string;
-  imagePosition?: string;
-  imageScale?: number;
-  isPublic: boolean;
-  audience?: ContentAudience;
+  color?: string | null;
+  imageUrl?: string | null;
+  imagePosition?: string | null;
+  imageScale?: number | null;
+  visibility: ContentVisibility;
+  publicToken?: string | null;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
-  category?: Category;
-  sector?: Sector;
-  unit?: Unit;
-  user?: Pick<User, 'id' | 'name' | 'email'>;
+  deletedAt?: string | null;
+  category?: Category | null;
+  owner?: UserPreview;
+  createdBy?: UserPreview;
+  shareCount?: number;
+  sharedWithPreview?: UserPreview[];
 }
 
-export interface LinkVersion {
+export interface Share {
   id: string;
-  linkId: string;
-  title: string;
-  url: string;
-  description?: string;
-  changedBy: string;
-  changeReason?: string;
+  ownerId: string;
+  recipientId: string;
+  entityType: 'LINK' | 'SCHEDULE' | 'NOTE';
+  linkId?: string | null;
+  scheduleId?: string | null;
+  noteId?: string | null;
+  localCategoryId?: string | null;
   createdAt: string;
-  changedByUser?: Pick<User, 'id' | 'name' | 'email'>;
+  updatedAt: string;
+  removedAt?: string | null;
+  revokedAt?: string | null;
+  owner?: UserPreview;
+  recipient?: UserPreview;
+  localCategory?: Pick<Category, 'id' | 'name' | 'color'> | null;
+  link?: Link | null;
+  schedule?: UploadedSchedule | null;
+  note?: Note | null;
 }
 
 export interface Favorite {
   id: string;
   userId: string;
-  entityType: EntityType;
-  linkId?: string;
-  scheduleId?: string;
-  noteId?: string;
+  entityType: 'LINK' | 'SCHEDULE' | 'NOTE';
+  linkId?: string | null;
+  scheduleId?: string | null;
+  noteId?: string | null;
   createdAt: string;
 }
 
 export interface Notification {
   id: string;
-  companyId: string;
-  userId?: string;
-  type: NotificationType;
-  status: NotificationStatus;
+  userId: string;
+  type: string;
+  entityType: EntityType;
+  entityId: string;
   title: string;
   message: string;
-  data?: any;
-  readAt?: string;
-  sentAt?: string;
+  actionUrl?: string | null;
+  metadata?: any;
+  read: boolean;
   createdAt: string;
 }
 
@@ -243,8 +175,6 @@ export interface RolePermission {
   canCreateUsers: boolean;
   canEditUsers: boolean;
   canDeleteUsers: boolean;
-  canViewSectors: boolean;
-  canManageSectors: boolean;
   canViewLinks: boolean;
   canManageLinks: boolean;
   canManageCategories: boolean;
@@ -254,7 +184,7 @@ export interface RolePermission {
   canResetSystem: boolean;
   canViewAuditLogs: boolean;
   canManageSystemConfig: boolean;
-  restrictToOwnSector: boolean;
+  canManageShares: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -273,7 +203,6 @@ export interface SystemConfig {
 
 export interface UploadedImage {
   id: string;
-  companyId: string;
   uploadedBy: string;
   filename: string;
   originalName: string;

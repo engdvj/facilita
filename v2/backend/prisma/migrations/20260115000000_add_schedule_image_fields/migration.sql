@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "UploadedSchedule"
-ADD COLUMN IF NOT EXISTS "imageUrl" TEXT,
-ADD COLUMN IF NOT EXISTS "imagePosition" TEXT,
-ADD COLUMN IF NOT EXISTS "imageScale" DOUBLE PRECISION;

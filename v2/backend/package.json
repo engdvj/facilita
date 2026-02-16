@@ -1,17 +1,15 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "dist/src/main.js",
+  "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/src/main.js",
+    "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "migrate:images": "ts-node --compiler-options {\\\"module\\\":\\\"commonjs\\\"} src/scripts/migrate-existing-images.ts",
-    "fix:image-names": "ts-node --compiler-options {\\\"module\\\":\\\"commonjs\\\"} src/scripts/fix-image-names.ts"
+    "prisma:studio": "prisma studio"
   },
   "keywords": [],
   "author": "",

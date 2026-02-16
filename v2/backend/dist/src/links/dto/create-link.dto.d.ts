@@ -1,11 +1,5 @@
-import { ContentAudience, EntityStatus } from '@prisma/client';
+import { ContentVisibility, EntityStatus } from '@prisma/client';
 export declare class CreateLinkDto {
-    companyId: string;
-    userId?: string;
-    sectorId?: string;
-    unitId?: string | null;
-    unitIds?: string[];
-    categoryId?: string;
     title: string;
     url: string;
     description?: string;
@@ -13,8 +7,9 @@ export declare class CreateLinkDto {
     imageUrl?: string;
     imagePosition?: string;
     imageScale?: number;
-    audience?: ContentAudience;
-    isPublic?: boolean;
+    categoryId?: string;
+    visibility?: ContentVisibility;
+    publicToken?: string;
     order?: number;
     status?: EntityStatus;
 }

@@ -1,23 +1,27 @@
-import { IsString, IsOptional, IsBoolean, IsUUID, IsEnum } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { EntityStatus } from '@prisma/client';
 
 export class CreateCategoryDto {
-  @IsUUID()
-  companyId!: string;
-
   @IsString()
+  @MinLength(2)
   name!: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   color?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   icon?: string;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   adminOnly?: boolean;
 
   @IsOptional()

@@ -1,49 +1,40 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
   Request,
-  ForbiddenException,
+  UseGuards,
 } from '@nestjs/common';
-import { CategoriesService } from './categories.service';
+import { UserRole } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/guards/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { CategoriesService } from './categories.service';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.SUPERADMIN, UserRole.USER)
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
-  @Post()
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  create(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoriesService.create(createCategoryDto);
-  }
-
   @Get()
-  findAll(
-    @Query('companyId') companyId: string | undefined,
-    @Query('includeInactive') includeInactive: string | undefined,
+  async findAll(
     @Request() req: any,
+    @Query('ownerId') ownerId?: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
-    const isAdmin = req.user?.role === UserRole.ADMIN;
-    if (!companyId && !isSuperAdmin) {
-      throw new ForbiddenException('Empresa obrigatoria.');
-    }
-    const canViewInactive =
-      includeInactive === 'true' && (isAdmin || isSuperAdmin);
-    return this.categoriesService.findAll(companyId, canViewInactive);
+    return this.categoriesService.findAll({
+      ownerId: isSuperAdmin ? ownerId : req.user?.id,
+      includeInactive: includeInactive === 'true' && isSuperAdmin,
+    });
   }
 
   @Get(':id')
@@ -51,15 +42,22 @@ export class CategoriesController {
     return this.categoriesService.findOne(id);
   }
 
+  @Post()
+  create(@Request() req: any, @Body() data: CreateCategoryDto) {
+    return this.categoriesService.create(req.user.id, data);
+  }
+
   @Patch(':id')
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
-    return this.categoriesService.update(id, updateCategoryDto);
+  update(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() data: UpdateCategoryDto,
+  ) {
+    return this.categoriesService.update(id, req.user, data);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
-  remove(@Param('id') id: string) {
-    return this.categoriesService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.categoriesService.remove(id, req.user);
   }
 }

@@ -17,11 +17,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                   Facilita
                 </p>
                 <h1 className="font-display text-4xl leading-tight text-foreground">
-                  Controle tudo em um painel feito para times que crescem.
+                  Centralize seus links, documentos e notas em um so lugar.
                 </h1>
                 <p className="text-base text-muted-foreground">
-                  Links, agendas e setores organizados com uma camada de permissoes
-                  clara e workflows prontos para operacao.
+                  Plataforma user-only com autonomia por usuario e controle
+                  administrativo simplificado.
                 </p>
               </div>
             </div>

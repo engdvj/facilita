@@ -8,15 +8,7 @@ generator client {
 
 enum UserRole {
   SUPERADMIN
-  ADMIN
-  COLLABORATOR
-}
-
-enum SectorRole {
-  OWNER
-  ADMIN
-  MEMBER
-  VIEWER
+  USER
 }
 
 enum UserStatus {
@@ -29,124 +21,79 @@ enum EntityStatus {
   INACTIVE
 }
 
-enum ContentAudience {
-  PUBLIC
-  COMPANY
-  SECTOR
+enum ContentVisibility {
   PRIVATE
-  ADMIN
-  SUPERADMIN
+  PUBLIC
 }
 
-model Company {
-  id        String       @id @default(uuid()) @db.Uuid
-  name      String
-  cnpj      String?      @unique
-  logoUrl   String?
-  status    EntityStatus @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  units         Unit[]
-  sectors       Sector[]
-  users         User[]
-  categories    Category[]
-  links         Link[]
-  schedules     UploadedSchedule[]
-  notes         Note[]
-  uploadedImages UploadedImage[]
+enum EntityType {
+  LINK
+  SCHEDULE
+  NOTE
+  USER
 }
 
-model Unit {
-  id        String       @id @default(uuid()) @db.Uuid
-  companyId String       @db.Uuid
-  name      String
-  cnpj      String?      @unique
-  imageUrl  String?
-  status    EntityStatus @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  company       Company        @relation(fields: [companyId], references: [id])
-  links         Link[]
-  schedules     UploadedSchedule[]
-  notes         Note[]
-  sectorUnits   SectorUnit[]
-  userSectorUnits UserSectorUnit[]
-  linkUnits     LinkUnit[]
-  noteUnits     NoteUnit[]
-  scheduleUnits ScheduleUnit[]
-}
-
-model Sector {
-  id          String       @id @default(uuid()) @db.Uuid
-  companyId   String       @db.Uuid
-  name        String
-  description String?
-  imageUrl    String?
-  status      EntityStatus @default(ACTIVE)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  company     Company            @relation(fields: [companyId], references: [id])
-  links       Link[]
-  schedules   UploadedSchedule[]
-  notes       Note[]
-  sectorUnits SectorUnit[]
-  userSectors UserSector[]
+enum NotificationType {
+  CONTENT_DELETED
+  CONTENT_CREATED
+  CONTENT_UPDATED
+  CONTENT_RESTORED
+  CONTENT_ACTIVATED
+  CONTENT_DEACTIVATED
+  CONTENT_FAVORITED
+  CONTENT_SHARED
+  CONTENT_SHARE_REVOKED
 }
 
 model User {
   id           String     @id @default(uuid()) @db.Uuid
-  companyId    String?    @db.Uuid
   name         String
   email        String     @unique
   cpf          String?    @unique
   passwordHash String
-  role         UserRole   @default(COLLABORATOR)
+  role         UserRole   @default(USER)
   status       UserStatus @default(ACTIVE)
   avatarUrl    String?
   theme        Json?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  company          Company?           @relation(fields: [companyId], references: [id])
   refreshTokens    RefreshToken[]
-  linksCreated     Link[]             @relation("LinkCreator")
-  schedulesCreated UploadedSchedule[] @relation("ScheduleCreator")
-  notesCreated     Note[]             @relation("NoteCreator")
+  categories       Category[]          @relation("CategoryOwner")
+  linksCreated     Link[]              @relation("LinkOwner")
+  schedulesCreated UploadedSchedule[]  @relation("ScheduleOwner")
+  notesCreated     Note[]              @relation("NoteOwner")
   favorites        Favorite[]
-  linkVersions     LinkVersion[]      @relation("LinkVersionChanger")
-  activityLogs     ActivityLog[]      @relation("ActivityLogger")
-  auditLogs        AuditLog[]         @relation("AuditLogger")
-  uploadedImages   UploadedImage[]    @relation("ImageUploader")
-  notifications    Notification[]     @relation("UserNotifications")
-  userSectors      UserSector[]
+  linkVersions     LinkVersion[]       @relation("LinkVersionChanger")
+  activityLogs     ActivityLog[]       @relation("ActivityLogger")
+  auditLogs        AuditLog[]          @relation("AuditLogger")
+  uploadedImages   UploadedImage[]     @relation("ImageUploader")
+  notifications    Notification[]      @relation("UserNotifications")
+  sharesSent       Share[]             @relation("ShareOwner")
+  sharesReceived   Share[]             @relation("ShareRecipient")
 }
 
 model RolePermission {
   id                   String   @id @default(uuid()) @db.Uuid
   role                 UserRole @unique
-  canViewDashboard      Boolean  @default(false)
-  canAccessAdmin        Boolean  @default(false)
-  canViewUsers          Boolean  @default(false)
-  canCreateUsers        Boolean  @default(false)
-  canEditUsers          Boolean  @default(false)
-  canDeleteUsers        Boolean  @default(false)
-  canViewSectors        Boolean  @default(false)
-  canManageSectors      Boolean  @default(false)
-  canViewLinks          Boolean  @default(true)
-  canManageLinks        Boolean  @default(false)
-  canManageCategories   Boolean  @default(false)
-  canManageSchedules    Boolean  @default(false)
-  canViewPrivateContent Boolean  @default(false)
-  canBackupSystem       Boolean  @default(false)
-  canResetSystem        Boolean  @default(false)
-  canViewAuditLogs      Boolean  @default(false)
-  canManageSystemConfig Boolean  @default(false)
-  restrictToOwnSector   Boolean  @default(false)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  canViewDashboard     Boolean  @default(false)
+  canAccessAdmin       Boolean  @default(false)
+  canViewUsers         Boolean  @default(false)
+  canCreateUsers       Boolean  @default(false)
+  canEditUsers         Boolean  @default(false)
+  canDeleteUsers       Boolean  @default(false)
+  canViewLinks         Boolean  @default(true)
+  canManageLinks       Boolean  @default(false)
+  canManageCategories  Boolean  @default(false)
+  canManageSchedules   Boolean  @default(false)
+  canViewPrivateContent Boolean @default(false)
+  canBackupSystem      Boolean  @default(false)
+  canResetSystem       Boolean  @default(false)
+  canViewAuditLogs     Boolean  @default(false)
+  canManageSystemConfig Boolean @default(false)
+  canManageShares      Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model RefreshToken {
@@ -157,16 +104,14 @@ model RefreshToken {
   revokedAt DateTime?
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-// ===== PORTAL FACILITA =====
-
 model Category {
   id        String       @id @default(uuid()) @db.Uuid
-  companyId String       @db.Uuid
+  ownerId   String       @db.Uuid
   name      String
   color     String?
   icon      String?
@@ -175,21 +120,19 @@ model Category {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  company   Company            @relation(fields: [companyId], references: [id])
+  owner     User             @relation("CategoryOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   links     Link[]
   schedules UploadedSchedule[]
   notes     Note[]
+  sharesLocalCategory Share[] @relation("ShareLocalCategory")
 
-  @@index([companyId])
+  @@index([ownerId])
 }
 
 model Link {
-  id            String       @id @default(uuid()) @db.Uuid
-  companyId     String       @db.Uuid
-  userId        String?      @db.Uuid
-  sectorId      String?      @db.Uuid
-  unitId        String?      @db.Uuid
-  categoryId    String?      @db.Uuid
+  id            String            @id @default(uuid()) @db.Uuid
+  ownerId       String            @db.Uuid
+  categoryId    String?           @db.Uuid
   title         String
   url           String
   description   String?
@@ -197,150 +140,86 @@ model Link {
   imageUrl      String?
   imagePosition String?
   imageScale    Float?
-  audience      ContentAudience @default(COMPANY)
-  isPublic      Boolean      @default(true)
-  order         Int          @default(0)
-  status        EntityStatus @default(ACTIVE)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  visibility    ContentVisibility @default(PRIVATE)
+  publicToken   String?           @unique
+  order         Int               @default(0)
+  status        EntityStatus      @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   deletedAt     DateTime?
 
-  company   Company   @relation(fields: [companyId], references: [id])
-  user      User?     @relation("LinkCreator", fields: [userId], references: [id])
-  sector    Sector?   @relation(fields: [sectorId], references: [id])
-  unit      Unit?     @relation(fields: [unitId], references: [id])
-  category  Category? @relation(fields: [categoryId], references: [id])
-  favorites Favorite[]
-  versions  LinkVersion[]
-  linkUnits LinkUnit[]
+  owner      User         @relation("LinkOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  favorites  Favorite[]
+  versions   LinkVersion[]
+  shares     Share[]
 
-  @@index([companyId])
-  @@index([userId])
-  @@index([sectorId])
-  @@index([unitId])
+  @@index([ownerId])
   @@index([categoryId])
-}
-
-model LinkUnit {
-  id        String   @id @default(uuid()) @db.Uuid
-  linkId    String   @db.Uuid
-  unitId    String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  @@unique([linkId, unitId])
-  @@index([linkId])
-  @@index([unitId])
-}
-
-model ScheduleUnit {
-  id         String   @id @default(uuid()) @db.Uuid
-  scheduleId String   @db.Uuid
-  unitId     String   @db.Uuid
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  schedule UploadedSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  unit     Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  @@unique([scheduleId, unitId])
-  @@index([scheduleId])
-  @@index([unitId])
-}
-
-model NoteUnit {
-  id        String   @id @default(uuid()) @db.Uuid
-  noteId    String   @db.Uuid
-  unitId    String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  @@unique([noteId, unitId])
-  @@index([noteId])
-  @@index([unitId])
+  @@index([visibility])
+  @@index([deletedAt])
 }
 
 model UploadedSchedule {
-  id         String       @id @default(uuid()) @db.Uuid
-  companyId  String       @db.Uuid
-  userId     String?      @db.Uuid
-  sectorId   String?      @db.Uuid
-  unitId     String?      @db.Uuid
-  categoryId String?      @db.Uuid
-  title      String
-  fileUrl    String
-  fileName   String
-  fileSize   Int
-  color      String?
-  imageUrl   String?
+  id            String            @id @default(uuid()) @db.Uuid
+  ownerId       String            @db.Uuid
+  categoryId    String?           @db.Uuid
+  title         String
+  fileUrl       String
+  fileName      String
+  fileSize      Int
+  color         String?
+  imageUrl      String?
   imagePosition String?
-  imageScale Float?
-  audience   ContentAudience @default(COMPANY)
-  isPublic   Boolean      @default(true)
-  status     EntityStatus @default(ACTIVE)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  deletedAt  DateTime?
+  imageScale    Float?
+  visibility    ContentVisibility @default(PRIVATE)
+  publicToken   String?           @unique
+  status        EntityStatus      @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
 
-  company   Company   @relation(fields: [companyId], references: [id])
-  user      User?     @relation("ScheduleCreator", fields: [userId], references: [id])
-  sector    Sector?   @relation(fields: [sectorId], references: [id])
-  unit      Unit?     @relation(fields: [unitId], references: [id])
-  category  Category? @relation(fields: [categoryId], references: [id])
-  favorites Favorite[]
-  scheduleUnits ScheduleUnit[]
+  owner      User         @relation("ScheduleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  favorites  Favorite[]
+  shares     Share[]
 
-  @@index([companyId])
-  @@index([userId])
-  @@index([sectorId])
-  @@index([unitId])
+  @@index([ownerId])
   @@index([categoryId])
+  @@index([visibility])
+  @@index([deletedAt])
 }
 
 model Note {
-  id            String          @id @default(uuid()) @db.Uuid
-  companyId     String          @db.Uuid
-  userId        String?         @db.Uuid
-  sectorId      String?         @db.Uuid
-  unitId        String?         @db.Uuid
-  categoryId    String?         @db.Uuid
+  id            String            @id @default(uuid()) @db.Uuid
+  ownerId       String            @db.Uuid
+  categoryId    String?           @db.Uuid
   title         String
   content       String
   color         String?
   imageUrl      String?
   imagePosition String?
   imageScale    Float?
-  audience      ContentAudience @default(COMPANY)
-  isPublic      Boolean         @default(true)
-  status        EntityStatus    @default(ACTIVE)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  visibility    ContentVisibility @default(PRIVATE)
+  publicToken   String?           @unique
+  status        EntityStatus      @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   deletedAt     DateTime?
 
-  company  Company   @relation(fields: [companyId], references: [id])
-  user     User?     @relation("NoteCreator", fields: [userId], references: [id])
-  sector   Sector?   @relation(fields: [sectorId], references: [id])
-  unit     Unit?     @relation(fields: [unitId], references: [id])
-  category Category? @relation(fields: [categoryId], references: [id])
-  favorites Favorite[]
-  noteUnits NoteUnit[]
+  owner      User         @relation("NoteOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  favorites  Favorite[]
+  shares     Share[]
 
-  @@index([companyId])
-  @@index([userId])
-  @@index([sectorId])
-  @@index([unitId])
+  @@index([ownerId])
   @@index([categoryId])
+  @@index([visibility])
+  @@index([deletedAt])
 }
 
 model UploadedImage {
   id           String       @id @default(uuid()) @db.Uuid
-  companyId    String       @db.Uuid
   uploadedBy   String       @db.Uuid
 
   filename     String
@@ -359,38 +238,41 @@ model UploadedImage {
   updatedAt    DateTime     @updatedAt
   deletedAt    DateTime?
 
-  company      Company      @relation(fields: [companyId], references: [id])
-  user         User         @relation("ImageUploader", fields: [uploadedBy], references: [id])
+  user         User         @relation("ImageUploader", fields: [uploadedBy], references: [id], onDelete: Cascade)
 
-  @@index([companyId])
   @@index([uploadedBy])
   @@index([createdAt])
 }
 
-// ===== FUNCIONALIDADES EXTRAS =====
-// Nota: Models de Tags e Notificações foram removidos intencionalmente
-// Foco nas 8 funcionalidades priorizadas: Favoritos, Busca, Histórico de Versões,
-// Upload Avançado, Auditoria, ActivityLog, SystemConfig e PWA
+model Share {
+  id             String   @id @default(uuid()) @db.Uuid
+  ownerId        String   @db.Uuid
+  recipientId    String   @db.Uuid
+  entityType     EntityType
+  linkId         String?  @db.Uuid
+  scheduleId     String?  @db.Uuid
+  noteId         String?  @db.Uuid
+  localCategoryId String? @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  removedAt      DateTime?
+  revokedAt      DateTime?
 
-enum EntityType {
-  LINK
-  SCHEDULE
-  NOTE
-  USER
-  SECTOR
-  COMPANY
-}
+  owner         User             @relation("ShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  recipient     User             @relation("ShareRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  link          Link?            @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  schedule      UploadedSchedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  note          Note?            @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  localCategory Category?        @relation("ShareLocalCategory", fields: [localCategoryId], references: [id], onDelete: SetNull)
 
-enum NotificationType {
-  CONTENT_DELETED
-  CONTENT_CREATED
-  CONTENT_UPDATED
-  CONTENT_RESTORED
-  CONTENT_ACTIVATED
-  CONTENT_DEACTIVATED
-  FAVORITE_UPDATED
-  FAVORITE_DELETED
-  CONTENT_FAVORITED
+  @@index([ownerId])
+  @@index([recipientId])
+  @@index([entityType])
+  @@index([linkId])
+  @@index([scheduleId])
+  @@index([noteId])
+  @@index([removedAt])
+  @@index([revokedAt])
 }
 
 model Notification {
@@ -422,10 +304,10 @@ model Favorite {
   noteId     String?     @db.Uuid
   createdAt  DateTime    @default(now())
 
-  user     User              @relation(fields: [userId], references: [id])
-  link     Link?             @relation(fields: [linkId], references: [id])
-  schedule UploadedSchedule? @relation(fields: [scheduleId], references: [id])
-  note     Note?             @relation(fields: [noteId], references: [id])
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  link      Link?             @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  schedule  UploadedSchedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  note      Note?             @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entityType, linkId, scheduleId, noteId])
   @@index([userId])
@@ -441,8 +323,8 @@ model LinkVersion {
   changeReason String?
   createdAt    DateTime @default(now())
 
-  link        Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  changedByUser User @relation("LinkVersionChanger", fields: [changedBy], references: [id])
+  link          Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  changedByUser User @relation("LinkVersionChanger", fields: [changedBy], references: [id], onDelete: Cascade)
 
   @@index([linkId])
 }
@@ -457,14 +339,12 @@ model ActivityLog {
   ip         String?
   createdAt  DateTime   @default(now())
 
-  user User? @relation("ActivityLogger", fields: [userId], references: [id])
+  user User? @relation("ActivityLogger", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([entityType, entityId])
   @@index([createdAt])
 }
-
-// ===== SISTEMA =====
 
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
@@ -476,7 +356,7 @@ model AuditLog {
   ip         String?
   createdAt  DateTime @default(now())
 
-  user User? @relation("AuditLogger", fields: [userId], references: [id])
+  user User? @relation("AuditLogger", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([targetType, targetId])
@@ -493,59 +373,4 @@ model SystemConfig {
   category    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-}
-
-// ===== RELACIONAMENTOS MUITOS-PARA-MUITOS =====
-
-// Um setor pode estar vinculado a múltiplas unidades
-// Uma unidade pode ter múltiplos setores
-model SectorUnit {
-  id        String   @id @default(uuid()) @db.Uuid
-  sectorId  String   @db.Uuid
-  unitId    String   @db.Uuid
-  isPrimary Boolean  @default(false) // Marca a unidade principal do setor
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
-  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  @@unique([sectorId, unitId])
-  @@index([sectorId])
-  @@index([unitId])
-}
-
-// Um usuário pode pertencer a múltiplos setores
-// Um setor pode ter múltiplos usuários
-model UserSector {
-  id         String     @id @default(uuid()) @db.Uuid
-  userId     String     @db.Uuid
-  sectorId   String     @db.Uuid
-  isPrimary  Boolean    @default(false) // Marca o setor principal do usuário
-  role       SectorRole @default(MEMBER) // Papel do usuário dentro deste setor específico
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sector Sector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
-  userSectorUnits UserSectorUnit[]
-
-  @@unique([userId, sectorId])
-  @@index([userId])
-  @@index([sectorId])
-}
-
-model UserSectorUnit {
-  id           String   @id @default(uuid()) @db.Uuid
-  userSectorId String   @db.Uuid
-  unitId       String   @db.Uuid
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  userSector UserSector @relation(fields: [userSectorId], references: [id], onDelete: Cascade)
-  unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  @@unique([userSectorId, unitId])
-  @@index([userSectorId])
-  @@index([unitId])
 }

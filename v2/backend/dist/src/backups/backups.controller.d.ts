@@ -28,9 +28,9 @@ export declare class BackupsController {
     export(data: ExportBackupDto, res: Response): Promise<StreamableFile>;
     restore(file: Express.Multer.File | undefined, body: Record<string, unknown>): Promise<{
         restored: {};
-        skipped: readonly ["companies", "units", "sectors", "users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages"];
+        skipped: readonly ["users", "rolePermissions", "categories", "links", "uploadedSchedules", "notes", "uploadedImages", "shares", "favorites", "notifications", "systemConfig"];
     } | {
-        restored: Record<string, number>;
+        restored: Partial<Record<"systemConfig" | "categories" | "favorites" | "uploadedImages" | "notifications" | "links" | "notes" | "shares" | "users" | "rolePermissions" | "uploadedSchedules", number>>;
         skipped?: undefined;
     }>;
     private parseEntities;

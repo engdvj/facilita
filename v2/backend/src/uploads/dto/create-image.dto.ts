@@ -10,9 +10,6 @@ import { EntityStatus } from '@prisma/client';
 
 export class CreateImageDto {
   @IsUUID()
-  companyId!: string;
-
-  @IsUUID()
   uploadedBy!: string;
 
   @IsString()

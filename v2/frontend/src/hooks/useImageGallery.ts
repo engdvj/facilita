@@ -13,7 +13,6 @@ interface ImageGalleryResponse {
 }
 
 export function useImageGallery(
-  companyId: string,
   filters?: ImageFilters,
   initialPage = 1,
   initialLimit = 20,
@@ -22,19 +21,16 @@ export function useImageGallery(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(initialPage);
-  const [limit, setLimit] = useState(initialLimit);
+  const [limit] = useState(initialLimit);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
   const loadImages = useCallback(async () => {
-    if (!companyId) return;
-
     setLoading(true);
     setError(null);
 
     try {
       const params: Record<string, any> = {
-        companyId,
         page,
         limit,
         ...filters,
@@ -54,7 +50,7 @@ export function useImageGallery(
     } finally {
       setLoading(false);
     }
-  }, [companyId, page, limit, filters]);
+  }, [page, limit, filters]);
 
   useEffect(() => {
     loadImages();
@@ -77,11 +73,14 @@ export function useImageGallery(
     }
   }, [page]);
 
-  const goToPage = useCallback((newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setPage(newPage);
-    }
-  }, [totalPages]);
+  const goToPage = useCallback(
+    (newPage: number) => {
+      if (newPage >= 1 && newPage <= totalPages) {
+        setPage(newPage);
+      }
+    },
+    [totalPages],
+  );
 
   return {
     images,

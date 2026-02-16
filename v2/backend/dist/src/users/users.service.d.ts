@@ -1,57 +1,153 @@
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+declare const userSelect: {
+    id: boolean;
+    name: boolean;
+    email: boolean;
+    role: boolean;
+    status: boolean;
+    avatarUrl: boolean;
+    theme: boolean;
+    createdAt: boolean;
+    updatedAt: boolean;
+};
+type UserProfile = Prisma.UserGetPayload<{
+    select: typeof userSelect;
+}>;
 export declare class UsersService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    findByEmail(email: string): any;
-    findByUsername(username: string): any;
-    findById(id: string): any;
-    findActiveById(id: string): any;
+    findByEmail(email: string): Prisma.Prisma__UserClient<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue | null;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        cpf: string | null;
+        passwordHash: string;
+    } | null, null, import("@prisma/client/runtime/client").DefaultArgs, Prisma.PrismaClientOptions>;
+    findByUsername(username: string): Prisma.Prisma__UserClient<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue | null;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        cpf: string | null;
+        passwordHash: string;
+    } | null, null, import("@prisma/client/runtime/client").DefaultArgs, Prisma.PrismaClientOptions>;
+    findById(id: string): Prisma.Prisma__UserClient<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue | null;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        cpf: string | null;
+        passwordHash: string;
+    } | null, null, import("@prisma/client/runtime/client").DefaultArgs, Prisma.PrismaClientOptions>;
+    findActiveById(id: string): Prisma.Prisma__UserClient<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    } | null, null, import("@prisma/client/runtime/client").DefaultArgs, Prisma.PrismaClientOptions>;
     findAll(options?: {
-        companyId?: string;
-        sectorId?: string;
         search?: string;
+        role?: UserRole;
+        status?: UserStatus;
         skip?: number;
         take?: number;
     }): Promise<{
-        items: any;
-        total: any;
-    }>;
-    findOne(id: string): Promise<any>;
-    create(data: CreateUserDto): Promise<any>;
-    update(id: string, data: UpdateUserDto): Promise<any>;
-    updateProfile(id: string, data: UpdateProfileDto): Promise<any>;
-    getDependencies(id: string): Promise<{
-        sectors: any;
-        links: any;
-        schedules: any;
-        notes: any;
-        uploadedImages: any;
-        linkVersions: any;
-        favorites: any;
-        refreshTokens: any;
-        activityLogs: any;
-        auditLogs: any;
-        hasAny: boolean;
-    }>;
-    remove(id: string): Promise<any>;
-    getAccessItems(userId: string, options?: {
-        sectorId?: string;
-        page?: number;
-        pageSize?: number;
-        shouldPaginate?: boolean;
-    }): Promise<{
-        items: any[];
+        items: {
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            status: import(".prisma/client").$Enums.UserStatus;
+            avatarUrl: string | null;
+            theme: Prisma.JsonValue;
+            id: string;
+            email: string;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
         total: number;
     }>;
-    private ensureCompanyId;
-    private getUserUnitsBySector;
-    private resolveUnitIds;
-    private resolveAudience;
-    private canUserAccessItem;
-    private normalizeUnitIds;
-    private buildUserSectorUnits;
-    private assertUserSectorUnits;
+    findOne(id: string): Promise<UserProfile>;
+    create(data: CreateUserDto): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    update(id: string, data: UpdateUserDto): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    updateProfile(id: string, data: UpdateProfileDto): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    getDependencies(id: string): Promise<{
+        links: number;
+        schedules: number;
+        notes: number;
+        uploadedImages: number;
+        sharesSent: number;
+        sharesReceived: number;
+        favorites: number;
+        refreshTokens: number;
+        activityLogs: number;
+        auditLogs: number;
+        notifications: number;
+        hasAny: boolean;
+    }>;
+    remove(id: string, actorId?: string): Promise<{
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
+        status: import(".prisma/client").$Enums.UserStatus;
+        avatarUrl: string | null;
+        theme: Prisma.JsonValue;
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
 }
+export {};

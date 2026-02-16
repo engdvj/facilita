@@ -6,9 +6,39 @@ export declare class SystemConfigService implements OnModuleInit {
     constructor(prisma: PrismaService);
     onModuleInit(): Promise<void>;
     syncStore(): Promise<void>;
-    findAll(): any;
-    findOne(key: string): Promise<any>;
-    update(key: string, data: UpdateSystemConfigDto): Promise<any>;
+    findAll(): import(".prisma/client").Prisma.PrismaPromise<{
+        category: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        type: string;
+        key: string;
+        value: string;
+        isEditable: boolean;
+    }[]>;
+    findOne(key: string): Promise<{
+        category: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        type: string;
+        key: string;
+        value: string;
+        isEditable: boolean;
+    }>;
+    update(key: string, data: UpdateSystemConfigDto): Promise<{
+        category: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        type: string;
+        key: string;
+        value: string;
+        isEditable: boolean;
+    }>;
     resolvePath(key: string, fallback: string): string;
     getBoolean(key: string, fallback: boolean): boolean;
     getNumber(key: string, fallback: number): number;

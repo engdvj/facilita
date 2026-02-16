@@ -4,10 +4,6 @@ import { Type } from 'class-transformer';
 export class QueryImagesDto {
   @IsUUID()
   @IsOptional()
-  companyId?: string;
-
-  @IsUUID()
-  @IsOptional()
   uploadedBy?: string;
 
   @IsString()

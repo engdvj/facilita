@@ -5,8 +5,6 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SYSTEM_CONFIG_DEFAULTS } from '../system-config/system-config.defaults';
 
-const ADM_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
-
 @Injectable()
 export class BootstrapService implements OnModuleInit {
   private readonly logger = new Logger(BootstrapService.name);
@@ -25,53 +23,31 @@ export class BootstrapService implements OnModuleInit {
   }
 
   private async ensureBootstrapData() {
-    await this.ensureAdmCompany();
     await this.ensureRolePermissions();
     await this.ensureSuperAdmin();
     await this.ensureSystemConfig();
   }
 
-  private async ensureAdmCompany() {
-    await this.prisma.company.upsert({
-      where: { id: ADM_COMPANY_ID },
-      update: { name: 'ADM', status: 'ACTIVE' },
-      create: {
-        id: ADM_COMPANY_ID,
-        name: 'ADM',
-        status: 'ACTIVE',
-      },
-    });
-  }
-
   private async ensureRolePermissions() {
     const roles = [
       {
-        role: UserRole.COLLABORATOR,
-        canViewLinks: true,
-        canManageLinks: true,
-        canViewPrivateContent: false,
-        restrictToOwnSector: true,
-      },
-      {
-        role: UserRole.ADMIN,
-        canViewDashboard: true,
-        canAccessAdmin: true,
-        canViewUsers: true,
-        canCreateUsers: true,
-        canEditUsers: true,
-        canDeleteUsers: true,
-        canViewSectors: true,
-        canManageSectors: true,
+        role: UserRole.USER,
+        canViewDashboard: false,
+        canAccessAdmin: false,
+        canViewUsers: false,
+        canCreateUsers: false,
+        canEditUsers: false,
+        canDeleteUsers: false,
         canViewLinks: true,
         canManageLinks: true,
         canManageCategories: true,
         canManageSchedules: true,
         canViewPrivateContent: false,
-        canBackupSystem: true,
-        canResetSystem: true,
-        canViewAuditLogs: true,
-        canManageSystemConfig: true,
-        restrictToOwnSector: false,
+        canBackupSystem: false,
+        canResetSystem: false,
+        canViewAuditLogs: false,
+        canManageSystemConfig: false,
+        canManageShares: true,
       },
       {
         role: UserRole.SUPERADMIN,
@@ -81,43 +57,31 @@ export class BootstrapService implements OnModuleInit {
         canCreateUsers: true,
         canEditUsers: true,
         canDeleteUsers: true,
-        canViewSectors: true,
-        canManageSectors: true,
         canViewLinks: true,
         canManageLinks: true,
         canManageCategories: true,
         canManageSchedules: true,
-        canViewPrivateContent: false,
+        canViewPrivateContent: true,
         canBackupSystem: true,
         canResetSystem: true,
         canViewAuditLogs: true,
         canManageSystemConfig: true,
-        restrictToOwnSector: false,
+        canManageShares: false,
       },
     ];
 
     for (const rolePermission of roles) {
-      const existing = await this.prisma.rolePermission.findUnique({
+      await this.prisma.rolePermission.upsert({
         where: { role: rolePermission.role },
-        select: { id: true },
-      });
-      if (existing) continue;
-
-      await this.prisma.rolePermission.create({
-        data: rolePermission,
+        update: rolePermission,
+        create: rolePermission,
       });
     }
   }
 
   private async ensureSuperAdmin() {
-    const existing = await this.prisma.user.findFirst({
-      where: { role: UserRole.SUPERADMIN },
-      select: { id: true },
-    });
-    if (existing) return;
-
     const email =
-      this.config.get<string>('SUPERADMIN_EMAIL')?.trim() || 'superadmin';
+      this.config.get<string>('SUPERADMIN_EMAIL')?.trim() || 'superadmin@facilita.local';
     const password =
       this.config.get<string>('SUPERADMIN_PASSWORD')?.trim() || 'superadmin';
     const name =
@@ -131,7 +95,6 @@ export class BootstrapService implements OnModuleInit {
         passwordHash,
         role: UserRole.SUPERADMIN,
         status: UserStatus.ACTIVE,
-        companyId: ADM_COMPANY_ID,
       },
       create: {
         name,
@@ -139,7 +102,6 @@ export class BootstrapService implements OnModuleInit {
         passwordHash,
         role: UserRole.SUPERADMIN,
         status: UserStatus.ACTIVE,
-        companyId: ADM_COMPANY_ID,
       },
     });
 

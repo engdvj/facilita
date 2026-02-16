@@ -4,14 +4,10 @@ export declare class ResetsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     reset(entities: BackupEntity[]): Promise<{
-        deleted: Partial<Record<"sectors" | "links" | "notes" | "uploadedImages" | "users" | "units" | "categories" | "companies" | "rolePermissions" | "uploadedSchedules", number>>;
-        entities: ("sectors" | "links" | "notes" | "uploadedImages" | "users" | "units" | "categories" | "companies" | "rolePermissions" | "uploadedSchedules")[];
+        deleted: Partial<Record<"systemConfig" | "categories" | "favorites" | "uploadedImages" | "notifications" | "links" | "notes" | "shares" | "users" | "rolePermissions" | "uploadedSchedules", number>>;
+        entities: ("systemConfig" | "categories" | "favorites" | "uploadedImages" | "notifications" | "links" | "notes" | "shares" | "users" | "rolePermissions" | "uploadedSchedules")[];
         seeded: boolean;
     }>;
-    private detachRelations;
-    private clearDependents;
-    private deleteEntities;
-    private seedAdmCompany;
     private seedRolePermissions;
     private seedSuperAdmin;
 }

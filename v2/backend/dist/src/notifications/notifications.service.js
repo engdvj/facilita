@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
-const client_1 = require("@prisma/client");
 let NotificationsService = class NotificationsService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -23,6 +22,9 @@ let NotificationsService = class NotificationsService {
         });
     }
     async createBulk(userIds, dto) {
+        if (userIds.length === 0) {
+            return { count: 0 };
+        }
         const notifications = userIds.map((userId) => ({
             userId,
             ...dto,
@@ -71,64 +73,6 @@ let NotificationsService = class NotificationsService {
                 },
             },
         });
-    }
-    async getRecipientsByAudience(companyId, sectorId, audience, excludeUserId) {
-        const where = {
-            status: 'ACTIVE',
-            ...(excludeUserId && { id: { not: excludeUserId } }),
-        };
-        switch (audience) {
-            case client_1.ContentAudience.PUBLIC:
-                break;
-            case client_1.ContentAudience.COMPANY:
-                where.companyId = companyId;
-                break;
-            case client_1.ContentAudience.SECTOR:
-                if (sectorId) {
-                    where.userSectors = {
-                        some: {
-                            sectorId: sectorId,
-                        },
-                    };
-                }
-                else {
-                    where.companyId = companyId;
-                }
-                break;
-            case client_1.ContentAudience.ADMIN:
-                where.companyId = companyId;
-                where.role = { in: ['ADMIN', 'SUPERADMIN'] };
-                break;
-            case client_1.ContentAudience.SUPERADMIN:
-                where.role = 'SUPERADMIN';
-                break;
-            case client_1.ContentAudience.PRIVATE:
-                return [];
-            default:
-                where.companyId = companyId;
-        }
-        const users = await this.prisma.user.findMany({
-            where,
-            select: { id: true },
-        });
-        return users.map((u) => u.id);
-    }
-    async getUsersWhoFavorited(entityType, entityId) {
-        const where = { entityType };
-        if (entityType === client_1.EntityType.LINK) {
-            where.linkId = entityId;
-        }
-        else if (entityType === client_1.EntityType.SCHEDULE) {
-            where.scheduleId = entityId;
-        }
-        else if (entityType === client_1.EntityType.NOTE) {
-            where.noteId = entityId;
-        }
-        const favorites = await this.prisma.favorite.findMany({
-            where,
-            select: { userId: true },
-        });
-        return favorites.map((f) => f.userId);
     }
 };
 exports.NotificationsService = NotificationsService;

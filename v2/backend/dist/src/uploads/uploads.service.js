@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UploadsService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
 const system_config_store_1 = require("../system-config/system-config.store");
@@ -50,7 +51,6 @@ let UploadsService = class UploadsService {
     async createImageRecord(dto) {
         return this.prisma.uploadedImage.create({
             data: {
-                companyId: dto.companyId,
                 uploadedBy: dto.uploadedBy,
                 filename: dto.filename,
                 originalName: dto.originalName,
@@ -66,15 +66,12 @@ let UploadsService = class UploadsService {
         });
     }
     async listImages(query) {
-        const { companyId, uploadedBy, search, tags, page = 1, limit = 20 } = query;
+        const { uploadedBy, search, tags, page = 1, limit = 20 } = query;
         const skip = (page - 1) * limit;
         const where = {
-            status: 'ACTIVE',
+            status: client_1.EntityStatus.ACTIVE,
             deletedAt: null,
         };
-        if (companyId) {
-            where.companyId = companyId;
-        }
         if (uploadedBy) {
             where.uploadedBy = uploadedBy;
         }

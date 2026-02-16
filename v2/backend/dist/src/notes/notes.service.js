@@ -11,206 +11,27 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotesService = void 0;
 const common_1 = require("@nestjs/common");
-const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
-const notifications_service_1 = require("../notifications/notifications.service");
-const notifications_gateway_1 = require("../notifications/notifications.gateway");
+const crypto_1 = require("crypto");
+const prisma_service_1 = require("../prisma/prisma.service");
 let NotesService = class NotesService {
-    constructor(prisma, notificationsService, notificationsGateway) {
+    constructor(prisma) {
         this.prisma = prisma;
-        this.notificationsService = notificationsService;
-        this.notificationsGateway = notificationsGateway;
-    }
-    async create(createNoteDto) {
-        const { unitIds, unitId, ...data } = createNoteDto;
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, unitId);
-        await this.assertUnitsAllowed(data.sectorId, normalizedUnitIds);
-        const note = await this.prisma.note.create({
-            data: {
-                ...data,
-                unitId: normalizedUnitIds.length === 1 ? normalizedUnitIds[0] : null,
-                noteUnits: normalizedUnitIds.length > 0
-                    ? {
-                        create: normalizedUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : undefined,
-            },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
+        this.include = {
+            category: true,
+            owner: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
                 },
             },
-        });
-        try {
-            const recipients = await this.notificationsService.getRecipientsByAudience(note.companyId, note.sectorId, note.audience, note.userId || undefined);
-            if (recipients.length > 0) {
-                await this.notificationsService.createBulk(recipients, {
-                    type: client_1.NotificationType.CONTENT_CREATED,
-                    entityType: client_1.EntityType.NOTE,
-                    entityId: note.id,
-                    title: 'Nova Nota Disponível',
-                    message: `Nota "${note.title}" foi publicada`,
-                    actionUrl: `/?highlight=note-${note.id}`,
-                    metadata: { noteTitle: note.title, creatorName: note.user?.name },
-                });
-                this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                    type: 'CONTENT_CREATED',
-                    entityType: 'NOTE',
-                    entityId: note.id,
-                    title: 'Nova Nota Disponível',
-                    message: `Nota "${note.title}" foi publicada`,
-                });
-            }
-        }
-        catch (error) {
-            console.error('Failed to create notification:', error);
-        }
-        return note;
-    }
-    async findAll(companyId, filters, viewer) {
-        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
-        const unitFilter = filterUnitIds !== undefined
-            ? filterUnitIds.length > 0
-                ? {
-                    OR: [
-                        { unitId: null, noteUnits: { none: {} } },
-                        { unitId: { in: filterUnitIds } },
-                        { noteUnits: { some: { unitId: { in: filterUnitIds } } } },
-                    ],
-                }
-                : { OR: [{ unitId: null, noteUnits: { none: {} } }] }
-            : undefined;
-        const andFilters = [];
-        if (unitFilter) {
-            andFilters.push(unitFilter);
-        }
-        if (shouldFilterPublic) {
-            andFilters.push({
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            });
-        }
-        const privateFilter = this.buildPrivateAccessFilter(viewer);
-        if (privateFilter) {
-            andFilters.push(privateFilter);
-        }
-        const where = {
-            deletedAt: null,
-            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
-            ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
-            ...(filters?.categoryId && { categoryId: filters.categoryId }),
-            ...(!shouldFilterPublic &&
-                filters?.audience && { audience: filters.audience }),
-            ...(filters?.isPublic !== undefined &&
-                !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
-        };
-        return this.prisma.note.findMany({
-            where,
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-        });
-    }
-    async findAllPaginated(companyId, filters, viewer, pagination) {
-        const shouldFilterPublic = filters?.audience === client_1.ContentAudience.PUBLIC;
-        const search = filters?.search?.trim();
-        const filterUnitIds = filters?.unitId !== undefined
-            ? this.normalizeUnitIds(undefined, filters.unitId)
-            : filters?.unitIds;
-        const unitFilter = filterUnitIds !== undefined
-            ? filterUnitIds.length > 0
-                ? {
-                    OR: [
-                        { unitId: null, noteUnits: { none: {} } },
-                        { unitId: { in: filterUnitIds } },
-                        { noteUnits: { some: { unitId: { in: filterUnitIds } } } },
-                    ],
-                }
-                : { OR: [{ unitId: null, noteUnits: { none: {} } }] }
-            : undefined;
-        const andFilters = [];
-        if (unitFilter) {
-            andFilters.push(unitFilter);
-        }
-        if (shouldFilterPublic) {
-            andFilters.push({
-                OR: [
-                    { audience: client_1.ContentAudience.PUBLIC },
-                    { isPublic: true },
-                ],
-            });
-        }
-        const privateFilter = this.buildPrivateAccessFilter(viewer);
-        if (privateFilter) {
-            andFilters.push(privateFilter);
-        }
-        if (search) {
-            andFilters.push({
-                OR: [
-                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
-                ],
-            });
-        }
-        const where = {
-            deletedAt: null,
-            ...(filters?.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
-            ...(companyId ? { companyId } : {}),
-            ...(filters?.sectorId && { sectorId: filters.sectorId }),
-            ...(filters?.categoryId && { categoryId: filters.categoryId }),
-            ...(!shouldFilterPublic &&
-                filters?.audience && { audience: filters.audience }),
-            ...(filters?.isPublic !== undefined &&
-                !shouldFilterPublic && { isPublic: filters.isPublic }),
-            ...(andFilters.length > 0 ? { AND: andFilters } : {}),
-        };
-        const [items, total] = await this.prisma.$transaction([
-            this.prisma.note.findMany({
-                where,
-                include: {
-                    category: true,
-                    sector: true,
-                    noteUnits: {
-                        include: {
-                            unit: true,
-                        },
-                    },
-                    user: {
+            shares: {
+                where: { revokedAt: null },
+                select: {
+                    id: true,
+                    recipient: {
                         select: {
                             id: true,
                             name: true,
@@ -218,37 +39,171 @@ let NotesService = class NotesService {
                         },
                     },
                 },
-                orderBy: {
-                    createdAt: 'desc',
-                },
+            },
+        };
+    }
+    withShareMetadata(item) {
+        const shares = item.shares ?? [];
+        return {
+            ...item,
+            createdBy: item.owner,
+            shareCount: shares.length,
+            sharedWithPreview: shares.slice(0, 5).map((s) => s.recipient),
+        };
+    }
+    normalizeVisibility(actorRole, requested) {
+        if (actorRole === client_1.UserRole.SUPERADMIN) {
+            return requested ?? client_1.ContentVisibility.PRIVATE;
+        }
+        return client_1.ContentVisibility.PRIVATE;
+    }
+    ensurePublicToken(visibility, provided) {
+        if (visibility !== client_1.ContentVisibility.PUBLIC) {
+            return null;
+        }
+        return provided?.trim() || (0, crypto_1.randomUUID)();
+    }
+    async assertCategoryOwner(categoryId, ownerId) {
+        if (!categoryId)
+            return;
+        const category = await this.prisma.category.findUnique({
+            where: { id: categoryId },
+            select: { id: true, ownerId: true },
+        });
+        if (!category || category.ownerId !== ownerId) {
+            throw new common_1.ForbiddenException('Category not authorized');
+        }
+    }
+    assertCanMutate(item, actor) {
+        if (actor.role === client_1.UserRole.SUPERADMIN)
+            return;
+        if (actor.id !== item.ownerId) {
+            throw new common_1.ForbiddenException('Note not authorized');
+        }
+    }
+    async create(actor, dto) {
+        const visibility = this.normalizeVisibility(actor.role, dto.visibility);
+        const publicToken = this.ensurePublicToken(visibility, dto.publicToken);
+        await this.assertCategoryOwner(dto.categoryId, actor.id);
+        const created = await this.prisma.note.create({
+            data: {
+                ownerId: actor.id,
+                categoryId: dto.categoryId,
+                title: dto.title,
+                content: dto.content,
+                color: dto.color,
+                imageUrl: dto.imageUrl,
+                imagePosition: dto.imagePosition,
+                imageScale: dto.imageScale,
+                visibility,
+                publicToken,
+                status: dto.status ?? client_1.EntityStatus.ACTIVE,
+            },
+            include: this.include,
+        });
+        return this.withShareMetadata(created);
+    }
+    async findAll(viewer, filters) {
+        if (!viewer)
+            return [];
+        const search = filters?.search?.trim();
+        const and = [
+            {
+                deletedAt: null,
+                status: client_1.EntityStatus.ACTIVE,
+            },
+        ];
+        if (filters?.categoryId) {
+            and.push({ categoryId: filters.categoryId });
+        }
+        if (search) {
+            and.push({
+                OR: [
+                    { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    { content: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                    { owner: { name: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } } },
+                ],
+            });
+        }
+        if (viewer.role !== client_1.UserRole.SUPERADMIN) {
+            and.push({
+                OR: [
+                    { ownerId: viewer.id },
+                    {
+                        visibility: client_1.ContentVisibility.PUBLIC,
+                        owner: { role: client_1.UserRole.SUPERADMIN },
+                    },
+                ],
+            });
+        }
+        const where = { AND: and };
+        const items = await this.prisma.note.findMany({
+            where,
+            include: this.include,
+            orderBy: { createdAt: 'desc' },
+        });
+        return items.map((item) => this.withShareMetadata(item));
+    }
+    async findAllPaginated(filters, pagination) {
+        const search = filters.search?.trim();
+        const where = {
+            deletedAt: null,
+            ...(filters.includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
+            ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+            ...(search
+                ? {
+                    OR: [
+                        { title: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                        { content: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } },
+                        { owner: { name: { contains: search, mode: client_1.Prisma.QueryMode.insensitive } } },
+                    ],
+                }
+                : {}),
+        };
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.note.findMany({
+                where,
+                include: this.include,
+                orderBy: { createdAt: 'desc' },
                 ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {}),
                 ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
             }),
             this.prisma.note.count({ where }),
         ]);
-        return { items, total };
-    }
-    async userHasSector(userId, sectorId) {
-        const count = await this.prisma.userSector.count({
-            where: {
-                userId,
-                sectorId,
-            },
-        });
-        return count > 0;
+        return { items: items.map((item) => this.withShareMetadata(item)), total };
     }
     async findOne(id, viewer) {
-        const note = await this.prisma.note.findUnique({
+        const item = await this.prisma.note.findUnique({
             where: { id },
+            include: this.include,
+        });
+        if (!item || item.deletedAt) {
+            throw new common_1.NotFoundException(`Note with ID ${id} not found`);
+        }
+        if (viewer?.role === client_1.UserRole.SUPERADMIN) {
+            return this.withShareMetadata(item);
+        }
+        if (!viewer?.id) {
+            throw new common_1.ForbiddenException('Note not authorized');
+        }
+        const canView = item.ownerId === viewer.id ||
+            (item.visibility === client_1.ContentVisibility.PUBLIC && item.owner.role === client_1.UserRole.SUPERADMIN);
+        if (!canView) {
+            throw new common_1.ForbiddenException('Note not authorized');
+        }
+        return this.withShareMetadata(item);
+    }
+    async findPublicByToken(publicToken) {
+        const item = await this.prisma.note.findFirst({
+            where: {
+                publicToken,
+                visibility: client_1.ContentVisibility.PUBLIC,
+                deletedAt: null,
+                status: client_1.EntityStatus.ACTIVE,
+            },
             include: {
                 category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
+                owner: {
                     select: {
                         id: true,
                         name: true,
@@ -257,543 +212,114 @@ let NotesService = class NotesService {
                 },
             },
         });
-        if (!note || note.deletedAt) {
+        if (!item) {
+            throw new common_1.NotFoundException('Public note not found');
+        }
+        return item;
+    }
+    async update(id, actor, dto) {
+        const existing = await this.prisma.note.findUnique({
+            where: { id },
+            include: this.include,
+        });
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
-        if (viewer !== undefined) {
-            this.assertPrivateAccess(note, viewer);
-        }
-        return note;
-    }
-    async update(id, updateNoteDto, actor) {
-        const existingNote = await this.findOne(id);
-        this.assertCanMutate(existingNote, actor);
-        const existingAudience = this.resolveAudienceFromExisting(existingNote);
-        const shouldUpdateAudience = updateNoteDto.audience !== undefined || updateNoteDto.isPublic !== undefined;
-        const resolvedAudience = shouldUpdateAudience
-            ? this.resolveAudienceForUpdate(existingAudience, updateNoteDto)
-            : existingAudience;
-        if (shouldUpdateAudience && actor?.role) {
-            this.assertAudienceAllowed(actor.role, resolvedAudience);
-        }
-        const hasChanges = updateNoteDto.title !== existingNote.title ||
-            updateNoteDto.content !== existingNote.content;
-        const { categoryId: _categoryId, companyId, userId, sectorId: _sectorId, unitId: _unitId, unitIds: _unitIds, audience, isPublic, ...rest } = updateNoteDto;
-        const sectorId = resolvedAudience === client_1.ContentAudience.SECTOR
-            ? _sectorId ?? existingNote.sectorId ?? undefined
-            : undefined;
-        const existingUnitIds = existingNote.noteUnits?.length
-            ? existingNote.noteUnits.map((unit) => unit.unitId)
-            : this.normalizeUnitIds(undefined, existingNote.unitId ?? undefined);
-        const unitIdsPayload = _unitIds !== undefined
-            ? _unitIds ?? []
-            : _unitId !== undefined
-                ? this.normalizeUnitIds(undefined, _unitId)
-                : undefined;
-        const sectorChanged = resolvedAudience === client_1.ContentAudience.SECTOR &&
-            sectorId &&
-            sectorId !== existingNote.sectorId;
-        let nextUnitIds = unitIdsPayload !== undefined
-            ? this.normalizeUnitIds(unitIdsPayload, undefined)
-            : sectorChanged
-                ? []
-                : existingUnitIds;
-        if (resolvedAudience !== client_1.ContentAudience.SECTOR) {
-            nextUnitIds = [];
-        }
-        const unitId = resolvedAudience === client_1.ContentAudience.SECTOR && nextUnitIds.length === 1
-            ? nextUnitIds[0]
-            : null;
-        if (resolvedAudience === client_1.ContentAudience.SECTOR && !sectorId) {
-            throw new common_1.ForbiddenException('Setor obrigatorio para notas de setor.');
-        }
-        await this.assertUnitsAllowed(sectorId, nextUnitIds);
-        const updateData = {
-            ...rest,
-            sector: resolvedAudience === client_1.ContentAudience.SECTOR
-                ? { connect: { id: sectorId } }
-                : { disconnect: true },
-            unit: resolvedAudience === client_1.ContentAudience.SECTOR && unitId
-                ? { connect: { id: unitId } }
-                : { disconnect: true },
-        };
-        if (_categoryId !== undefined) {
-            updateData.category = _categoryId
-                ? { connect: { id: _categoryId } }
-                : { disconnect: true };
-        }
-        const shouldUpdateUnits = resolvedAudience !== client_1.ContentAudience.SECTOR || unitIdsPayload !== undefined;
-        if (shouldUpdateUnits) {
-            updateData.noteUnits = {
-                deleteMany: {},
-                ...(nextUnitIds.length > 0
-                    ? {
-                        create: nextUnitIds.map((itemUnitId) => ({
-                            unitId: itemUnitId,
-                        })),
-                    }
-                    : {}),
-            };
-        }
-        if (shouldUpdateAudience) {
-            updateData.audience = resolvedAudience;
-            updateData.isPublic = resolvedAudience === client_1.ContentAudience.PUBLIC;
-        }
+        this.assertCanMutate(existing, actor);
+        const requestedVisibility = dto.visibility ?? existing.visibility;
+        const visibility = this.normalizeVisibility(actor.role, requestedVisibility);
+        const publicToken = this.ensurePublicToken(visibility, dto.publicToken ?? existing.publicToken);
+        const nextCategoryId = dto.categoryId === undefined ? existing.categoryId : dto.categoryId;
+        await this.assertCategoryOwner(nextCategoryId, existing.ownerId);
         const updated = await this.prisma.note.update({
             where: { id },
-            data: updateData,
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
-        if (hasChanges && actor?.id) {
-            try {
-                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.NOTE, id);
-                const recipients = favoritedBy.filter((uid) => uid !== actor.id);
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.FAVORITE_UPDATED,
-                        entityType: client_1.EntityType.NOTE,
-                        entityId: id,
-                        title: 'Nota Favoritada Atualizada',
-                        message: `Nota "${updated.title}" foi atualizada`,
-                        actionUrl: `/?highlight=note-${id}`,
-                        metadata: { noteTitle: updated.title, editorId: actor.id },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'FAVORITE_UPDATED',
-                        entityType: 'NOTE',
-                        entityId: id,
-                        title: 'Nota Favoritada Atualizada',
-                        message: `Nota "${updated.title}" foi atualizada`,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify favorites:', error);
-            }
-        }
-        return updated;
-    }
-    async remove(id, actor, adminMessage) {
-        const existingNote = await this.findOne(id);
-        this.assertCanMutate(existingNote, actor);
-        const deleted = await this.prisma.note.update({
-            where: { id },
             data: {
-                deletedAt: new Date(),
-                status: client_1.EntityStatus.INACTIVE,
+                ...(dto.title !== undefined ? { title: dto.title } : {}),
+                ...(dto.content !== undefined ? { content: dto.content } : {}),
+                ...(dto.color !== undefined ? { color: dto.color } : {}),
+                ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl } : {}),
+                ...(dto.imagePosition !== undefined ? { imagePosition: dto.imagePosition } : {}),
+                ...(dto.imageScale !== undefined ? { imageScale: dto.imageScale } : {}),
+                ...(dto.status !== undefined ? { status: dto.status } : {}),
+                ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
+                visibility,
+                publicToken,
             },
+            include: this.include,
         });
-        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
-            try {
-                const recipients = await this.notificationsService.getRecipientsByAudience(existingNote.companyId, existingNote.sectorId, existingNote.audience, actor.id);
-                const message = adminMessage || `Nota "${existingNote.title}" foi removida por um administrador`;
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.CONTENT_DELETED,
-                        entityType: client_1.EntityType.NOTE,
-                        entityId: id,
-                        title: 'Nota Removida',
-                        message,
-                        actionUrl: undefined,
-                        metadata: {
-                            noteTitle: existingNote.title,
-                            deletedBy: actor.id,
-                            adminMessage,
-                        },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'CONTENT_DELETED',
-                        entityType: 'NOTE',
-                        entityId: id,
-                        title: 'Nota Removida',
-                        message,
-                    });
-                }
-                const favoritedBy = await this.notificationsService.getUsersWhoFavorited(client_1.EntityType.NOTE, id);
-                const favoriteRecipients = favoritedBy.filter((uid) => uid !== actor.id && !recipients.includes(uid));
-                if (favoriteRecipients.length > 0) {
-                    await this.notificationsService.createBulk(favoriteRecipients, {
-                        type: client_1.NotificationType.FAVORITE_DELETED,
-                        entityType: client_1.EntityType.NOTE,
-                        entityId: id,
-                        title: 'Nota Favoritada Removida',
-                        message,
-                        actionUrl: undefined,
-                        metadata: { noteTitle: existingNote.title, adminMessage },
-                    });
-                    this.notificationsGateway.emitToUsers(favoriteRecipients, 'notification', {
-                        type: 'FAVORITE_DELETED',
-                        entityType: 'NOTE',
-                        entityId: id,
-                        title: 'Nota Favoritada Removida',
-                        message,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify deletion:', error);
-            }
-        }
-        return deleted;
+        return this.withShareMetadata(updated);
     }
-    async restore(id, actor) {
-        const note = await this.prisma.note.findUnique({
+    async remove(id, actor) {
+        const existing = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        if (!note) {
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
-        if (actor) {
-            this.assertCanMutate(note, actor);
+        this.assertCanMutate(existing, actor);
+        const removed = await this.prisma.note.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+            include: this.include,
+        });
+        return this.withShareMetadata(removed);
+    }
+    async restore(id, actor) {
+        const existing = await this.prisma.note.findUnique({
+            where: { id },
+            include: this.include,
+        });
+        if (!existing) {
+            throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
+        this.assertCanMutate(existing, actor);
         const restored = await this.prisma.note.update({
             where: { id },
             data: {
                 deletedAt: null,
                 status: client_1.EntityStatus.ACTIVE,
             },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        try {
-            const recipients = await this.notificationsService.getRecipientsByAudience(restored.companyId, restored.sectorId, restored.audience, undefined);
-            if (recipients.length > 0) {
-                await this.notificationsService.createBulk(recipients, {
-                    type: client_1.NotificationType.CONTENT_RESTORED,
-                    entityType: client_1.EntityType.NOTE,
-                    entityId: restored.id,
-                    title: 'Nota Restaurada',
-                    message: `Nota "${restored.title}" foi restaurada e está disponível novamente`,
-                    actionUrl: `/?highlight=note-${restored.id}`,
-                    metadata: { noteTitle: restored.title },
-                });
-                this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                    type: 'CONTENT_RESTORED',
-                    entityType: 'NOTE',
-                    entityId: restored.id,
-                    title: 'Nota Restaurada',
-                    message: `Nota "${restored.title}" foi restaurada e está disponível novamente`,
-                    actionUrl: `/?highlight=note-${restored.id}`,
-                });
-            }
-        }
-        catch (error) {
-            console.error('Failed to notify restoration:', error);
-        }
-        return restored;
+        return this.withShareMetadata(restored);
     }
     async activate(id, actor) {
-        const note = await this.prisma.note.findUnique({
+        const existing = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        if (!note) {
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
-        if (actor) {
-            this.assertCanMutate(note, actor);
-        }
+        this.assertCanMutate(existing, actor);
         const activated = await this.prisma.note.update({
             where: { id },
-            data: {
-                status: client_1.EntityStatus.ACTIVE,
-            },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            data: { status: client_1.EntityStatus.ACTIVE },
+            include: this.include,
         });
-        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
-            try {
-                const recipients = await this.notificationsService.getRecipientsByAudience(activated.companyId, activated.sectorId, activated.audience, actor.id);
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.CONTENT_ACTIVATED,
-                        entityType: client_1.EntityType.NOTE,
-                        entityId: activated.id,
-                        title: 'Nota Ativada',
-                        message: `Nota "${activated.title}" foi ativada e está disponível novamente`,
-                        actionUrl: `/?highlight=note-${activated.id}`,
-                        metadata: { noteTitle: activated.title },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'CONTENT_ACTIVATED',
-                        entityType: 'NOTE',
-                        entityId: activated.id,
-                        title: 'Nota Ativada',
-                        message: `Nota "${activated.title}" foi ativada e está disponível novamente`,
-                        actionUrl: `/?highlight=note-${activated.id}`,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify activation:', error);
-            }
-        }
-        return activated;
+        return this.withShareMetadata(activated);
     }
     async deactivate(id, actor) {
-        const note = await this.prisma.note.findUnique({
+        const existing = await this.prisma.note.findUnique({
             where: { id },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            include: this.include,
         });
-        if (!note) {
+        if (!existing || existing.deletedAt) {
             throw new common_1.NotFoundException(`Note with ID ${id} not found`);
         }
-        if (actor) {
-            this.assertCanMutate(note, actor);
-        }
+        this.assertCanMutate(existing, actor);
         const deactivated = await this.prisma.note.update({
             where: { id },
-            data: {
-                status: client_1.EntityStatus.INACTIVE,
-            },
-            include: {
-                category: true,
-                sector: true,
-                noteUnits: {
-                    include: {
-                        unit: true,
-                    },
-                },
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
+            data: { status: client_1.EntityStatus.INACTIVE },
+            include: this.include,
         });
-        if (actor?.role && ['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
-            try {
-                const recipients = await this.notificationsService.getRecipientsByAudience(deactivated.companyId, deactivated.sectorId, deactivated.audience, actor.id);
-                if (recipients.length > 0) {
-                    await this.notificationsService.createBulk(recipients, {
-                        type: client_1.NotificationType.CONTENT_DEACTIVATED,
-                        entityType: client_1.EntityType.NOTE,
-                        entityId: deactivated.id,
-                        title: 'Nota Desativada',
-                        message: `Nota "${deactivated.title}" foi temporariamente desativada`,
-                        actionUrl: undefined,
-                        metadata: { noteTitle: deactivated.title },
-                    });
-                    this.notificationsGateway.emitToUsers(recipients, 'notification', {
-                        type: 'CONTENT_DEACTIVATED',
-                        entityType: 'NOTE',
-                        entityId: deactivated.id,
-                        title: 'Nota Desativada',
-                        message: `Nota "${deactivated.title}" foi temporariamente desativada`,
-                    });
-                }
-            }
-            catch (error) {
-                console.error('Failed to notify deactivation:', error);
-            }
-        }
-        return deactivated;
-    }
-    normalizeUnitIds(unitIds, unitId) {
-        const combined = [
-            ...(unitIds ?? []),
-            ...(unitId ? [unitId] : []),
-        ].filter(Boolean);
-        return Array.from(new Set(combined));
-    }
-    async assertUnitsAllowed(sectorId, unitIds) {
-        const normalizedUnitIds = this.normalizeUnitIds(unitIds, undefined);
-        if (normalizedUnitIds.length === 0)
-            return;
-        if (!sectorId) {
-            throw new common_1.ForbiddenException('Unidade requer setor.');
-        }
-        const relationCount = await this.prisma.sectorUnit.count({
-            where: {
-                sectorId,
-                unitId: { in: normalizedUnitIds },
-            },
-        });
-        if (relationCount !== normalizedUnitIds.length) {
-            throw new common_1.ForbiddenException('Unidade nao pertence ao setor.');
-        }
-    }
-    buildPrivateAccessFilter(viewer) {
-        if (viewer?.canViewPrivate) {
-            return undefined;
-        }
-        if (viewer?.id) {
-            return {
-                OR: [
-                    { audience: { not: client_1.ContentAudience.PRIVATE } },
-                    { userId: viewer.id },
-                ],
-            };
-        }
-        return { audience: { not: client_1.ContentAudience.PRIVATE } };
-    }
-    assertPrivateAccess(note, viewer) {
-        if (note.audience !== client_1.ContentAudience.PRIVATE) {
-            return;
-        }
-        if (!viewer.id) {
-            throw new common_1.ForbiddenException('Nota nao autorizada.');
-        }
-        if (note.userId !== viewer.id && !viewer.canViewPrivate) {
-            throw new common_1.ForbiddenException('Nota nao autorizada.');
-        }
-    }
-    assertCanMutate(note, actor) {
-        if (!actor)
-            return;
-        if (note.audience === client_1.ContentAudience.PRIVATE &&
-            note.userId !== actor.id &&
-            !actor.canViewPrivate) {
-            throw new common_1.ForbiddenException('Nota nao autorizada.');
-        }
-        if (actor.role === client_1.UserRole.SUPERADMIN) {
-            return;
-        }
-        if (actor.role === client_1.UserRole.ADMIN) {
-            if (actor.companyId && actor.companyId !== note.companyId) {
-                throw new common_1.ForbiddenException('Empresa nao autorizada.');
-            }
-            return;
-        }
-        if (actor.role === client_1.UserRole.COLLABORATOR) {
-            if (!note.userId || note.userId !== actor.id) {
-                throw new common_1.ForbiddenException('Nota nao autorizada.');
-            }
-            return;
-        }
-        throw new common_1.ForbiddenException('Permissao insuficiente.');
-    }
-    resolveAudienceFromExisting(note) {
-        if (note.isPublic)
-            return client_1.ContentAudience.PUBLIC;
-        if (note.audience)
-            return note.audience;
-        if (note.sectorId)
-            return client_1.ContentAudience.SECTOR;
-        return client_1.ContentAudience.COMPANY;
-    }
-    resolveAudienceForUpdate(existing, updateNoteDto) {
-        if (updateNoteDto.audience)
-            return updateNoteDto.audience;
-        if (updateNoteDto.isPublic !== undefined) {
-            return updateNoteDto.isPublic ? client_1.ContentAudience.PUBLIC : existing;
-        }
-        return existing;
-    }
-    assertAudienceAllowed(role, audience) {
-        if (role === client_1.UserRole.SUPERADMIN)
-            return;
-        if (role === client_1.UserRole.ADMIN) {
-            if (audience !== client_1.ContentAudience.COMPANY &&
-                audience !== client_1.ContentAudience.SECTOR) {
-                throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
-            }
-            return;
-        }
-        if (role === client_1.UserRole.COLLABORATOR) {
-            if (audience !== client_1.ContentAudience.PRIVATE) {
-                throw new common_1.ForbiddenException('Visibilidade nao autorizada.');
-            }
-            return;
-        }
+        return this.withShareMetadata(deactivated);
     }
 };
 exports.NotesService = NotesService;
 exports.NotesService = NotesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        notifications_service_1.NotificationsService,
-        notifications_gateway_1.NotificationsGateway])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], NotesService);
 //# sourceMappingURL=notes.service.js.map

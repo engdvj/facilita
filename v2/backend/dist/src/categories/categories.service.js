@@ -12,49 +12,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CategoriesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
-const client_1 = require("@prisma/client");
 let CategoriesService = class CategoriesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(createCategoryDto) {
-        return this.prisma.category.create({
-            data: createCategoryDto,
-        });
-    }
-    async findAll(companyId, includeInactive = false) {
+    async findAll(options) {
         return this.prisma.category.findMany({
             where: {
-                ...(includeInactive ? {} : { status: client_1.EntityStatus.ACTIVE }),
-                ...(companyId ? { companyId } : {}),
+                ...(options.ownerId ? { ownerId: options.ownerId } : {}),
+                ...(options.includeInactive ? {} : { status: 'ACTIVE' }),
             },
             include: {
                 _count: {
                     select: {
-                        links: {
-                            where: {
-                                status: client_1.EntityStatus.ACTIVE,
-                                deletedAt: null,
-                            },
-                        },
-                        schedules: {
-                            where: {
-                                status: client_1.EntityStatus.ACTIVE,
-                                deletedAt: null,
-                            },
-                        },
-                        notes: {
-                            where: {
-                                status: client_1.EntityStatus.ACTIVE,
-                                deletedAt: null,
-                            },
-                        },
+                        links: true,
+                        schedules: true,
+                        notes: true,
                     },
                 },
             },
-            orderBy: {
-                name: 'asc',
-            },
+            orderBy: { name: 'asc' },
         });
     }
     async findOne(id) {
@@ -63,85 +40,66 @@ let CategoriesService = class CategoriesService {
             include: {
                 _count: {
                     select: {
-                        links: {
-                            where: {
-                                status: client_1.EntityStatus.ACTIVE,
-                                deletedAt: null,
-                            },
-                        },
-                        schedules: {
-                            where: {
-                                status: client_1.EntityStatus.ACTIVE,
-                                deletedAt: null,
-                            },
-                        },
-                        notes: {
-                            where: {
-                                status: client_1.EntityStatus.ACTIVE,
-                                deletedAt: null,
-                            },
-                        },
+                        links: true,
+                        schedules: true,
+                        notes: true,
                     },
                 },
             },
         });
         if (!category) {
-            throw new common_1.NotFoundException(`Category with ID ${id} not found`);
+            throw new common_1.NotFoundException('Category not found');
         }
         return category;
     }
-    async update(id, updateCategoryDto) {
+    async create(ownerId, data) {
+        return this.prisma.category.create({
+            data: {
+                ownerId,
+                name: data.name,
+                color: data.color,
+                icon: data.icon,
+                adminOnly: data.adminOnly ?? false,
+                status: data.status ?? 'ACTIVE',
+            },
+            include: {
+                _count: {
+                    select: {
+                        links: true,
+                        schedules: true,
+                        notes: true,
+                    },
+                },
+            },
+        });
+    }
+    async update(id, actor, data) {
         const category = await this.findOne(id);
-        if (updateCategoryDto.status === client_1.EntityStatus.INACTIVE) {
-            console.log(`Inativando categoria ${category.name} (${id}) - desassociando itens...`);
-            const [linksUpdated, schedulesUpdated, notesUpdated] = await this.prisma.$transaction([
-                this.prisma.link.updateMany({
-                    where: { categoryId: id },
-                    data: { categoryId: null },
-                }),
-                this.prisma.uploadedSchedule.updateMany({
-                    where: { categoryId: id },
-                    data: { categoryId: null },
-                }),
-                this.prisma.note.updateMany({
-                    where: { categoryId: id },
-                    data: { categoryId: null },
-                }),
-            ]);
-            console.log(`Desassociados: ${linksUpdated.count} links, ${schedulesUpdated.count} documentos, ${notesUpdated.count} notas`);
-            await this.prisma.category.update({
-                where: { id },
-                data: updateCategoryDto,
-            });
-            return this.findOne(id);
+        if (actor.role !== 'SUPERADMIN' && category.ownerId !== actor.id) {
+            throw new common_1.ForbiddenException('Category not authorized');
         }
         return this.prisma.category.update({
             where: { id },
-            data: updateCategoryDto,
+            data,
+            include: {
+                _count: {
+                    select: {
+                        links: true,
+                        schedules: true,
+                        notes: true,
+                    },
+                },
+            },
         });
     }
-    async remove(id) {
+    async remove(id, actor) {
         const category = await this.findOne(id);
-        console.log(`Removendo categoria ${category.name} (${id}) - desassociando e excluindo...`);
-        await this.prisma.$transaction([
-            this.prisma.link.updateMany({
-                where: { categoryId: id },
-                data: { categoryId: null },
-            }),
-            this.prisma.uploadedSchedule.updateMany({
-                where: { categoryId: id },
-                data: { categoryId: null },
-            }),
-            this.prisma.note.updateMany({
-                where: { categoryId: id },
-                data: { categoryId: null },
-            }),
-            this.prisma.category.delete({
-                where: { id },
-            }),
-        ]);
-        console.log(`Categoria ${category.name} removida com sucesso`);
-        return category;
+        if (actor.role !== 'SUPERADMIN' && category.ownerId !== actor.id) {
+            throw new common_1.ForbiddenException('Category not authorized');
+        }
+        return this.prisma.category.delete({
+            where: { id },
+        });
     }
 };
 exports.CategoriesService = CategoriesService;

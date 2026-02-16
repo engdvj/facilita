@@ -2,9 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.backupEntities = void 0;
 exports.backupEntities = [
-    'companies',
-    'units',
-    'sectors',
     'users',
     'rolePermissions',
     'categories',
@@ -12,5 +9,9 @@ exports.backupEntities = [
     'uploadedSchedules',
     'notes',
     'uploadedImages',
+    'shares',
+    'favorites',
+    'notifications',
+    'systemConfig',
 ];
 //# sourceMappingURL=backups.types.js.map

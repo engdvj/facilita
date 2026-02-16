@@ -1,11 +1,8 @@
 export const backupOptions = [
-  { key: 'companies', label: 'Empresas', hint: 'Cadastro de empresas.' },
-  { key: 'units', label: 'Unidades', hint: 'Unidades vinculadas as empresas.' },
-  { key: 'sectors', label: 'Setores', hint: 'Departamentos e areas.' },
   { key: 'users', label: 'Usuarios', hint: 'Perfis e credenciais.' },
   { key: 'rolePermissions', label: 'Permissoes', hint: 'Regras por role.' },
-  { key: 'categories', label: 'Categorias', hint: 'Categorias de links.' },
-  { key: 'links', label: 'Links', hint: 'Links e conteudo.' },
+  { key: 'categories', label: 'Categorias', hint: 'Categorias dos usuarios.' },
+  { key: 'links', label: 'Links', hint: 'Links criados pelos usuarios.' },
   {
     key: 'uploadedSchedules',
     label: 'Documentos',
@@ -14,7 +11,32 @@ export const backupOptions = [
   {
     key: 'notes',
     label: 'Notas',
-    hint: 'Notas pessoais e compartilhadas.',
+    hint: 'Notas dos usuarios.',
+  },
+  {
+    key: 'uploadedImages',
+    label: 'Imagens',
+    hint: 'Arquivos de imagem enviados.',
+  },
+  {
+    key: 'shares',
+    label: 'Compartilhamentos',
+    hint: 'Relacoes de compartilhamento entre usuarios.',
+  },
+  {
+    key: 'favorites',
+    label: 'Favoritos',
+    hint: 'Itens favoritos dos usuarios.',
+  },
+  {
+    key: 'notifications',
+    label: 'Notificacoes',
+    hint: 'Notificacoes in-app.',
+  },
+  {
+    key: 'systemConfig',
+    label: 'Configuracoes',
+    hint: 'Configuracoes globais da plataforma.',
   },
 ] as const;
 
