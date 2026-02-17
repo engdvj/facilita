@@ -124,9 +124,35 @@ export class UploadedSchedulesService {
     search?: string;
     includeInactive?: boolean;
   }) {
-    if (!viewer) return [];
-
     const search = filters?.search?.trim();
+
+    if (!viewer) {
+      const where: Prisma.UploadedScheduleWhereInput = {
+        deletedAt: null,
+        status: EntityStatus.ACTIVE,
+        visibility: ContentVisibility.PUBLIC,
+        owner: { role: UserRole.SUPERADMIN },
+        ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
+        ...(search
+          ? {
+              OR: [
+                { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { fileName: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { owner: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+              ],
+            }
+          : {}),
+      };
+
+      const items = await this.prisma.uploadedSchedule.findMany({
+        where,
+        include: this.include,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return items.map((item) => this.withShareMetadata(item));
+    }
+
     const and: Prisma.UploadedScheduleWhereInput[] = [
       {
         deletedAt: null,

@@ -54,7 +54,7 @@ export function FavoriteButton({
         isAnimating && "scale-110",
         favorited
           ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-500"
-          : "bg-white/90 text-muted-foreground hover:bg-white hover:text-yellow-400",
+          : "bg-white/90 text-muted-foreground hover:bg-white hover:text-yellow-400 dark:bg-secondary/80 dark:text-foreground dark:hover:bg-secondary",
         className
       )}
       title={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}

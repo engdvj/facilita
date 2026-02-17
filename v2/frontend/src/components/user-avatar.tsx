@@ -50,7 +50,7 @@ export default function UserAvatar({
         <img
           src={resolvedUrl}
           alt={name ? `Foto de ${name}` : 'Foto do usuario'}
-          className="h-full w-full object-cover"
+          className="h-full w-full rounded-full object-cover"
           loading="lazy"
         />
       ) : (

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import api, { serverURL } from '@/lib/api';
@@ -11,6 +11,11 @@ interface ImageSelectorProps {
 }
 
 type SelectorMode = 'upload' | 'gallery';
+
+function resolveImageUrl(path?: string) {
+  if (!path) return '';
+  return path.startsWith('http') ? path : `${serverURL}${path}`;
+}
 
 export default function ImageSelector({
   value,
@@ -37,100 +42,77 @@ export default function ImageSelector({
         skipNotify: true,
       });
       onChange(response.data.url);
-    } catch (uploadError) {
-      console.error('Erro ao fazer upload:', uploadError);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleRemoveImage = () => {
-    onChange('');
-  };
-
   return (
     <div className="space-y-3">
-      {/* Mode Toggle */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => setMode('upload')}
           disabled={disabled}
-          className={`flex-1 rounded-lg border px-3 py-2 text-[11px] uppercase tracking-[0.18em] transition-colors ${
-            mode === 'upload'
-              ? 'border-foreground/30 bg-foreground/5 text-foreground'
-              : 'border-border/70 text-muted-foreground hover:border-foreground/20'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'motion-press'}`}
+          data-active={mode === 'upload' ? 'true' : 'false'}
+          className="fac-tab border border-border"
         >
-          Upload Nova
+          Upload nova
         </button>
         <button
           type="button"
           onClick={() => setMode('gallery')}
           disabled={disabled}
-          className={`flex-1 rounded-lg border px-3 py-2 text-[11px] uppercase tracking-[0.18em] transition-colors ${
-            mode === 'gallery'
-              ? 'border-foreground/30 bg-foreground/5 text-foreground'
-              : 'border-border/70 text-muted-foreground hover:border-foreground/20'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'motion-press'}`}
+          data-active={mode === 'gallery' ? 'true' : 'false'}
+          className="fac-tab border border-border"
         >
-          Escolher Existente
+          Escolher existente
         </button>
       </div>
 
-      {/* Upload Mode */}
-      {mode === 'upload' && (
-        <div>
+      {mode === 'upload' ? (
+        <div className="space-y-2">
           <input
             type="file"
             accept="image/*"
             onChange={handleFileUpload}
             disabled={disabled || uploading}
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            className="fac-input !h-auto !px-3 !py-2 text-[14px]"
           />
-          {uploading && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Fazendo upload...
-            </p>
-          )}
+          {uploading ? <p className="text-[12px] text-muted-foreground">Fazendo upload...</p> : null}
         </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setGalleryOpen(true)}
+          disabled={disabled}
+          className="fac-button-secondary w-full"
+        >
+          Abrir galeria
+        </button>
       )}
 
-      {/* Gallery Mode */}
-      {mode === 'gallery' && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setGalleryOpen(true)}
-            disabled={disabled}
-            className="w-full rounded-lg border border-border/70 bg-background px-4 py-2 text-sm text-foreground hover:border-foreground/30 transition-colors motion-press disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Abrir Galeria de Imagens
-          </button>
-        </div>
-      )}
-
-      {/* Preview */}
-      {value && (
-        <div className="relative rounded-lg border border-border/70 overflow-hidden">
+      {value ? (
+        <div className="overflow-hidden rounded-xl border border-border">
           <img
-            src={`${serverURL}${value}`}
+            src={resolveImageUrl(value)}
             alt="Imagem selecionada"
-            className="w-full h-40 object-cover"
+            className="h-40 w-full object-cover"
           />
-          <button
-            type="button"
-            onClick={handleRemoveImage}
-            disabled={disabled}
-            className="absolute top-2 right-2 rounded-lg bg-red-500 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white shadow-lg motion-press hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Remover
-          </button>
+          <div className="p-2">
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              disabled={disabled}
+              className="fac-button-secondary w-full !h-9 text-[10px]"
+            >
+              Remover imagem
+            </button>
+          </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Gallery Modal */}
-      {galleryOpen && (
+      {galleryOpen ? (
         <ImageGallery
           onSelectImage={(imageUrl) => {
             onChange(imageUrl);
@@ -138,7 +120,8 @@ export default function ImageSelector({
           }}
           onClose={() => setGalleryOpen(false)}
         />
-      )}
+      ) : null}
     </div>
   );
 }
+

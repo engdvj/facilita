@@ -129,9 +129,35 @@ export class LinksService {
     search?: string;
     includeInactive?: boolean;
   }) {
-    if (!viewer) return [];
-
     const search = filters?.search?.trim();
+
+    if (!viewer) {
+      const where: Prisma.LinkWhereInput = {
+        deletedAt: null,
+        status: EntityStatus.ACTIVE,
+        visibility: ContentVisibility.PUBLIC,
+        owner: { role: UserRole.SUPERADMIN },
+        ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
+        ...(search
+          ? {
+              OR: [
+                { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { description: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { url: { contains: search, mode: Prisma.QueryMode.insensitive } },
+              ],
+            }
+          : {}),
+      };
+
+      const items = await this.prisma.link.findMany({
+        where,
+        include: this.include,
+        orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
+      });
+
+      return items.map((item) => this.withShareMetadata(item));
+    }
+
     const and: Prisma.LinkWhereInput[] = [
       {
         deletedAt: null,

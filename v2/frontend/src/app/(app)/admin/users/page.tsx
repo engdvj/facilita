@@ -1,7 +1,9 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
+import UserAvatar from '@/components/user-avatar';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { User, UserRole, UserStatus } from '@/types';
@@ -12,22 +14,31 @@ const emptyForm = {
   password: '',
   role: 'USER' as UserRole,
   status: 'ACTIVE' as UserStatus,
+  avatarUrl: '',
 };
+
+function getErrorMessage(error: unknown, fallback: string) {
+  const payload = error as { response?: { data?: { message?: unknown } } };
+  const message = payload.response?.data?.message;
+  return typeof message === 'string' ? message : fallback;
+}
 
 export default function UsersPage() {
   const authUser = useAuthStore((state) => state.user);
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | UserStatus>('ALL');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
-  const staggerStyle = (index: number) =>
-    ({ '--stagger-index': index } as CSSProperties);
+  const [deleting, setDeleting] = useState(false);
 
   const isSuperadmin = authUser?.role === 'SUPERADMIN';
 
@@ -39,12 +50,12 @@ export default function UsersPage() {
 
     setLoading(true);
     setError(null);
+
     try {
       const response = await api.get('/users');
       setUsers(Array.isArray(response.data) ? response.data : []);
-    } catch (err: any) {
-      const message = err?.response?.data?.message || 'Nao foi possivel carregar usuarios.';
-      setError(typeof message === 'string' ? message : 'Erro ao carregar usuarios.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Nao foi possivel carregar usuarios.'));
     } finally {
       setLoading(false);
     }
@@ -56,15 +67,16 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
+
     return users
+      .filter((user) => (roleFilter === 'ALL' ? true : user.role === roleFilter))
+      .filter((user) => (statusFilter === 'ALL' ? true : user.status === statusFilter))
       .filter((user) => {
-        if (roleFilter !== 'ALL' && user.role !== roleFilter) return false;
-        if (statusFilter !== 'ALL' && user.status !== statusFilter) return false;
         if (!term) return true;
         return `${user.name} ${user.email}`.toLowerCase().includes(term);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [roleFilter, search, statusFilter, users]);
+  }, [users, search, roleFilter, statusFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -80,6 +92,7 @@ export default function UsersPage() {
       password: '',
       role: user.role,
       status: user.status,
+      avatarUrl: user.avatarUrl || '',
     });
     setModalOpen(true);
   };
@@ -96,6 +109,7 @@ export default function UsersPage() {
           ...(form.password ? { password: form.password } : {}),
           role: form.role,
           status: form.status,
+          avatarUrl: form.avatarUrl || undefined,
         });
       } else {
         await api.post('/users', {
@@ -104,8 +118,10 @@ export default function UsersPage() {
           password: form.password,
           role: form.role,
           status: form.status,
+          avatarUrl: form.avatarUrl || undefined,
         });
       }
+
       setModalOpen(false);
       await load();
     } finally {
@@ -113,155 +129,175 @@ export default function UsersPage() {
     }
   };
 
-  const remove = async (user: User) => {
-    if (!window.confirm(`Remover usuario ${user.name}?`)) return;
-    await api.delete(`/users/${user.id}`);
+  const toggleStatus = async (user: User) => {
+    await api.patch(`/users/${user.id}`, {
+      status: user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+    });
     await load();
   };
 
-  const statusColor = (status: UserStatus) =>
-    status === 'ACTIVE' ? 'text-emerald-700' : 'text-amber-700';
+  const remove = async () => {
+    if (!editing) return;
+    if (editing.id === authUser?.id) return;
+    if (!window.confirm(`Remover usuario ${editing.name}?`)) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/users/${editing.id}`);
+      setModalOpen(false);
+      await load();
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (!isSuperadmin) {
     return (
-      <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-6 text-sm text-muted-foreground">
+      <div className="fac-panel px-6 py-6 text-[14px] text-muted-foreground">
         Acesso restrito ao superadmin.
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 motion-stagger">
-      <div
-        className="motion-item flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
-        style={staggerStyle(1)}
-      >
-        <div className="space-y-2">
-          <h1 className="font-display text-3xl text-foreground">Usuarios</h1>
-          <p className="text-sm text-muted-foreground">Gerencie contas da plataforma.</p>
+    <div className="fac-page">
+      <section className="fac-page-head">
+        <div>
+          <h1 className="fac-subtitle">Usuarios</h1>
+          <p className="text-[15px] text-muted-foreground">Perfis, papeis e acessos da equipe administrativa.</p>
         </div>
-        <button
-          type="button"
-          className="motion-press rounded-lg bg-primary px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground"
-          onClick={openCreate}
-        >
-          Novo usuario
-        </button>
-      </div>
 
-      <div
-        className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
-        style={staggerStyle(2)}
-      >
-        Controle de acesso centralizado. Ajuste role/status com cuidado para evitar bloqueios ou permissoes indevidas.
-      </div>
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[260px_180px_180px_auto]">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="fac-input"
+            placeholder="Buscar usuario"
+          />
 
-      <div className="motion-item grid gap-3 sm:grid-cols-[1fr_170px_170px]" style={staggerStyle(3)}>
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nome ou email"
-          className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-        />
-        <select
-          value={roleFilter}
-          onChange={(event) => setRoleFilter(event.target.value as 'ALL' | UserRole)}
-          className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-        >
-          <option value="ALL">Todas as roles</option>
-          <option value="SUPERADMIN">SUPERADMIN</option>
-          <option value="USER">USER</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(event) =>
-            setStatusFilter(event.target.value as 'ALL' | UserStatus)
-          }
-          className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-        >
-          <option value="ALL">Todos os status</option>
-          <option value="ACTIVE">Ativo</option>
-          <option value="INACTIVE">Inativo</option>
-        </select>
-      </div>
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value as 'ALL' | UserRole)}
+            className="fac-select"
+          >
+            <option value="ALL">Todas as roles</option>
+            <option value="SUPERADMIN">SUPERADMIN</option>
+            <option value="USER">USER</option>
+          </select>
 
-      {loading ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
-          Carregando usuarios...
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as 'ALL' | UserStatus)
+            }
+            className="fac-select"
+          >
+            <option value="ALL">Todos os status</option>
+            <option value="ACTIVE">Ativo</option>
+            <option value="INACTIVE">Inativo</option>
+          </select>
+
+          <button type="button" className="fac-button-primary" onClick={openCreate}>
+            Novo usuario
+          </button>
         </div>
-      ) : error ? (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-sm text-destructive">
-          {error}
+      </section>
+
+      <section className="fac-panel">
+        <div className="fac-panel-head">
+          <p className="fac-panel-title">Lista</p>
+          <p className="fac-panel-meta">{filtered.length} registros</p>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
-          Nenhum usuario encontrado.
-        </div>
-      ) : (
-        <div className="motion-item overflow-hidden rounded-2xl border border-border/70 bg-card/85 shadow-[0_12px_24px_rgba(16,44,50,0.12)]" style={staggerStyle(4)}>
-          <table className="min-w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Acoes</th>
-              </tr>
-            </thead>
-            <tbody>
+
+        <div className="fac-panel-body">
+          {loading ? (
+            <p className="text-[14px] text-muted-foreground">Carregando usuarios...</p>
+          ) : error ? (
+            <p className="text-[14px] text-red-700">{error}</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-[14px] text-muted-foreground">Nenhum usuario encontrado.</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
               {filtered.map((user) => (
-                <tr key={user.id} className="border-t border-border/70">
-                  <td className="px-4 py-3 font-medium text-foreground">{user.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{user.role}</td>
-                  <td className={`px-4 py-3 font-medium ${statusColor(user.status)}`}>
-                    {user.status}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.14em]"
-                        onClick={() => openEdit(user)}
-                      >
-                        Editar
-                      </button>
-                      {user.id !== authUser?.id && (
-                        <button
-                          type="button"
-                          className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-destructive"
-                          onClick={() => remove(user)}
-                        >
-                          Remover
-                        </button>
-                      )}
+                <article key={user.id} className={`fac-card w-[220px] max-w-full ${user.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
+                  <button
+                    type="button"
+                    className="relative aspect-square w-full overflow-hidden bg-muted text-left"
+                    onClick={() => openEdit(user)}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/5 dark:from-black/35 dark:to-black/20" />
+
+                    <div className="absolute left-3 top-3">
+                      <UserAvatar
+                        name={user.name}
+                        avatarUrl={user.avatarUrl}
+                        size="md"
+                        className="!h-12 !w-12 !rounded-full border border-black/10 bg-white/95 shadow-sm"
+                      />
                     </div>
-                  </td>
-                </tr>
+
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                      <div className="pr-2">
+                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{user.name}</p>
+                        <p className="line-clamp-1 mt-1 text-[12px] text-muted-foreground">{user.email}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          {user.role}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`fac-toggle shrink-0 ${user.id === authUser?.id ? 'cursor-not-allowed opacity-50' : ''}`}
+                        data-state={user.status === 'ACTIVE' ? 'on' : 'off'}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (user.id !== authUser?.id) {
+                            void toggleStatus(user);
+                          }
+                        }}
+                      >
+                        <span className="fac-toggle-dot" />
+                      </span>
+                    </div>
+                  </button>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      )}
+      </section>
 
       <AdminModal
         open={modalOpen}
         title={editing ? 'Editar usuario' : 'Novo usuario'}
+        description="Configure credenciais e acessos do usuario."
         onClose={() => setModalOpen(false)}
+        panelClassName="max-w-[760px]"
         footer={
           <>
+            {editing && editing.id !== authUser?.id ? (
+              <button
+                type="button"
+                className="fac-button-secondary text-[11px]"
+                onClick={remove}
+                disabled={saving || deleting}
+              >
+                {deleting ? 'Removendo...' : 'Remover'}
+              </button>
+            ) : null}
+
             <button
               type="button"
-              className="rounded-lg border border-border/70 px-4 py-2 text-xs uppercase tracking-[0.18em]"
+              className="fac-button-secondary text-[11px]"
               onClick={() => setModalOpen(false)}
               disabled={saving}
             >
               Cancelar
             </button>
+
             <button
               type="button"
-              className="rounded-lg bg-primary px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary-foreground"
+              className="fac-button-primary text-[11px]"
               onClick={save}
               disabled={
                 saving ||
@@ -275,57 +311,89 @@ export default function UsersPage() {
           </>
         }
       >
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Para novo usuario, senha e obrigatoria. Em edicao, informe senha apenas se quiser redefinir.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-          <input
-            value={form.name}
-            onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-            placeholder="Nome"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-          />
-          <input
-            value={form.username}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, username: event.target.value }))
-            }
-            placeholder="Email"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-          />
-          <input
-            type="password"
-            value={form.password}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, password: event.target.value }))
-            }
-            placeholder={editing ? 'Nova senha (opcional)' : 'Senha'}
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-          />
-          <select
-            value={form.role}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, role: event.target.value as UserRole }))
-            }
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-          >
-            <option value="USER">USER</option>
-            <option value="SUPERADMIN">SUPERADMIN</option>
-          </select>
-          <select
-            value={form.status}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, status: event.target.value as UserStatus }))
-            }
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
-          >
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
-          </select>
+        <section className="fac-form-card">
+          <p className="fac-form-title">Dados</p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="fac-label">Nome</label>
+              <input
+                value={form.name}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                className="fac-input"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="fac-label">Usuario</label>
+              <input
+                value={form.username}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, username: event.target.value }))
+                }
+                className="fac-input"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="fac-label">Senha</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, password: event.target.value }))
+                }
+                className="fac-input"
+                placeholder={editing ? 'Nova senha (opcional)' : ''}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="fac-label">Imagem</label>
+              <ImageSelector
+                value={form.avatarUrl}
+                onChange={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
+              />
+              <p className="mt-1 text-[12px] text-muted-foreground">Opcional</p>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section className="fac-form-card mt-4">
+          <p className="fac-form-title">Acesso</p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="fac-label">Role</label>
+              <select
+                value={form.role}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, role: event.target.value as UserRole }))
+                }
+                className="fac-select"
+              >
+                <option value="USER">COLLABORATOR</option>
+                <option value="SUPERADMIN">SUPERADMIN</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="fac-label">Status</label>
+              <select
+                value={form.status}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, status: event.target.value as UserStatus }))
+                }
+                className="fac-select"
+              >
+                <option value="ACTIVE">Ativo</option>
+                <option value="INACTIVE">Inativo</option>
+              </select>
+            </div>
+          </div>
+        </section>
       </AdminModal>
     </div>
   );
 }
+

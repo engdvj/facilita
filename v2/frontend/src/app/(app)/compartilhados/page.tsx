@@ -1,10 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Ban, Check, Download } from 'lucide-react';
 import AdminModal from '@/components/admin/modal';
+import { FavoriteButton } from '@/components/FavoriteButton';
 import api, { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Share } from '@/types';
+
+type ShareStatus = 'ACTIVE' | 'INACTIVE';
+
+const typeLabel: Record<Share['entityType'], string> = {
+  LINK: 'LINK',
+  SCHEDULE: 'DOC',
+  NOTE: 'NOTA',
+};
 
 function getShareTitle(share: Share) {
   if (share.entityType === 'LINK') return share.link?.title || 'Link';
@@ -18,8 +28,44 @@ function getShareCategory(share: Share) {
   return share.note?.category?.name;
 }
 
+function getShareCategoryColor(share: Share) {
+  if (share.entityType === 'LINK') return share.link?.category?.color || null;
+  if (share.entityType === 'SCHEDULE') return share.schedule?.category?.color || null;
+  return share.note?.category?.color || null;
+}
+
 function getShareOwner(share: Share) {
   return share.owner?.name || 'Usuario';
+}
+
+function getShareStatus(share: Share): ShareStatus {
+  if (share.entityType === 'LINK') return share.link?.status || 'ACTIVE';
+  if (share.entityType === 'SCHEDULE') return share.schedule?.status || 'ACTIVE';
+  return share.note?.status || 'ACTIVE';
+}
+
+function getShareImage(share: Share) {
+  if (share.entityType === 'LINK') return share.link?.imageUrl || null;
+  if (share.entityType === 'SCHEDULE') return share.schedule?.imageUrl || null;
+  return share.note?.imageUrl || null;
+}
+
+function getShareImagePosition(share: Share) {
+  if (share.entityType === 'LINK') return share.link?.imagePosition;
+  if (share.entityType === 'SCHEDULE') return share.schedule?.imagePosition;
+  return share.note?.imagePosition;
+}
+
+function getShareImageScale(share: Share) {
+  if (share.entityType === 'LINK') return share.link?.imageScale;
+  if (share.entityType === 'SCHEDULE') return share.schedule?.imageScale;
+  return share.note?.imageScale;
+}
+
+function getShareEntityId(share: Share) {
+  if (share.entityType === 'LINK') return share.link?.id;
+  if (share.entityType === 'SCHEDULE') return share.schedule?.id;
+  return share.note?.id;
 }
 
 function resolveFileUrl(path?: string | null) {
@@ -34,8 +80,15 @@ function normalizeImagePosition(position?: string | null) {
   return `${ensurePercent(x)} ${ensurePercent(y)}`;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  const payload = error as { response?: { data?: { message?: unknown } } };
+  const message = payload.response?.data?.message;
+  return typeof message === 'string' ? message : fallback;
+}
+
 export default function CompartilhadosPage() {
   const user = useAuthStore((state) => state.user);
+
   const [received, setReceived] = useState<Share[]>([]);
   const [sent, setSent] = useState<Share[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -64,10 +117,8 @@ export default function CompartilhadosPage() {
       setReceived(Array.isArray(receivedRes.data) ? receivedRes.data : []);
       setSent(Array.isArray(sentRes.data) ? sentRes.data : []);
       setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message || 'Nao foi possivel carregar os compartilhamentos.';
-      setError(typeof message === 'string' ? message : 'Erro ao carregar compartilhamentos.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Nao foi possivel carregar os compartilhamentos.'));
     } finally {
       setLoading(false);
     }
@@ -127,6 +178,8 @@ export default function CompartilhadosPage() {
   };
 
   const openShare = (share: Share) => {
+    if (getShareStatus(share) !== 'ACTIVE') return;
+
     if (share.entityType === 'LINK' && share.link?.url) {
       window.open(share.link.url, '_blank', 'noopener,noreferrer');
       return;
@@ -153,177 +206,299 @@ export default function CompartilhadosPage() {
 
   if (isSuperadmin) {
     return (
-      <div className="space-y-2">
-        <h1 className="font-display text-3xl text-foreground">Compartilhados</h1>
-        <p className="text-sm text-muted-foreground">
-          Superadmin nao participa do fluxo de compartilhamento. O acesso ao conteudo e direto via painel administrativo.
-        </p>
+      <div className="fac-page">
+        <section className="space-y-2">
+          <p className="fac-kicker">Compartilhados</p>
+          <h1 className="fac-subtitle">Fluxo de compartilhamento</h1>
+          <p className="text-[15px] text-muted-foreground">
+            Superadmin nao participa do fluxo de compartilhamento.
+          </p>
+        </section>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Compartilhados</p>
-        <h1 className="font-display text-3xl text-foreground">Recebidos e enviados</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="fac-page">
+      <section className="space-y-2">
+        <p className="fac-kicker">Compartilhados</p>
+        <h1 className="fac-subtitle">Recebidos e enviados</h1>
+        <p className="text-[15px] text-muted-foreground">
           Organize itens compartilhados sem alterar o conteudo original.
         </p>
-      </div>
+      </section>
 
       {loading ? (
-        <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
+        <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">
           Carregando compartilhamentos...
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-sm text-destructive">
-          {error}
-        </div>
+        <div className="fac-panel border-red-400 bg-red-50 px-6 py-4 text-[14px] text-red-700">{error}</div>
       ) : (
         <>
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">Recebidos ({received.length})</h2>
+            <h2 className="text-[18px] font-semibold text-foreground">Recebidos ({received.length})</h2>
             {received.length === 0 ? (
-              <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-6 text-sm text-muted-foreground">
+              <div className="fac-panel px-6 py-8 text-[14px] text-muted-foreground">
                 Nenhum item recebido.
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {received.map((share) => (
-                  <article
-                    key={share.id}
-                    className="rounded-2xl border border-border/70 bg-card/85 p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-semibold text-foreground">
+              <div className="flex flex-wrap gap-4">
+                {received.map((share) => {
+                  const shareStatus = getShareStatus(share);
+                  const isInactive = shareStatus === 'INACTIVE';
+                  const imageUrl = getShareImage(share) ? resolveFileUrl(getShareImage(share)) : '';
+                  const categoryName = getShareCategory(share) || 'Sem categoria';
+                  const categoryColor = getShareCategoryColor(share);
+                  const entityId = getShareEntityId(share);
+
+                  return (
+                    <article
+                      key={share.id}
+                      className={`fac-card w-[240px] ${isInactive ? 'opacity-80 grayscale' : ''}`}
+                    >
+                      <div
+                        className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
+                        onClick={() => openShare(share)}
+                        onKeyDown={(event) => {
+                          if ((event.key === 'Enter' || event.key === ' ') && !isInactive) {
+                            event.preventDefault();
+                            openShare(share);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={isInactive ? -1 : 0}
+                      >
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={getShareTitle(share)}
+                            className="h-full w-full object-cover"
+                            style={{
+                              objectPosition: normalizeImagePosition(getShareImagePosition(share)),
+                              transform: `scale(${getShareImageScale(share) || 1})`,
+                              transformOrigin: normalizeImagePosition(getShareImagePosition(share)),
+                            }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/10" />
+                        )}
+
+                        <span
+                          className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground"
+                          style={categoryColor ? { borderColor: categoryColor, color: categoryColor } : undefined}
+                        >
+                          {categoryName}
+                        </span>
+
+                        <div className="absolute right-3 top-3 flex items-center gap-2">
+                          {entityId ? <FavoriteButton entityType={share.entityType} entityId={entityId} /> : null}
+                          {share.entityType === 'SCHEDULE' && share.schedule?.fileUrl ? (
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/95 text-foreground"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (isInactive) return;
+                                window.open(resolveFileUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
+                              }}
+                              aria-label="Baixar documento"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <span className="fac-status-badge absolute bottom-3 left-3" data-status={shareStatus}>
+                          {shareStatus === 'ACTIVE' ? (
+                            <Check className="h-5 w-5" />
+                          ) : (
+                            <Ban className="h-5 w-5" />
+                          )}
+                        </span>
+
+                        <span className="absolute bottom-3 right-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-foreground">
+                          {typeLabel[share.entityType]}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 p-3">
+                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">
                           {getShareTitle(share)}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
+                        </p>
+                        <p className="text-[12px] text-muted-foreground">
                           Compartilhado por {getShareOwner(share)}
                         </p>
-                        {getShareCategory(share) && (
-                          <p className="text-xs text-muted-foreground">
-                            Categoria original: {getShareCategory(share)}
-                          </p>
-                        )}
-                        <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                          <span className="rounded-full border border-border/70 bg-white/80 px-2 py-1">
-                            {share.entityType}
-                          </span>
-                          <span className="rounded-full border border-border/70 bg-white/80 px-2 py-1">
-                            Recebido
-                          </span>
-                          <span className="rounded-full border border-border/70 bg-white/80 px-2 py-1">
-                            Ativo
-                          </span>
+
+                        <div>
+                          <label className="mb-1 block text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            Categoria local
+                          </label>
+                          <select
+                            className="fac-select !h-9 text-[13px]"
+                            value={share.localCategoryId || ''}
+                            onChange={(event) => updateLocalCategory(share.id, event.target.value)}
+                            disabled={processingId === share.id}
+                          >
+                            <option value="">Sem categoria local</option>
+                            {localCategories.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        {hasOpenAction(share) && (
+
+                        <div className="flex items-center gap-2">
+                          {hasOpenAction(share) ? (
+                            <button
+                              type="button"
+                              className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
+                              onClick={() => openShare(share)}
+                              disabled={isInactive}
+                            >
+                              Abrir
+                            </button>
+                          ) : null}
                           <button
                             type="button"
-                            className="rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
-                            onClick={() => openShare(share)}
+                            className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
+                            onClick={() => removeReceived(share.id)}
+                            disabled={processingId === share.id}
                           >
-                            Abrir
+                            Remover
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
-                          onClick={() => removeReceived(share.id)}
-                          disabled={processingId === share.id}
-                        >
-                          Remover
-                        </button>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="mt-3">
-                      <label className="mb-1 block text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                        Categoria local
-                      </label>
-                      <select
-                        className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm"
-                        value={share.localCategoryId || ''}
-                        onChange={(event) =>
-                          updateLocalCategory(share.id, event.target.value)
-                        }
-                        disabled={processingId === share.id}
-                      >
-                        <option value="">Sem categoria local</option>
-                        {localCategories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">Enviados ({sent.length})</h2>
+            <h2 className="text-[18px] font-semibold text-foreground">Enviados ({sent.length})</h2>
             {sent.length === 0 ? (
-              <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-6 text-sm text-muted-foreground">
+              <div className="fac-panel px-6 py-8 text-[14px] text-muted-foreground">
                 Nenhum item enviado.
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {sent.map((share) => (
-                  <article
-                    key={share.id}
-                    className="rounded-2xl border border-border/70 bg-card/85 p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-semibold text-foreground">
+              <div className="flex flex-wrap gap-4">
+                {sent.map((share) => {
+                  const shareStatus = getShareStatus(share);
+                  const isInactive = shareStatus === 'INACTIVE';
+                  const imageUrl = getShareImage(share) ? resolveFileUrl(getShareImage(share)) : '';
+                  const categoryName = getShareCategory(share) || 'Sem categoria';
+                  const categoryColor = getShareCategoryColor(share);
+                  const entityId = getShareEntityId(share);
+
+                  return (
+                    <article
+                      key={share.id}
+                      className={`fac-card w-[240px] ${isInactive ? 'opacity-80 grayscale' : ''}`}
+                    >
+                      <div
+                        className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
+                        onClick={() => openShare(share)}
+                        onKeyDown={(event) => {
+                          if ((event.key === 'Enter' || event.key === ' ') && !isInactive) {
+                            event.preventDefault();
+                            openShare(share);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={isInactive ? -1 : 0}
+                      >
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={getShareTitle(share)}
+                            className="h-full w-full object-cover"
+                            style={{
+                              objectPosition: normalizeImagePosition(getShareImagePosition(share)),
+                              transform: `scale(${getShareImageScale(share) || 1})`,
+                              transformOrigin: normalizeImagePosition(getShareImagePosition(share)),
+                            }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/10" />
+                        )}
+
+                        <span
+                          className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground"
+                          style={categoryColor ? { borderColor: categoryColor, color: categoryColor } : undefined}
+                        >
+                          {categoryName}
+                        </span>
+
+                        <div className="absolute right-3 top-3 flex items-center gap-2">
+                          {entityId ? <FavoriteButton entityType={share.entityType} entityId={entityId} /> : null}
+                          {share.entityType === 'SCHEDULE' && share.schedule?.fileUrl ? (
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/95 text-foreground"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (isInactive) return;
+                                window.open(resolveFileUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
+                              }}
+                              aria-label="Baixar documento"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <span className="fac-status-badge absolute bottom-3 left-3" data-status={shareStatus}>
+                          {shareStatus === 'ACTIVE' ? (
+                            <Check className="h-5 w-5" />
+                          ) : (
+                            <Ban className="h-5 w-5" />
+                          )}
+                        </span>
+
+                        <span className="absolute bottom-3 right-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-foreground">
+                          {typeLabel[share.entityType]}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 p-3">
+                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">
                           {getShareTitle(share)}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
+                        </p>
+                        <p className="text-[12px] text-muted-foreground">
                           Destinatario: {share.recipient?.name || 'Usuario'}
                         </p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                          <span className="rounded-full border border-border/70 bg-white/80 px-2 py-1">
-                            {share.entityType}
-                          </span>
-                          <span className="rounded-full border border-border/70 bg-white/80 px-2 py-1">
-                            Enviado
-                          </span>
-                          <span className="rounded-full border border-border/70 bg-white/80 px-2 py-1">
-                            {sentStatusLabel(share)}
-                          </span>
+                        <p className="text-[12px] text-muted-foreground">{sentStatusLabel(share)}</p>
+
+                        <div className="flex items-center gap-2">
+                          {hasOpenAction(share) ? (
+                            <button
+                              type="button"
+                              className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
+                              onClick={() => openShare(share)}
+                              disabled={isInactive}
+                            >
+                              Abrir
+                            </button>
+                          ) : null}
+
+                          {!share.removedAt ? (
+                            <button
+                              type="button"
+                              className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
+                              onClick={() => revokeSent(share.id)}
+                              disabled={processingId === share.id}
+                            >
+                              Revogar
+                            </button>
+                          ) : null}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        {hasOpenAction(share) && (
-                          <button
-                            type="button"
-                            className="rounded-lg border border-border/70 px-3 py-2 text-[10px] uppercase tracking-[0.16em]"
-                            onClick={() => openShare(share)}
-                          >
-                            Abrir
-                          </button>
-                        )}
-                        {!share.removedAt && (
-                          <button
-                            type="button"
-                            className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-destructive"
-                            onClick={() => revokeSent(share.id)}
-                            disabled={processingId === share.id}
-                          >
-                            Revogar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -334,10 +509,10 @@ export default function CompartilhadosPage() {
         open={Boolean(viewingNote)}
         title={viewingNote?.title || 'Nota compartilhada'}
         onClose={() => setViewingNote(null)}
-        panelClassName="max-w-2xl"
+        panelClassName="max-w-3xl"
       >
-        {viewingNote?.imageUrl && (
-          <div className="mb-4 overflow-hidden rounded-lg">
+        {viewingNote?.imageUrl ? (
+          <div className="mb-4 overflow-hidden rounded-xl">
             <img
               src={resolveFileUrl(viewingNote.imageUrl)}
               alt={viewingNote.title}
@@ -349,8 +524,8 @@ export default function CompartilhadosPage() {
               }}
             />
           </div>
-        )}
-        <p className="whitespace-pre-wrap text-sm text-foreground">{viewingNote?.content}</p>
+        ) : null}
+        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{viewingNote?.content}</p>
       </AdminModal>
     </div>
   );
