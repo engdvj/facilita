@@ -77,7 +77,7 @@ export default function ResetPage() {
   }
 
   return (
-    <div className="space-y-5 motion-stagger">
+    <div className="fac-page motion-stagger">
       <div className="motion-item space-y-2" style={staggerStyle(1)}>
         <h1 className="font-display text-3xl text-foreground">Reset do sistema</h1>
         <p className="text-sm text-muted-foreground">

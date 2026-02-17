@@ -6,6 +6,7 @@ import AdminModal from '@/components/admin/modal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { useFavorites } from '@/hooks/useFavorites';
 import { serverURL } from '@/lib/api';
+import { useUiStore } from '@/stores/ui-store';
 import { Note } from '@/types';
 
 type ItemType = 'LINK' | 'SCHEDULE' | 'NOTE';
@@ -59,7 +60,7 @@ function getContrastTextColor(color: string) {
 export default function FavoritosPage() {
   const { favorites, loading } = useFavorites();
 
-  const [search, setSearch] = useState('');
+  const globalSearch = useUiStore((state) => state.globalSearch);
   const [typeFilter, setTypeFilter] = useState<'ALL' | ItemType>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -120,7 +121,7 @@ export default function FavoritosPage() {
   }, [favorites]);
 
   const searchedItems = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = globalSearch.trim().toLowerCase();
 
     return items
       .filter((item) => (typeFilter === 'ALL' ? true : item.type === typeFilter))
@@ -141,7 +142,7 @@ export default function FavoritosPage() {
         return haystack.includes(term);
       })
       .sort((a, b) => a.title.localeCompare(b.title));
-  }, [items, search, typeFilter]);
+  }, [items, globalSearch, typeFilter]);
 
   const categoryTabs = useMemo(() => {
     const map = new Map<string, { count: number; color?: string | null }>();
@@ -211,27 +212,18 @@ export default function FavoritosPage() {
           </p>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[760px] lg:grid-cols-2">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="fac-input sm:col-span-2"
-            placeholder="Buscar nos favoritos"
-          />
-
-          <div>
-            <label className="fac-label">Tipo</label>
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as 'ALL' | ItemType)}
-              className="fac-select"
-            >
-              <option value="ALL">Todos</option>
-              <option value="LINK">Links</option>
-              <option value="SCHEDULE">Documentos</option>
-              <option value="NOTE">Notas</option>
-            </select>
-          </div>
+        <div>
+          <label className="fac-label">Tipo</label>
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as 'ALL' | ItemType)}
+            className="fac-select !w-auto"
+          >
+            <option value="ALL">Todos</option>
+            <option value="LINK">Links</option>
+            <option value="SCHEDULE">Documentos</option>
+            <option value="NOTE">Notas</option>
+          </select>
         </div>
       </section>
 

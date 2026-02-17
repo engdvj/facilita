@@ -111,23 +111,9 @@ export default function AppNav({ collapsed = false, onToggleCollapse }: AppNavPr
 
   return (
     <div className="fac-nav-panel" data-collapsed={collapsed ? 'true' : 'false'}>
-      <div className="fac-nav-head">
-        <p className="fac-nav-brand">{collapsed ? 'FA' : 'FACILITA'}</p>
-        <button
-          type="button"
-          className="fac-nav-collapse hidden lg:inline-flex"
-          onClick={onToggleCollapse}
-          disabled={!onToggleCollapse}
-          aria-label={collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
-          title={collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-      </div>
       <div className="fac-nav-sections">
         {groups.map((group) => (
           <section key={group.label} className="fac-nav-group">
-            <p className="fac-nav-label">{group.label}</p>
             <nav className="fac-nav-list">
               {group.items.map((item) => {
                 const active = isActive(pathname, item.href);
@@ -157,7 +143,7 @@ export default function AppNav({ collapsed = false, onToggleCollapse }: AppNavPr
           </section>
         ))}
       </div>
+
     </div>
   );
 }
-

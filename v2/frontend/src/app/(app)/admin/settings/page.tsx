@@ -327,7 +327,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="fac-page">
       <div className="flex flex-col gap-2">
         <div className="min-w-0 space-y-1 xl:flex-1">
           <h1 className="font-display text-2xl leading-tight text-foreground">

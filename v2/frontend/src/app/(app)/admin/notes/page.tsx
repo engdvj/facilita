@@ -5,6 +5,7 @@ import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
 import api, { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUiStore } from '@/stores/ui-store';
 import { Category, ContentVisibility, Note } from '@/types';
 
 const emptyForm = {
@@ -47,7 +48,7 @@ export default function NotesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
+  const globalSearch = useUiStore((state) => state.globalSearch);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,7 +90,7 @@ export default function NotesPage() {
   }, [isSuperadmin, user?.id]);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = globalSearch.trim().toLowerCase();
 
     return items
       .filter((item) => (statusFilter === 'ALL' ? true : item.status === statusFilter))
@@ -98,7 +99,7 @@ export default function NotesPage() {
         return `${item.title} ${item.content}`.toLowerCase().includes(term);
       })
       .sort((a, b) => a.title.localeCompare(b.title));
-  }, [items, search, statusFilter]);
+  }, [items, globalSearch, statusFilter]);
 
   const imagePosition = useMemo(() => {
     const [xRaw = '50%', yRaw = '50%'] = form.imagePosition.split(' ');
@@ -191,14 +192,7 @@ export default function NotesPage() {
           <p className="text-[15px] text-muted-foreground">Gerencie notas pessoais e compartilhadas no portal.</p>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[260px_190px_auto_auto]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="fac-input"
-            placeholder="Buscar nota"
-          />
-
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[190px_auto_auto]">
           <select
             value={statusFilter}
             onChange={(event) =>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AppHeader from '@/components/app-header';
 import AppNav from '@/components/app-nav';
 import api from '@/lib/api';
@@ -70,7 +70,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen flex-col text-foreground">
-      <AppHeader />
+      <AppHeader theme={theme} onToggleTheme={toggleTheme} />
       <div className={`fac-shell flex-1 ${user ? 'fac-shell-with-nav' : ''}`}>
         <div className={user ? `fac-main-grid ${navCollapsed ? 'fac-main-grid-collapsed' : ''}` : ''}>
           {user ? (
@@ -83,25 +83,19 @@ export default function AppShell({ children }: AppShellProps) {
       </div>
 
       <footer className="border-t border-border bg-white/85 dark:bg-background/90">
-        <div className="relative mx-auto flex min-h-[64px] w-full max-w-[1600px] flex-col gap-2 px-6 py-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="fac-button-secondary !h-8 !px-3 text-[10px] sm:justify-self-start"
-          >
-            {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-          </button>
-
-          <Link
-            href="/"
-            className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground sm:absolute sm:left-1/2 sm:-translate-x-1/2"
-          >
-            FACILITA
-          </Link>
-
-          <span className="text-center sm:text-right">
-            &copy; {new Date().getFullYear()} Todos os direitos reservados
-          </span>
+        <div className="flex min-h-[48px] w-full items-center justify-between px-6 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          {user ? (
+            <button
+              type="button"
+              onClick={toggleNav}
+              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground dark:bg-secondary/70 dark:hover:bg-secondary"
+              aria-label={navCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+              title={navCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            >
+              {navCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+          ) : <span />}
+          <span>&copy; {new Date().getFullYear()} Todos os direitos reservados</span>
         </div>
       </footer>
     </div>

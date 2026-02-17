@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminModal from '@/components/admin/modal';
 import api from '@/lib/api';
+import { useUiStore } from '@/stores/ui-store';
 import { Category } from '@/types';
 
 const emptyForm = {
@@ -23,7 +24,7 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
+  const globalSearch = useUiStore((state) => state.globalSearch);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -51,7 +52,7 @@ export default function CategoriesPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = globalSearch.trim().toLowerCase();
 
     return categories
       .filter((category) => (statusFilter === 'ALL' ? true : category.status === statusFilter))
@@ -60,7 +61,7 @@ export default function CategoriesPage() {
         return category.name.toLowerCase().includes(term);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [categories, search, statusFilter]);
+  }, [categories, globalSearch, statusFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -135,14 +136,7 @@ export default function CategoriesPage() {
           <p className="text-[15px] text-muted-foreground">Gerencie as categorias usadas no portal.</p>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[260px_190px_auto_auto]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="fac-input"
-            placeholder="Buscar categoria"
-          />
-
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[190px_auto_auto]">
           <select
             value={statusFilter}
             onChange={(event) =>

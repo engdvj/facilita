@@ -5,11 +5,12 @@ import { createPortal } from 'react-dom';
 import api, { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { useImageGallery } from '@/hooks/useImageGallery';
+import { useUiStore } from '@/stores/ui-store';
 
 export default function ImagesPage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
-  const [search, setSearch] = useState('');
+  const globalSearch = useUiStore((state) => state.globalSearch);
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -19,10 +20,10 @@ export default function ImagesPage() {
 
   const filters = useMemo(
     () => ({
-      search: search || undefined,
+      search: globalSearch || undefined,
       uploadedBy: showOnlyMine ? user?.id : undefined,
     }),
-    [search, showOnlyMine, user?.id],
+    [globalSearch, showOnlyMine, user?.id],
   );
 
   const {
@@ -86,7 +87,7 @@ export default function ImagesPage() {
   };
 
   return (
-    <div className="space-y-6 motion-stagger">
+    <div className="fac-page motion-stagger">
       <div className="motion-item space-y-2" style={staggerStyle(1)}>
         <h1 className="font-display text-3xl text-foreground">Galeria de imagens</h1>
         <p className="text-sm text-muted-foreground">
@@ -102,13 +103,6 @@ export default function ImagesPage() {
       </div>
 
       <div className="motion-item flex flex-col sm:flex-row gap-3" style={staggerStyle(3)}>
-        <input
-          type="text"
-          placeholder="Buscar por nome ou descricao..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-lg border border-border/70 bg-background px-3 py-2 text-sm"
-        />
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -144,13 +138,13 @@ export default function ImagesPage() {
       )}
 
       {!loading && !error && images.length > 0 && (
-        <div className="motion-item grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" style={staggerStyle(5)}>
+        <div className="motion-item flex flex-wrap gap-4" style={staggerStyle(5)}>
           {images.map((image, index) => (
             <button
               key={image.id}
               type="button"
               onClick={() => loadImageDetails(image.id)}
-              className="motion-item group relative aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted shadow-[0_10px_22px_rgba(16,44,50,0.12)] hover:border-foreground/30 transition-colors"
+              className="motion-item group relative w-[220px] aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted shadow-[0_10px_22px_rgba(16,44,50,0.12)] hover:border-foreground/30 transition-colors"
               style={staggerStyle(index + 6)}
             >
               <img

@@ -6,6 +6,7 @@ import AdminModal from '@/components/admin/modal';
 import UserAvatar from '@/components/user-avatar';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUiStore } from '@/stores/ui-store';
 import { User, UserRole, UserStatus } from '@/types';
 
 const emptyForm = {
@@ -30,7 +31,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
+  const globalSearch = useUiStore((state) => state.globalSearch);
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | UserStatus>('ALL');
 
@@ -66,7 +67,7 @@ export default function UsersPage() {
   }, [isSuperadmin]);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = globalSearch.trim().toLowerCase();
 
     return users
       .filter((user) => (roleFilter === 'ALL' ? true : user.role === roleFilter))
@@ -76,7 +77,7 @@ export default function UsersPage() {
         return `${user.name} ${user.email}`.toLowerCase().includes(term);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [users, search, roleFilter, statusFilter]);
+  }, [users, globalSearch, roleFilter, statusFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -167,14 +168,7 @@ export default function UsersPage() {
           <p className="text-[15px] text-muted-foreground">Perfis, papeis e acessos da equipe administrativa.</p>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[260px_180px_180px_auto]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="fac-input"
-            placeholder="Buscar usuario"
-          />
-
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[180px_180px_auto]">
           <select
             value={roleFilter}
             onChange={(event) => setRoleFilter(event.target.value as 'ALL' | UserRole)}

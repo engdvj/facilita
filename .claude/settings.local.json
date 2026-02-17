@@ -38,7 +38,11 @@
       "Bash(npm run fix:image-names:*)",
       "Bash(tree:*)",
       "Bash(node -e:*)",
-      "Bash(docker compose build:*)"
+      "Bash(docker compose build:*)",
+      "Bash(cmd.exe /c \"taskkill /PID 38368 /F\")",
+      "Bash(cmd.exe /c \"taskkill /PID 38368 /F 2>&1\")",
+      "Bash(cmd /c \"taskkill /PID 38368 /F\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3001\")"
     ]
   }
 }

@@ -6,6 +6,7 @@ import AdminModal from '@/components/admin/modal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import api, { serverURL } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUiStore } from '@/stores/ui-store';
 import { Link as LinkEntity, Note, UploadedSchedule } from '@/types';
 
 type ItemType = 'LINK' | 'SCHEDULE' | 'NOTE';
@@ -72,7 +73,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
+  const globalSearch = useUiStore((state) => state.globalSearch);
   const [typeFilter, setTypeFilter] = useState<'ALL' | ItemType>('ALL');
   const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'PUBLIC' | 'PRIVATE'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -174,7 +175,7 @@ export default function HomePage() {
   }, [links, notes, schedules]);
 
   const searchedItems = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = globalSearch.trim().toLowerCase();
 
     return mappedItems
       .filter((item) => (typeFilter === 'ALL' ? true : item.type === typeFilter))
@@ -195,7 +196,7 @@ export default function HomePage() {
 
         return haystack.includes(term);
       });
-  }, [mappedItems, search, typeFilter, visibilityFilter]);
+  }, [mappedItems, globalSearch, typeFilter, visibilityFilter]);
 
   const categoryTabs = useMemo(() => {
     const map = new Map<string, { count: number; color?: string | null }>();
@@ -257,20 +258,13 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[760px] lg:grid-cols-2">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="fac-input sm:col-span-2"
-            placeholder="Buscar link, documento ou nota"
-          />
-
+        <div className="flex flex-wrap gap-2">
           <div>
             <label className="fac-label">Tipo</label>
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value as 'ALL' | ItemType)}
-              className="fac-select"
+              className="fac-select !w-auto"
             >
               <option value="ALL">Todos</option>
               <option value="LINK">Links</option>
@@ -286,7 +280,7 @@ export default function HomePage() {
               onChange={(event) =>
                 setVisibilityFilter(event.target.value as 'ALL' | 'PUBLIC' | 'PRIVATE')
               }
-              className="fac-select"
+              className="fac-select !w-auto"
             >
               <option value="ALL">Todas</option>
               <option value="PUBLIC">Publicas</option>
