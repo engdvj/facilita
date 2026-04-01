@@ -88,12 +88,12 @@ export default function ImagesPage() {
 
   return (
     <div className="fac-page motion-stagger">
-      <div className="motion-item space-y-2" style={staggerStyle(1)}>
-        <h1 className="font-display text-3xl text-foreground">Galeria de imagens</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie imagens enviadas pelos usuarios.
-        </p>
-      </div>
+      <section className="fac-page-head">
+        <div>
+          <h1 className="fac-subtitle">Galeria de imagens</h1>
+          <p className="text-[15px] text-muted-foreground">Gerencie imagens enviadas pelos usuarios.</p>
+        </div>
+      </section>
 
       <div
         className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"

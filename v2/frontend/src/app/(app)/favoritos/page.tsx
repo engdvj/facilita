@@ -205,7 +205,6 @@ export default function FavoritosPage() {
     <div className="fac-page">
       <section className="fac-page-head">
         <div>
-          <p className="fac-kicker">Favoritos</p>
           <h1 className="fac-subtitle">Links, documentos e notas favoritas</h1>
           <p className="text-[15px] text-muted-foreground">
             Acesse rapidamente os itens que voce marcou como favoritos.

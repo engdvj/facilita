@@ -328,16 +328,12 @@ export default function SettingsPage() {
 
   return (
     <div className="fac-page">
-      <div className="flex flex-col gap-2">
-        <div className="min-w-0 space-y-1 xl:flex-1">
-          <h1 className="font-display text-2xl leading-tight text-foreground">
-            Configuracoes do sistema
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Defina o backup automatico e gere um backup completo quando quiser.
-          </p>
+      <section className="fac-page-head">
+        <div>
+          <h1 className="fac-subtitle">Configuracoes do sistema</h1>
+          <p className="text-[15px] text-muted-foreground">Defina o backup automatico e gere um backup completo quando quiser.</p>
         </div>
-      </div>
+      </section>
 
       {loading && (
         <div className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-xs text-muted-foreground">

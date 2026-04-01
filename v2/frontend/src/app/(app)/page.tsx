@@ -251,7 +251,6 @@ export default function HomePage() {
     <div className="fac-page">
       <section className="fac-page-head">
         <div>
-          <p className="fac-kicker">Inicio</p>
           <h1 className="fac-subtitle">Links, documentos e notas do portal</h1>
           <p className="text-[15px] text-muted-foreground">
             Encontre rapidamente documentos, sistemas, atalhos e notas.

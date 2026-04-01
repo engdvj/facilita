@@ -95,16 +95,12 @@ export default function RestorePage() {
 
   return (
     <div className="fac-page">
-      <div className="flex flex-col gap-2">
-        <div className="min-w-0 space-y-1 xl:flex-1">
-          <h1 className="font-display text-2xl leading-tight text-foreground">
-            Restauracao
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Restaure dados de forma segura a partir de um arquivo ZIP.
-          </p>
+      <section className="fac-page-head">
+        <div>
+          <h1 className="fac-subtitle">Restauracao</h1>
+          <p className="text-[15px] text-muted-foreground">Restaure dados de forma segura a partir de um arquivo ZIP.</p>
         </div>
-      </div>
+      </section>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <BackupSelectionPanel

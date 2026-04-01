@@ -50,7 +50,7 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
   return (
     <header className="fac-topbar">
       <div className="fac-topbar-inner">
-        <span className="font-display text-[22px] italic leading-none text-foreground shrink-0">
+        <span className="font-display text-2xl font-bold tracking-wide uppercase text-foreground whitespace-nowrap shrink-0">
           Facilita
         </span>
 

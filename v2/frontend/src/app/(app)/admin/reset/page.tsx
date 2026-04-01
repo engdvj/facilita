@@ -78,12 +78,12 @@ export default function ResetPage() {
 
   return (
     <div className="fac-page motion-stagger">
-      <div className="motion-item space-y-2" style={staggerStyle(1)}>
-        <h1 className="font-display text-3xl text-foreground">Reset do sistema</h1>
-        <p className="text-sm text-muted-foreground">
-          Limpe entidades especificas e mantenha seed de usuarios/permissoes.
-        </p>
-      </div>
+      <section className="fac-page-head">
+        <div>
+          <h1 className="fac-subtitle">Reset do sistema</h1>
+          <p className="text-[15px] text-muted-foreground">Limpe entidades especificas e mantenha seed de usuarios/permissoes.</p>
+        </div>
+      </section>
 
       <div
         className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"

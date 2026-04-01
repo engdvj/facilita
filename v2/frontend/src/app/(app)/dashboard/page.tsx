@@ -174,7 +174,6 @@ export default function DashboardPage() {
   return (
     <div className="fac-page">
       <section>
-        <p className="fac-kicker">Dashboard</p>
         <h1 className="fac-subtitle">Indicadores do portal</h1>
         <p className="text-[15px] text-muted-foreground">Acompanhe links criados, publicacao e engajamento.</p>
       </section>
