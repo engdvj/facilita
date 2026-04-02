@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import AdminField from '@/components/admin/field';
 import BackupSelectionPanel from '@/components/admin/backup-selection';
+import { getApiErrorMessage } from '@/lib/error';
 import {
   buildInitialSelection,
   countSelectedOptions,
@@ -28,12 +29,12 @@ export default function RestorePage() {
     if (!hasHydrated) return;
 
     if (!user) {
-      setError('Faca login para acessar a restauracao.');
+      setError('Faça login para acessar a restauração.');
       return;
     }
 
     if (user.role !== 'SUPERADMIN') {
-      setError('Apenas superadmins podem acessar a restauracao.');
+      setError('Apenas superadmins podem acessar a restauração.');
       return;
     }
 
@@ -60,7 +61,7 @@ export default function RestorePage() {
 
   const handleRestore = async () => {
     if (!restoreFile) {
-      setRestoreError('Selecione um arquivo valido para restaurar.');
+      setRestoreError('Selecione um arquivo válido para restaurar.');
       return;
     }
 
@@ -81,13 +82,8 @@ export default function RestorePage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setRestoreFile(null);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel restaurar o backup.';
-      setRestoreError(
-        typeof message === 'string' ? message : 'Erro ao restaurar backup.',
-      );
+    } catch (error: unknown) {
+      setRestoreError(getApiErrorMessage(error, 'Erro ao restaurar backup.'));
     } finally {
       setRestoring(false);
     }
@@ -97,23 +93,23 @@ export default function RestorePage() {
     <div className="fac-page">
       <section className="fac-page-head">
         <div>
-          <h1 className="fac-subtitle">Restauracao</h1>
+          <h1 className="fac-subtitle">Restauração</h1>
           <p className="text-[15px] text-muted-foreground">Restaure dados de forma segura a partir de um arquivo ZIP.</p>
         </div>
       </section>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <BackupSelectionPanel
-          title="Itens da restauracao"
+          title="Itens da restauração"
           subtitle="Escolha o que deve ser restaurado."
           selection={selection}
           setSelection={setSelection}
         />
 
-        <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
+        <section className="fac-panel p-3 sm:p-4">
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Restauracao
+              Restauração
             </p>
             <h2 className="text-lg font-semibold text-foreground">
               Use o arquivo gerado pelo sistema para restaurar os dados.
@@ -126,7 +122,7 @@ export default function RestorePage() {
                 id="backup-file"
                 type="file"
                 accept="application/zip,.zip"
-                className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground"
+                className="w-full rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-sm text-foreground"
                 onChange={handleFileChange}
                 disabled={Boolean(error)}
               />
@@ -149,7 +145,7 @@ export default function RestorePage() {
               onClick={handleRestore}
               disabled={!restoreFile || !hasSelection || restoring || Boolean(error)}
             >
-              {restoring ? 'Restaurando...' : 'Restaurar selecao'}
+              {restoring ? 'Restaurando...' : 'Restaurar seleção'}
             </button>
           </div>
         </section>

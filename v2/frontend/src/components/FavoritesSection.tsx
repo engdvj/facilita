@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useFavorites, type Favorite, type EntityType } from "@/hooks/useFavorites";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,9 +92,12 @@ export function FavoritesSection() {
         {/* Imagem ou fundo */}
         <div className="relative h-40 w-full overflow-hidden bg-secondary/60 sm:h-48">
           {imageUrl ? (
-            <img
+            <Image
               src={imageUrl}
               alt={item.title}
+              width={640}
+              height={320}
+              unoptimized
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               style={{
                 objectPosition: normalizeImagePosition(item.imagePosition),
@@ -219,9 +223,12 @@ export function FavoritesSection() {
             {viewingNote.note.imageUrl && (
               <div className="overflow-hidden rounded-xl">
                 <div className="relative h-48 w-full overflow-hidden bg-secondary/60">
-                  <img
+                  <Image
                     src={`${serverURL}${viewingNote.note.imageUrl}`}
                     alt={viewingNote.note.title}
+                    width={1200}
+                    height={480}
+                    unoptimized
                     className="h-full w-full object-cover"
                     style={{
                       objectPosition: normalizeImagePosition(viewingNote.note.imagePosition),

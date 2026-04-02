@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import AdminField from '@/components/admin/field';
 import AdminModal from '@/components/admin/modal';
+import { getApiErrorMessage } from '@/lib/error';
 import { useAuthStore } from '@/stores/auth-store';
 import type { SystemConfig } from '@/types';
 import useNotifyOnChange from '@/hooks/use-notify-on-change';
@@ -18,20 +19,20 @@ type AutoBackupFile = {
 };
 
 const categoryLabels: Record<string, string> = {
-  backup: 'Backup automatico',
-  storage: 'Diretorios padrao',
+  backup: 'Backup automático',
+  storage: 'Diretórios padrão',
   system: 'Sistema',
 };
 
 const configLabels: Record<string, string> = {
-  backup_directory: 'Diretorio de backup',
-  backup_schedule_enabled: 'Backup automatico',
-  backup_schedule_time: 'Horario do backup',
-  backup_retention_days: 'Retencao (dias)',
-  upload_directory: 'Diretorio de uploads',
-  export_directory: 'Diretorio de exportacao',
-  install_date: 'Data de instalacao',
-  app_version: 'Versao do sistema',
+  backup_directory: 'Diretório de backup',
+  backup_schedule_enabled: 'Backup automático',
+  backup_schedule_time: 'Horário do backup',
+  backup_retention_days: 'Retenção (dias)',
+  upload_directory: 'Diretório de uploads',
+  export_directory: 'Diretório de exportação',
+  install_date: 'Data de instalação',
+  app_version: 'Versão do sistema',
 };
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -108,13 +109,13 @@ export default function SettingsPage() {
     if (!hasHydrated) return;
 
     if (!user) {
-      setError('Faca login para acessar as configuracoes.');
+      setError('Faça login para acessar as configurações.');
       setLoading(false);
       return;
     }
 
     if (user.role !== 'SUPERADMIN') {
-      setError('Apenas superadmins podem editar configuracoes.');
+      setError('Apenas superadmins podem editar configurações.');
       setLoading(false);
       return;
     }
@@ -133,11 +134,8 @@ export default function SettingsPage() {
         );
         setDrafts(initialDrafts);
         setError(null);
-      } catch (err: any) {
-        const message =
-          err?.response?.data?.message ||
-          'Nao foi possivel carregar as configuracoes.';
-        setError(typeof message === 'string' ? message : 'Erro ao carregar.');
+      } catch (error: unknown) {
+        setError(getApiErrorMessage(error, 'Erro ao carregar.'));
       } finally {
         setLoading(false);
       }
@@ -168,7 +166,7 @@ export default function SettingsPage() {
       .filter((category) => !hiddenCategories.has(category))
       .map((category) => ({
           key: category,
-          label: categoryLabels[category] || 'Outras configuracoes',
+          label: categoryLabels[category] || 'Outras configurações',
           items: (groups.get(category) || []).sort((a, b) =>
             a.key.localeCompare(b.key),
           ),
@@ -182,7 +180,7 @@ export default function SettingsPage() {
   const handleSave = async (config: SystemConfig) => {
     const value = drafts[config.key];
     if (!isValidValue(config, value)) {
-      notify.error('Valor invalido para esta configuracao.');
+      notify.error('Valor inválido para esta configuração.');
       return;
     }
 
@@ -203,11 +201,8 @@ export default function SettingsPage() {
         ...current,
         [updated.key]: parseValue(updated),
       }));
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel salvar a configuracao.';
-      notify.error(typeof message === 'string' ? message : 'Erro ao salvar.');
+    } catch (error: unknown) {
+      notify.error(getApiErrorMessage(error, 'Erro ao salvar.'));
     } finally {
       setSaving((current) => ({ ...current, [config.key]: false }));
     }
@@ -234,12 +229,8 @@ export default function SettingsPage() {
       anchor.remove();
       URL.revokeObjectURL(url);
       notify.success('Backup gerado com sucesso.');
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message || 'Nao foi possivel gerar o backup.';
-      notify.error(
-        typeof message === 'string' ? message : 'Erro ao gerar backup.',
-      );
+    } catch (error: unknown) {
+      notify.error(getApiErrorMessage(error, 'Erro ao gerar backup.'));
     } finally {
       setExportingAll(false);
     }
@@ -276,13 +267,8 @@ export default function SettingsPage() {
       };
       setAutoBackupDirectory(data.directory ?? '');
       setAutoBackupFiles(Array.isArray(data.files) ? data.files : []);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel carregar os backups automaticos.';
-      setAutoBackupError(
-        typeof message === 'string' ? message : 'Erro ao carregar.',
-      );
+    } catch (error: unknown) {
+      setAutoBackupError(getApiErrorMessage(error, 'Erro ao carregar.'));
     } finally {
       setAutoBackupLoading(false);
     }
@@ -314,13 +300,8 @@ export default function SettingsPage() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel baixar o backup.';
-      notify.error(
-        typeof message === 'string' ? message : 'Erro ao baixar backup.',
-      );
+    } catch (error: unknown) {
+      notify.error(getApiErrorMessage(error, 'Erro ao baixar backup.'));
     } finally {
       setAutoBackupDownloading('');
     }
@@ -330,20 +311,20 @@ export default function SettingsPage() {
     <div className="fac-page">
       <section className="fac-page-head">
         <div>
-          <h1 className="fac-subtitle">Configuracoes do sistema</h1>
-          <p className="text-[15px] text-muted-foreground">Defina o backup automatico e gere um backup completo quando quiser.</p>
+          <h1 className="fac-subtitle">Configurações do sistema</h1>
+          <p className="text-[15px] text-muted-foreground">Defina o backup automático e gere um backup completo quando quiser.</p>
         </div>
       </section>
 
       {loading && (
         <div className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-xs text-muted-foreground">
-          Carregando configuracoes...
+          Carregando configurações...
         </div>
       )}
 
       {!loading && !configs.length && !error && (
         <div className="rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-xs text-muted-foreground">
-          Nenhuma configuracao encontrada.
+          Nenhuma configuração encontrada.
         </div>
       )}
 
@@ -351,7 +332,7 @@ export default function SettingsPage() {
         {groupedConfigs.map((group) => (
           <section
             key={group.key}
-            className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4"
+            className="fac-panel p-3 sm:p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -359,20 +340,20 @@ export default function SettingsPage() {
                   {group.label}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {group.items.length} configuracoes
+                  {group.items.length} configurações
                 </p>
               </div>
               {group.key === 'backup' && (
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
+                    className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
                     onClick={handleOpenAutoBackups}
                     disabled={autoBackupOpening || Boolean(error)}
                   >
                     {autoBackupOpening
                       ? 'Abrindo...'
-                      : 'Abrir diretorio de backups'}
+                      : 'Abrir diretório de backups'}
                   </button>
                   <button
                     type="button"
@@ -418,7 +399,7 @@ export default function SettingsPage() {
                       )}
                       {dirty && config.isEditable && (
                         <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-700">
-                          Alteracoes pendentes
+                          Alterações pendentes
                         </span>
                       )}
                     </div>
@@ -479,13 +460,13 @@ export default function SettingsPage() {
                                     : event.target.value;
                                 handleDraftChange(config.key, nextValue);
                               }}
-                              className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground"
+                              className="w-full rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-sm text-foreground"
                               disabled={isSaving || Boolean(error)}
                             />
                           )}
                         </AdminField>
                       ) : (
-                        <div className="rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm text-muted-foreground">
+                        <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-sm text-muted-foreground">
                           {config.value}
                         </div>
                       )}
@@ -513,7 +494,7 @@ export default function SettingsPage() {
 
       <AdminModal
         open={autoBackupOpen}
-        title="Backups automaticos"
+        title="Backups automáticos"
         description="Arquivos gerados pelo agendamento."
         onClose={() => setAutoBackupOpen(false)}
         panelClassName="max-w-2xl"
@@ -530,13 +511,13 @@ export default function SettingsPage() {
       >
         {autoBackupDirectory && (
           <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
-            Diretorio: <span className="text-foreground">{autoBackupDirectory}</span>
+            Diretório: <span className="text-foreground">{autoBackupDirectory}</span>
           </div>
         )}
 
         {autoBackupLoading ? (
           <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-3 text-xs text-muted-foreground">
-            Carregando backups automaticos...
+            Carregando backups automáticos...
           </div>
         ) : autoBackupError ? (
           <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-3 text-xs text-muted-foreground">
@@ -544,7 +525,7 @@ export default function SettingsPage() {
           </div>
         ) : autoBackupFiles.length === 0 ? (
           <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-3 text-xs text-muted-foreground">
-            Nenhum backup automatico encontrado.
+            Nenhum backup automático encontrado.
           </div>
         ) : (
           <div className="space-y-2">
@@ -558,12 +539,12 @@ export default function SettingsPage() {
                     {file.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatBytes(file.size)} • {formatDate(file.updatedAt)}
+                    {formatBytes(file.size)} - {formatDate(file.updatedAt)}
                   </p>
                 </div>
                 <button
                   type="button"
-                  className="rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
+                  className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground disabled:opacity-60"
                   onClick={() => handleDownloadAutoBackup(file.name)}
                   disabled={autoBackupDownloading === file.name}
                 >

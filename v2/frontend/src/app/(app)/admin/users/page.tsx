@@ -1,10 +1,12 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import ConfirmModal from '@/components/admin/confirm-modal';
 import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
 import UserAvatar from '@/components/user-avatar';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { User, UserRole, UserStatus } from '@/types';
@@ -17,12 +19,11 @@ const emptyForm = {
   status: 'ACTIVE' as UserStatus,
   avatarUrl: '',
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
-}
+type UserFormErrors = {
+  name?: string;
+  username?: string;
+  password?: string;
+};
 
 export default function UsersPage() {
   const authUser = useAuthStore((state) => state.user);
@@ -39,11 +40,13 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<UserFormErrors>({});
   const [deleting, setDeleting] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<User | null>(null);
 
   const isSuperadmin = authUser?.role === 'SUPERADMIN';
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!isSuperadmin) {
       setLoading(false);
       return;
@@ -56,15 +59,15 @@ export default function UsersPage() {
       const response = await api.get('/users');
       setUsers(Array.isArray(response.data) ? response.data : []);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar usuarios.'));
+      setError(getApiErrorMessage(err, 'Não foi possível carregar usuários.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSuperadmin]);
 
   useEffect(() => {
     void load();
-  }, [isSuperadmin]);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
@@ -82,6 +85,7 @@ export default function UsersPage() {
   const openCreate = () => {
     setEditing(null);
     setForm({ ...emptyForm });
+    setFormErrors({});
     setModalOpen(true);
   };
 
@@ -95,11 +99,31 @@ export default function UsersPage() {
       status: user.status,
       avatarUrl: user.avatarUrl || '',
     });
+    setFormErrors({});
     setModalOpen(true);
   };
 
+  const validateForm = () => {
+    const nextErrors: UserFormErrors = {};
+
+    if (!form.name.trim()) {
+      nextErrors.name = 'Nome é obrigatório.';
+    }
+
+    if (!form.username.trim()) {
+      nextErrors.username = 'Usuário é obrigatório.';
+    }
+
+    if (!editing && !form.password.trim()) {
+      nextErrors.password = 'Senha é obrigatória ao criar usuário.';
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const save = async () => {
-    if (!form.name.trim() || !form.username.trim()) return;
+    if (!validateForm()) return;
 
     setSaving(true);
     try {
@@ -131,24 +155,30 @@ export default function UsersPage() {
   };
 
   const toggleStatus = async (user: User) => {
-    await api.patch(`/users/${user.id}`, {
-      status: user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    });
-    await load();
+    try {
+      await api.patch(`/users/${user.id}`, {
+        status: user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+      });
+    } catch {
+      // O interceptor global já notifica o erro.
+    } finally {
+      await load();
+    }
   };
 
   const remove = async () => {
-    if (!editing) return;
-    if (editing.id === authUser?.id) return;
-    if (!window.confirm(`Remover usuario ${editing.name}?`)) return;
+    if (!confirmTarget) return;
+    if (confirmTarget.id === authUser?.id) return;
 
     setDeleting(true);
     try {
-      await api.delete(`/users/${editing.id}`);
+      await api.delete(`/users/${confirmTarget.id}`);
       setModalOpen(false);
-      await load();
+      setEditing(null);
     } finally {
       setDeleting(false);
+      setConfirmTarget(null);
+      await load();
     }
   };
 
@@ -164,7 +194,7 @@ export default function UsersPage() {
     <div className="fac-page">
       <section className="fac-page-head">
         <div>
-          <h1 className="fac-subtitle">Usuarios</h1>
+          <h1 className="fac-subtitle">Usuários</h1>
           <p className="text-[15px] text-muted-foreground">Perfis, papeis e acessos da equipe administrativa.</p>
         </div>
 
@@ -192,7 +222,7 @@ export default function UsersPage() {
           </select>
 
           <button type="button" className="fac-button-primary" onClick={openCreate}>
-            Novo usuario
+            Novo usuário
           </button>
         </div>
       </section>
@@ -205,11 +235,11 @@ export default function UsersPage() {
 
         <div className="fac-panel-body">
           {loading ? (
-            <p className="text-[14px] text-muted-foreground">Carregando usuarios...</p>
+            <div className="fac-loading-state">Carregando usuários...</div>
           ) : error ? (
-            <p className="text-[14px] text-red-700">{error}</p>
+            <div className="fac-error-state">{error}</div>
           ) : filtered.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">Nenhum usuario encontrado.</p>
+            <div className="fac-empty-state">Nenhum usuário encontrado.</div>
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((user) => (
@@ -230,30 +260,40 @@ export default function UsersPage() {
                       />
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                      <div className="pr-2">
+                  </button>
+
+                  <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 pr-2 text-left"
+                      onClick={() => openEdit(user)}
+                    >
+                      <div>
                         <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{user.name}</p>
                         <p className="line-clamp-1 mt-1 text-[12px] text-muted-foreground">{user.email}</p>
                         <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           {user.role}
                         </p>
                       </div>
+                    </button>
 
-                      <span
-                        className={`fac-toggle shrink-0 ${user.id === authUser?.id ? 'cursor-not-allowed opacity-50' : ''}`}
-                        data-state={user.status === 'ACTIVE' ? 'on' : 'off'}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (user.id !== authUser?.id) {
-                            void toggleStatus(user);
-                          }
-                        }}
-                      >
-                        <span className="fac-toggle-dot" />
-                      </span>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={user.status === 'ACTIVE'}
+                      aria-label={user.status === 'ACTIVE' ? `Desativar ${user.name}` : `Ativar ${user.name}`}
+                      className={`fac-toggle shrink-0 ${user.id === authUser?.id ? 'cursor-not-allowed opacity-50' : ''}`}
+                      data-state={user.status === 'ACTIVE' ? 'on' : 'off'}
+                      onClick={() => {
+                        if (user.id !== authUser?.id) {
+                          void toggleStatus(user);
+                        }
+                      }}
+                      disabled={user.id === authUser?.id}
+                    >
+                      <span className="fac-toggle-dot" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -263,8 +303,8 @@ export default function UsersPage() {
 
       <AdminModal
         open={modalOpen}
-        title={editing ? 'Editar usuario' : 'Novo usuario'}
-        description="Configure credenciais e acessos do usuario."
+        title={editing ? 'Editar usuário' : 'Novo usuário'}
+        description="Configure credenciais e acessos do usuário."
         onClose={() => setModalOpen(false)}
         panelClassName="max-w-[760px]"
         footer={
@@ -273,7 +313,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 className="fac-button-secondary text-[11px]"
-                onClick={remove}
+                onClick={() => setConfirmTarget(editing)}
                 disabled={saving || deleting}
               >
                 {deleting ? 'Removendo...' : 'Remover'}
@@ -313,20 +353,30 @@ export default function UsersPage() {
               <label className="fac-label">Nome</label>
               <input
                 value={form.name}
-                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                className="fac-input"
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, name: event.target.value }));
+                  setFormErrors((prev) => ({ ...prev, name: undefined }));
+                }}
+                className={`fac-input ${formErrors.name ? 'border-destructive' : ''}`}
               />
+              {formErrors.name ? (
+                <p className="mt-1 text-[12px] text-destructive">{formErrors.name}</p>
+              ) : null}
             </div>
 
             <div className="sm:col-span-2">
-              <label className="fac-label">Usuario</label>
+              <label className="fac-label">Usuário</label>
               <input
                 value={form.username}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, username: event.target.value }))
-                }
-                className="fac-input"
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, username: event.target.value }));
+                  setFormErrors((prev) => ({ ...prev, username: undefined }));
+                }}
+                className={`fac-input ${formErrors.username ? 'border-destructive' : ''}`}
               />
+              {formErrors.username ? (
+                <p className="mt-1 text-[12px] text-destructive">{formErrors.username}</p>
+              ) : null}
             </div>
 
             <div className="sm:col-span-2">
@@ -334,12 +384,16 @@ export default function UsersPage() {
               <input
                 type="password"
                 value={form.password}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, password: event.target.value }))
-                }
-                className="fac-input"
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, password: event.target.value }));
+                  setFormErrors((prev) => ({ ...prev, password: undefined }));
+                }}
+                className={`fac-input ${formErrors.password ? 'border-destructive' : ''}`}
                 placeholder={editing ? 'Nova senha (opcional)' : ''}
               />
+              {formErrors.password ? (
+                <p className="mt-1 text-[12px] text-destructive">{formErrors.password}</p>
+              ) : null}
             </div>
 
             <div className="sm:col-span-2">
@@ -387,7 +441,22 @@ export default function UsersPage() {
           </div>
         </section>
       </AdminModal>
+
+      <ConfirmModal
+        open={Boolean(confirmTarget)}
+        title="Remover usuário"
+        description={
+          confirmTarget
+            ? `Confirma a remoção permanente do usuário "${confirmTarget.name}"?`
+            : 'Confirma a remoção permanente deste usuário?'
+        }
+        confirmLabel="Remover usuário"
+        loading={deleting}
+        onConfirm={() => {
+          void remove();
+        }}
+        onClose={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
-

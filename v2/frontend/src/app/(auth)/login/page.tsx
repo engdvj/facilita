@@ -23,7 +23,7 @@ export default function LoginPage() {
       const response = await api.post('/auth/login', { username, password });
       setAuth(response.data.user, response.data.accessToken);
       router.push('/');
-    } catch (err) {
+    } catch {
       // Notifications handled in the API interceptor.
     } finally {
       setLoading(false);

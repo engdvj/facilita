@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import { UploadedImage, ImageFilters } from '@/types';
 
 interface ImageGalleryResponse {
@@ -30,7 +31,7 @@ export function useImageGallery(
     setError(null);
 
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, number | string | string[] | undefined> = {
         page,
         limit,
         ...filters,
@@ -39,13 +40,13 @@ export function useImageGallery(
       const response = await api.get<ImageGalleryResponse>('/uploads/images', {
         params,
         skipNotify: true,
-      } as any);
+      });
 
       setImages(response.data.data);
       setTotal(response.data.total);
       setTotalPages(response.data.totalPages);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar imagens');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Erro ao carregar imagens.'));
       setImages([]);
     } finally {
       setLoading(false);
@@ -57,9 +58,12 @@ export function useImageGallery(
   }, [loadImages]);
 
   const refresh = useCallback(async () => {
-    setPage(1);
+    if (page !== 1) {
+      setPage(1);
+      return;
+    }
     await loadImages();
-  }, [loadImages]);
+  }, [loadImages, page]);
 
   const nextPage = useCallback(() => {
     if (page < totalPages) {

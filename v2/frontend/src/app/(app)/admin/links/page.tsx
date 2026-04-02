@@ -1,12 +1,17 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import ConfirmModal from '@/components/admin/confirm-modal';
+import ContentPreviewCard from '@/components/admin/content-preview-card';
 import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
-import api, { serverURL } from '@/lib/api';
+import ContentCoverImage from '@/components/content-cover-image';
+import useAdminContentCatalog from '@/hooks/use-admin-content-catalog';
+import api from '@/lib/api';
+import { normalizeImagePosition, parseImagePosition } from '@/lib/image';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
-import { Category, ContentVisibility, Link } from '@/types';
+import { ContentVisibility, Link } from '@/types';
 
 const emptyForm = {
   title: '',
@@ -23,32 +28,13 @@ const emptyForm = {
 };
 
 type FormTab = 'BASIC' | 'CATEGORY' | 'VISUAL';
-
-function normalizeImagePosition(position?: string | null) {
-  if (!position) return '50% 50%';
-  const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
-  const format = (value: string) => (value.includes('%') ? value : `${value}%`);
-  return `${format(x)} ${format(y)}`;
-}
-
-function resolveImageUrl(path?: string | null) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
-}
+type LinkFormErrors = {
+  title?: string;
+  url?: string;
+};
 
 export default function LinksPage() {
   const user = useAuthStore((state) => state.user);
-
-  const [links, setLinks] = useState<Link[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const globalSearch = useUiStore((state) => state.globalSearch);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -58,38 +44,28 @@ export default function LinksPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [formTab, setFormTab] = useState<FormTab>('BASIC');
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<LinkFormErrors>({});
+  const [confirmTarget, setConfirmTarget] = useState<Link | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
+  const userId = user?.id;
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [linksRes, categoriesRes] = await Promise.all([
-        api.get(isSuperadmin ? '/links/admin/list' : '/links', {
-          params: { includeInactive: true },
-        }),
-        api.get('/categories', { params: { includeInactive: true } }),
-      ]);
-
-      const rawLinks = Array.isArray(linksRes.data) ? linksRes.data : [];
-      const scopedLinks = isSuperadmin
-        ? rawLinks
-        : rawLinks.filter((item: Link) => item.ownerId === user?.id);
-
-      setLinks(scopedLinks);
-      setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar links.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, [isSuperadmin, user?.id]);
+  const {
+    items: links,
+    categories,
+    loading,
+    error,
+    load,
+    toggleStatus,
+    removeItem,
+  } = useAdminContentCatalog<Link>({
+    adminListPath: '/links/admin/list',
+    resourcePath: '/links',
+    errorMessage: 'Não foi possível carregar links.',
+    isSuperadmin,
+    userId,
+  });
 
   const filtered = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
@@ -103,22 +79,12 @@ export default function LinksPage() {
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [links, globalSearch, statusFilter]);
 
-  const imagePosition = useMemo(() => {
-    const [xRaw = '50%', yRaw = '50%'] = form.imagePosition.split(' ');
-    const parse = (value: string) => {
-      const numeric = Number.parseInt(value, 10);
-      if (Number.isNaN(numeric)) return 50;
-      return Math.max(0, Math.min(100, numeric));
-    };
-    return {
-      x: parse(xRaw),
-      y: parse(yRaw),
-    };
-  }, [form.imagePosition]);
+  const imagePosition = useMemo(() => parseImagePosition(form.imagePosition), [form.imagePosition]);
 
   const openCreate = () => {
     setEditing(null);
     setForm({ ...emptyForm, visibility: 'PRIVATE' });
+    setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
@@ -138,12 +104,28 @@ export default function LinksPage() {
       publicToken: link.publicToken || '',
       order: link.order,
     });
+    setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
 
+  const validateForm = () => {
+    const nextErrors: LinkFormErrors = {};
+
+    if (!form.title.trim()) {
+      nextErrors.title = 'Título é obrigatório.';
+    }
+
+    if (!form.url.trim()) {
+      nextErrors.url = 'URL é obrigatória.';
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const save = async () => {
-    if (!form.title.trim() || !form.url.trim()) return;
+    if (!validateForm()) return;
 
     setSaving(true);
     try {
@@ -177,17 +159,23 @@ export default function LinksPage() {
     }
   };
 
-  const toggleStatus = async (link: Link) => {
-    await api.patch(`/links/${link.id}`, {
-      status: link.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    });
-    await load();
-  };
+  const remove = async () => {
+    if (!confirmTarget) return;
 
-  const remove = async (link: Link) => {
-    if (!window.confirm(`Remover link ${link.title}?`)) return;
-    await api.delete(`/links/${link.id}`);
-    await load();
+    setRemoving(true);
+    try {
+      await removeItem(confirmTarget.id);
+
+      if (editing?.id === confirmTarget.id) {
+        setModalOpen(false);
+        setEditing(null);
+      }
+    } catch {
+      // O interceptor global já notifica o erro.
+    } finally {
+      setRemoving(false);
+      setConfirmTarget(null);
+    }
   };
 
   return (
@@ -211,7 +199,7 @@ export default function LinksPage() {
             <option value="INACTIVE">Inativos</option>
           </select>
 
-          <button type="button" className="fac-filter-button">
+          <button type="button" className="fac-filter-button" disabled title="Em breve">
             Filtros
           </button>
 
@@ -229,56 +217,62 @@ export default function LinksPage() {
 
         <div className="fac-panel-body">
           {loading ? (
-            <p className="text-[14px] text-muted-foreground">Carregando links...</p>
+            <div className="fac-loading-state">Carregando links...</div>
           ) : error ? (
-            <p className="text-[14px] text-red-700">{error}</p>
+            <div className="fac-error-state">{error}</div>
           ) : filtered.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">Nenhum link encontrado.</p>
+            <div className="fac-empty-state">Nenhum link encontrado.</div>
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((link) => (
                 <article key={link.id} className={`fac-card w-[220px] max-w-full ${link.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
-                  <button type="button" className="relative aspect-square w-full overflow-hidden bg-muted text-left" onClick={() => openEdit(link)}>
+                  <button
+                    type="button"
+                    className="relative aspect-square w-full overflow-hidden bg-muted text-left"
+                    onClick={() => openEdit(link)}
+                  >
                     <div className="absolute inset-0">
-                      {link.imageUrl ? (
-                        <img
-                          src={resolveImageUrl(link.imageUrl)}
-                          alt={link.title}
-                          className="h-full w-full object-cover"
-                          style={{
-                            objectPosition: normalizeImagePosition(link.imagePosition),
-                            transform: `scale(${link.imageScale || 1})`,
-                            transformOrigin: normalizeImagePosition(link.imagePosition),
-                          }}
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-b from-black/15 to-black/5" />
-                      )}
+                      <ContentCoverImage
+                        src={link.imageUrl}
+                        alt={link.title}
+                        position={link.imagePosition}
+                        scale={link.imageScale}
+                        width={440}
+                        height={440}
+                      />
                     </div>
 
                     <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[12px] font-semibold text-foreground">
                       {link.category?.name || 'Sem categoria'}
                     </span>
+                  </button>
 
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                      <div className="pr-2">
+                  <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 pr-2 text-left"
+                      onClick={() => openEdit(link)}
+                    >
+                      <div>
                         <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{link.title}</p>
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Link</p>
                       </div>
+                    </button>
 
-                      <span
-                        className="fac-toggle shrink-0"
-                        data-state={link.status === 'ACTIVE' ? 'on' : 'off'}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void toggleStatus(link);
-                        }}
-                      >
-                        <span className="fac-toggle-dot" />
-                      </span>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={link.status === 'ACTIVE'}
+                      aria-label={link.status === 'ACTIVE' ? `Desativar ${link.title}` : `Ativar ${link.title}`}
+                      className="fac-toggle shrink-0"
+                      data-state={link.status === 'ACTIVE' ? 'on' : 'off'}
+                      onClick={() => {
+                        void toggleStatus(link);
+                      }}
+                    >
+                      <span className="fac-toggle-dot" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -300,10 +294,10 @@ export default function LinksPage() {
                 className="fac-button-secondary text-[11px]"
                 onClick={() => {
                   if (editing) {
-                    void remove(editing);
+                    setConfirmTarget(editing);
                   }
                 }}
-                disabled={saving}
+                disabled={saving || removing}
               >
                 Remover
               </button>
@@ -312,7 +306,7 @@ export default function LinksPage() {
               type="button"
               className="fac-button-secondary text-[11px]"
               onClick={() => setModalOpen(false)}
-              disabled={saving}
+              disabled={saving || removing}
             >
               Cancelar
             </button>
@@ -320,7 +314,7 @@ export default function LinksPage() {
               type="button"
               className="fac-button-primary text-[11px]"
               onClick={save}
-              disabled={saving || !form.title.trim() || !form.url.trim()}
+              disabled={saving || removing || !form.title.trim() || !form.url.trim()}
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
@@ -334,7 +328,7 @@ export default function LinksPage() {
             data-active={formTab === 'BASIC' ? 'true' : 'false'}
             onClick={() => setFormTab('BASIC')}
           >
-            Basico
+            Básico
           </button>
           <button
             type="button"
@@ -342,7 +336,7 @@ export default function LinksPage() {
             data-active={formTab === 'CATEGORY' ? 'true' : 'false'}
             onClick={() => setFormTab('CATEGORY')}
           >
-            Categorizacao
+            Categorização
           </button>
           <button
             type="button"
@@ -361,19 +355,31 @@ export default function LinksPage() {
                 <label className="fac-label">Titulo</label>
                 <input
                   value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                  className="fac-input"
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, title: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, title: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.title ? 'border-destructive' : ''}`}
                 />
+                {formErrors.title ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.title}</p>
+                ) : null}
               </div>
 
               <div className="sm:col-span-2">
                 <label className="fac-label">Url</label>
                 <input
                   value={form.url}
-                  onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
-                  className="fac-input"
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, url: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, url: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.url ? 'border-destructive' : ''}`}
                   placeholder="https://exemplo.com"
                 />
+                {formErrors.url ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.url}</p>
+                ) : null}
               </div>
 
               <div className="sm:col-span-2">
@@ -529,37 +535,38 @@ export default function LinksPage() {
 
             <section className="fac-form-card">
               <p className="fac-form-title">Previa do card</p>
-              <article className="fac-card w-full max-w-[280px]">
-                <div className="aspect-square overflow-hidden bg-muted">
-                  {form.imageUrl ? (
-                    <img
-                      src={resolveImageUrl(form.imageUrl)}
-                      alt={form.title || 'Nome do link'}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: form.imagePosition,
-                        transform: `scale(${form.imageScale})`,
-                        transformOrigin: form.imagePosition,
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-b from-black/15 to-black/5" />
-                  )}
-                </div>
-                <div className="fac-card-content">
-                  <p className="line-clamp-1 text-[15px] font-semibold text-foreground">
-                    {form.title || 'Nome do link'}
-                  </p>
+              <ContentPreviewCard
+                imageUrl={form.imageUrl}
+                imagePosition={form.imagePosition}
+                imageScale={form.imageScale}
+                title={form.title}
+                fallbackTitle="Nome do link"
+                footer={
                   <span className="rounded-lg border border-border bg-white/80 px-3 py-1 text-[13px] uppercase tracking-[0.12em]">
                     LINK
                   </span>
-                </div>
-              </article>
+                }
+              />
             </section>
           </div>
         ) : null}
       </AdminModal>
+
+      <ConfirmModal
+        open={Boolean(confirmTarget)}
+        title="Remover link"
+        description={
+          confirmTarget
+            ? `Confirma a remoção permanente do link "${confirmTarget.title}"?`
+            : 'Confirma a remoção permanente deste link?'
+        }
+        confirmLabel="Remover link"
+        loading={removing}
+        onConfirm={() => {
+          void remove();
+        }}
+        onClose={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
-

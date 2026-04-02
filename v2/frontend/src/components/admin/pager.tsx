@@ -16,7 +16,7 @@ export default function AdminPager({
   return (
     <div className="motion-fade-up flex flex-col gap-3 border-t border-border/60 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
       <span>
-        Pagina {page} de {totalPages}
+        Página {page} de {totalPages}
       </span>
       <div className="flex w-full gap-2 sm:w-auto">
         <button
@@ -33,7 +33,7 @@ export default function AdminPager({
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
         >
-          Avancar
+          Avançar
         </button>
       </div>
     </div>

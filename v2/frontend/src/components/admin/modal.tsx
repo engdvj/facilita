@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 type AdminModalProps = {
@@ -22,6 +22,8 @@ export default function AdminModal({
   footer,
   panelClassName,
 }: AdminModalProps) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
@@ -46,11 +48,11 @@ export default function AdminModal({
         className={`fac-modal-panel ${panelClassName ?? ''}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="admin-modal-title"
+        aria-labelledby={titleId}
       >
         <div className="fac-modal-head">
           <div>
-            <p id="admin-modal-title" className="fac-modal-title">
+            <p id={titleId} className="fac-modal-title">
               {title}
             </p>
             {description ? (

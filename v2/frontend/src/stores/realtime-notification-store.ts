@@ -53,18 +53,10 @@ export const useRealtimeNotificationStore = create<NotificationState>(
       set({ notifications }),
 
     addNotification: (notification) =>
-      set((state) => {
-        console.log('[Store] Adding notification:', notification);
-        console.log('[Store] Current notifications count:', state.notifications.length);
-        console.log('[Store] Current unreadCount:', state.unreadCount);
-        const newState = {
-          notifications: [notification, ...state.notifications],
-          unreadCount: state.unreadCount + 1,
-        };
-        console.log('[Store] New unreadCount:', newState.unreadCount);
-        console.log('[Store] New notifications count:', newState.notifications.length);
-        return newState;
-      }),
+      set((state) => ({
+        notifications: [notification, ...state.notifications],
+        unreadCount: state.unreadCount + 1,
+      })),
 
     markAsRead: (id) =>
       set((state) => {

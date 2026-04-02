@@ -1,13 +1,18 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import ConfirmModal from '@/components/admin/confirm-modal';
+import ContentPreviewCard from '@/components/admin/content-preview-card';
 import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
+import ContentCoverImage from '@/components/content-cover-image';
+import useAdminContentCatalog from '@/hooks/use-admin-content-catalog';
 import { formatBytes } from '@/lib/format';
-import api, { serverURL } from '@/lib/api';
+import api from '@/lib/api';
+import { normalizeImagePosition, parseImagePosition } from '@/lib/image';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
-import { Category, ContentVisibility, UploadedSchedule } from '@/types';
+import { ContentVisibility, UploadedSchedule } from '@/types';
 
 const emptyForm = {
   title: '',
@@ -23,32 +28,13 @@ const emptyForm = {
 };
 
 type FormTab = 'BASIC' | 'CATEGORY' | 'VISUAL';
-
-function normalizeImagePosition(position?: string | null) {
-  if (!position) return '50% 50%';
-  const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
-  const format = (value: string) => (value.includes('%') ? value : `${value}%`);
-  return `${format(x)} ${format(y)}`;
-}
-
-function resolveFileUrl(path?: string) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
-}
+type ScheduleFormErrors = {
+  title?: string;
+  fileUrl?: string;
+};
 
 export default function SchedulesPage() {
   const user = useAuthStore((state) => state.user);
-
-  const [items, setItems] = useState<UploadedSchedule[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const globalSearch = useUiStore((state) => state.globalSearch);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -59,38 +45,28 @@ export default function SchedulesPage() {
   const [formTab, setFormTab] = useState<FormTab>('BASIC');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [formErrors, setFormErrors] = useState<ScheduleFormErrors>({});
+  const [confirmTarget, setConfirmTarget] = useState<UploadedSchedule | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
+  const userId = user?.id;
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [itemsRes, categoriesRes] = await Promise.all([
-        api.get(isSuperadmin ? '/schedules/admin/list' : '/schedules', {
-          params: { includeInactive: true },
-        }),
-        api.get('/categories', { params: { includeInactive: true } }),
-      ]);
-
-      const raw = Array.isArray(itemsRes.data) ? itemsRes.data : [];
-      const scoped = isSuperadmin
-        ? raw
-        : raw.filter((item: UploadedSchedule) => item.ownerId === user?.id);
-
-      setItems(scoped);
-      setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar documentos.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, [isSuperadmin, user?.id]);
+  const {
+    items,
+    categories,
+    loading,
+    error,
+    load,
+    toggleStatus,
+    removeItem,
+  } = useAdminContentCatalog<UploadedSchedule>({
+    adminListPath: '/schedules/admin/list',
+    resourcePath: '/schedules',
+    errorMessage: 'Não foi possível carregar documentos.',
+    isSuperadmin,
+    userId,
+  });
 
   const filtered = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
@@ -104,22 +80,12 @@ export default function SchedulesPage() {
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [items, globalSearch, statusFilter]);
 
-  const imagePosition = useMemo(() => {
-    const [xRaw = '50%', yRaw = '50%'] = form.imagePosition.split(' ');
-    const parse = (value: string) => {
-      const numeric = Number.parseInt(value, 10);
-      if (Number.isNaN(numeric)) return 50;
-      return Math.max(0, Math.min(100, numeric));
-    };
-    return {
-      x: parse(xRaw),
-      y: parse(yRaw),
-    };
-  }, [form.imagePosition]);
+  const imagePosition = useMemo(() => parseImagePosition(form.imagePosition), [form.imagePosition]);
 
   const openCreate = () => {
     setEditing(null);
     setForm({ ...emptyForm, visibility: 'PRIVATE' });
+    setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
@@ -138,6 +104,7 @@ export default function SchedulesPage() {
       visibility: item.visibility,
       publicToken: item.publicToken || '',
     });
+    setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
@@ -159,13 +126,29 @@ export default function SchedulesPage() {
         fileName: response.data.originalName,
         fileSize: response.data.size,
       }));
+      setFormErrors((prev) => ({ ...prev, fileUrl: undefined }));
     } finally {
       setUploading(false);
     }
   };
 
+  const validateForm = () => {
+    const nextErrors: ScheduleFormErrors = {};
+
+    if (!form.title.trim()) {
+      nextErrors.title = 'Título é obrigatório.';
+    }
+
+    if (!form.fileUrl) {
+      nextErrors.fileUrl = 'Arquivo é obrigatório.';
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const save = async () => {
-    if (!form.title.trim() || !form.fileUrl) return;
+    if (!validateForm()) return;
 
     setSaving(true);
     try {
@@ -198,17 +181,23 @@ export default function SchedulesPage() {
     }
   };
 
-  const toggleStatus = async (item: UploadedSchedule) => {
-    await api.patch(`/schedules/${item.id}`, {
-      status: item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    });
-    await load();
-  };
+  const remove = async () => {
+    if (!confirmTarget) return;
 
-  const remove = async (item: UploadedSchedule) => {
-    if (!window.confirm(`Remover documento ${item.title}?`)) return;
-    await api.delete(`/schedules/${item.id}`);
-    await load();
+    setRemoving(true);
+    try {
+      await removeItem(confirmTarget.id);
+
+      if (editing?.id === confirmTarget.id) {
+        setModalOpen(false);
+        setEditing(null);
+      }
+    } catch {
+      // O interceptor global já notifica o erro.
+    } finally {
+      setRemoving(false);
+      setConfirmTarget(null);
+    }
   };
 
   return (
@@ -232,7 +221,7 @@ export default function SchedulesPage() {
             <option value="INACTIVE">Inativos</option>
           </select>
 
-          <button type="button" className="fac-filter-button">
+          <button type="button" className="fac-filter-button" disabled title="Em breve">
             Filtros
           </button>
 
@@ -250,58 +239,64 @@ export default function SchedulesPage() {
 
         <div className="fac-panel-body">
           {loading ? (
-            <p className="text-[14px] text-muted-foreground">Carregando documentos...</p>
+            <div className="fac-loading-state">Carregando documentos...</div>
           ) : error ? (
-            <p className="text-[14px] text-red-700">{error}</p>
+            <div className="fac-error-state">{error}</div>
           ) : filtered.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">Nenhum documento encontrado.</p>
+            <div className="fac-empty-state">Nenhum documento encontrado.</div>
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((item) => (
                 <article key={item.id} className={`fac-card w-[220px] max-w-full ${item.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
-                  <button type="button" className="relative aspect-square w-full overflow-hidden bg-muted text-left" onClick={() => openEdit(item)}>
+                  <button
+                    type="button"
+                    className="relative aspect-square w-full overflow-hidden bg-muted text-left"
+                    onClick={() => openEdit(item)}
+                  >
                     <div className="absolute inset-0">
-                      {item.imageUrl ? (
-                        <img
-                          src={resolveFileUrl(item.imageUrl)}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                          style={{
-                            objectPosition: normalizeImagePosition(item.imagePosition),
-                            transform: `scale(${item.imageScale || 1})`,
-                            transformOrigin: normalizeImagePosition(item.imagePosition),
-                          }}
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-b from-black/15 to-black/5" />
-                      )}
+                      <ContentCoverImage
+                        src={item.imageUrl}
+                        alt={item.title}
+                        position={item.imagePosition}
+                        scale={item.imageScale}
+                        width={440}
+                        height={440}
+                      />
                     </div>
 
                     <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[12px] font-semibold text-foreground">
                       {item.category?.name || 'Sem categoria'}
                     </span>
+                  </button>
 
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                      <div className="pr-2">
+                  <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 pr-2 text-left"
+                      onClick={() => openEdit(item)}
+                    >
+                      <div>
                         <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{item.title}</p>
                         <p className="line-clamp-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                           {item.fileName}
                         </p>
                       </div>
+                    </button>
 
-                      <span
-                        className="fac-toggle shrink-0"
-                        data-state={item.status === 'ACTIVE' ? 'on' : 'off'}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void toggleStatus(item);
-                        }}
-                      >
-                        <span className="fac-toggle-dot" />
-                      </span>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={item.status === 'ACTIVE'}
+                      aria-label={item.status === 'ACTIVE' ? `Desativar ${item.title}` : `Ativar ${item.title}`}
+                      className="fac-toggle shrink-0"
+                      data-state={item.status === 'ACTIVE' ? 'on' : 'off'}
+                      onClick={() => {
+                        void toggleStatus(item);
+                      }}
+                    >
+                      <span className="fac-toggle-dot" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -323,10 +318,10 @@ export default function SchedulesPage() {
                 className="fac-button-secondary text-[11px]"
                 onClick={() => {
                   if (editing) {
-                    void remove(editing);
+                    setConfirmTarget(editing);
                   }
                 }}
-                disabled={saving}
+                disabled={saving || removing}
               >
                 Remover
               </button>
@@ -335,7 +330,7 @@ export default function SchedulesPage() {
               type="button"
               className="fac-button-secondary text-[11px]"
               onClick={() => setModalOpen(false)}
-              disabled={saving}
+              disabled={saving || removing}
             >
               Cancelar
             </button>
@@ -343,7 +338,7 @@ export default function SchedulesPage() {
               type="button"
               className="fac-button-primary text-[11px]"
               onClick={save}
-              disabled={saving || !form.title.trim() || !form.fileUrl}
+              disabled={saving || removing || !form.title.trim() || !form.fileUrl}
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
@@ -357,7 +352,7 @@ export default function SchedulesPage() {
             data-active={formTab === 'BASIC' ? 'true' : 'false'}
             onClick={() => setFormTab('BASIC')}
           >
-            Basico
+            Básico
           </button>
           <button
             type="button"
@@ -365,7 +360,7 @@ export default function SchedulesPage() {
             data-active={formTab === 'CATEGORY' ? 'true' : 'false'}
             onClick={() => setFormTab('CATEGORY')}
           >
-            Categorizacao
+            Categorização
           </button>
           <button
             type="button"
@@ -384,9 +379,15 @@ export default function SchedulesPage() {
                 <label className="fac-label">Titulo</label>
                 <input
                   value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                  className="fac-input"
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, title: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, title: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.title ? 'border-destructive' : ''}`}
                 />
+                {formErrors.title ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.title}</p>
+                ) : null}
               </div>
 
               <div className="sm:col-span-2">
@@ -399,9 +400,12 @@ export default function SchedulesPage() {
                       void uploadDocument(file);
                     }
                   }}
-                  className="fac-input !h-auto !px-3 !py-2"
+                  className={`fac-input !h-auto !px-3 !py-2 ${formErrors.fileUrl ? 'border-destructive' : ''}`}
                 />
                 <p className="mt-1 text-[12px] text-muted-foreground">PDF, DOC, XLS/XLSX, PPT, TXT ou MD</p>
+                {formErrors.fileUrl ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.fileUrl}</p>
+                ) : null}
                 {uploading ? <p className="mt-1 text-[12px] text-muted-foreground">Enviando arquivo...</p> : null}
                 {form.fileName ? (
                   <p className="mt-1 text-[12px] text-muted-foreground">
@@ -537,37 +541,38 @@ export default function SchedulesPage() {
 
             <section className="fac-form-card">
               <p className="fac-form-title">Previa do card</p>
-              <article className="fac-card w-full max-w-[280px]">
-                <div className="aspect-square overflow-hidden bg-muted">
-                  {form.imageUrl ? (
-                    <img
-                      src={resolveFileUrl(form.imageUrl)}
-                      alt={form.title || 'Documento'}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: form.imagePosition,
-                        transform: `scale(${form.imageScale})`,
-                        transformOrigin: form.imagePosition,
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-b from-black/15 to-black/5" />
-                  )}
-                </div>
-                <div className="fac-card-content">
-                  <p className="line-clamp-1 text-[15px] font-semibold text-foreground">
-                    {form.title || 'Nome do documento'}
-                  </p>
+              <ContentPreviewCard
+                imageUrl={form.imageUrl}
+                imagePosition={form.imagePosition}
+                imageScale={form.imageScale}
+                title={form.title}
+                fallbackTitle="Nome do documento"
+                footer={
                   <span className="rounded-lg border border-border bg-white/80 px-3 py-1 text-[13px] uppercase tracking-[0.12em]">
                     DOC
                   </span>
-                </div>
-              </article>
+                }
+              />
             </section>
           </div>
         ) : null}
       </AdminModal>
+
+      <ConfirmModal
+        open={Boolean(confirmTarget)}
+        title="Remover documento"
+        description={
+          confirmTarget
+            ? `Confirma a remoção permanente do documento "${confirmTarget.title}"?`
+            : 'Confirma a remoção permanente deste documento?'
+        }
+        confirmLabel="Remover documento"
+        loading={removing}
+        onConfirm={() => {
+          void remove();
+        }}
+        onClose={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
-

@@ -1,12 +1,17 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import ConfirmModal from '@/components/admin/confirm-modal';
+import ContentPreviewCard from '@/components/admin/content-preview-card';
 import ImageSelector from '@/components/admin/image-selector';
 import AdminModal from '@/components/admin/modal';
-import api, { serverURL } from '@/lib/api';
+import ContentCoverImage from '@/components/content-cover-image';
+import useAdminContentCatalog from '@/hooks/use-admin-content-catalog';
+import api from '@/lib/api';
+import { normalizeImagePosition, parseImagePosition } from '@/lib/image';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
-import { Category, ContentVisibility, Note } from '@/types';
+import { ContentVisibility, Note } from '@/types';
 
 const emptyForm = {
   title: '',
@@ -21,32 +26,13 @@ const emptyForm = {
 };
 
 type FormTab = 'BASIC' | 'CATEGORY' | 'VISUAL';
-
-function normalizeImagePosition(position?: string | null) {
-  if (!position) return '50% 50%';
-  const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
-  const format = (value: string) => (value.includes('%') ? value : `${value}%`);
-  return `${format(x)} ${format(y)}`;
-}
-
-function resolveFileUrl(path?: string) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
-}
+type NoteFormErrors = {
+  title?: string;
+  content?: string;
+};
 
 export default function NotesPage() {
   const user = useAuthStore((state) => state.user);
-
-  const [items, setItems] = useState<Note[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const globalSearch = useUiStore((state) => state.globalSearch);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -56,38 +42,30 @@ export default function NotesPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [formTab, setFormTab] = useState<FormTab>('BASIC');
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<NoteFormErrors>({});
+  const [confirmTarget, setConfirmTarget] = useState<Note | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const [viewing, setViewing] = useState<Note | null>(null);
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
+  const userId = user?.id;
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [itemsRes, categoriesRes] = await Promise.all([
-        api.get(isSuperadmin ? '/notes/admin/list' : '/notes', {
-          params: { includeInactive: true },
-        }),
-        api.get('/categories', { params: { includeInactive: true } }),
-      ]);
-
-      const raw = Array.isArray(itemsRes.data) ? itemsRes.data : [];
-      const scoped = isSuperadmin ? raw : raw.filter((item: Note) => item.ownerId === user?.id);
-
-      setItems(scoped);
-      setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar notas.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, [isSuperadmin, user?.id]);
+  const {
+    items,
+    categories,
+    loading,
+    error,
+    load,
+    toggleStatus,
+    removeItem,
+  } = useAdminContentCatalog<Note>({
+    adminListPath: '/notes/admin/list',
+    resourcePath: '/notes',
+    errorMessage: 'Não foi possível carregar notas.',
+    isSuperadmin,
+    userId,
+  });
 
   const filtered = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
@@ -101,22 +79,12 @@ export default function NotesPage() {
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [items, globalSearch, statusFilter]);
 
-  const imagePosition = useMemo(() => {
-    const [xRaw = '50%', yRaw = '50%'] = form.imagePosition.split(' ');
-    const parse = (value: string) => {
-      const numeric = Number.parseInt(value, 10);
-      if (Number.isNaN(numeric)) return 50;
-      return Math.max(0, Math.min(100, numeric));
-    };
-    return {
-      x: parse(xRaw),
-      y: parse(yRaw),
-    };
-  }, [form.imagePosition]);
+  const imagePosition = useMemo(() => parseImagePosition(form.imagePosition), [form.imagePosition]);
 
   const openCreate = () => {
     setEditing(null);
     setForm({ ...emptyForm, visibility: 'PRIVATE' });
+    setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
@@ -134,12 +102,28 @@ export default function NotesPage() {
       visibility: item.visibility,
       publicToken: item.publicToken || '',
     });
+    setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
 
+  const validateForm = () => {
+    const nextErrors: NoteFormErrors = {};
+
+    if (!form.title.trim()) {
+      nextErrors.title = 'Título é obrigatório.';
+    }
+
+    if (!form.content.trim()) {
+      nextErrors.content = 'Conteúdo é obrigatório.';
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const save = async () => {
-    if (!form.title.trim() || !form.content.trim()) return;
+    if (!validateForm()) return;
 
     setSaving(true);
     try {
@@ -171,17 +155,23 @@ export default function NotesPage() {
     }
   };
 
-  const toggleStatus = async (item: Note) => {
-    await api.patch(`/notes/${item.id}`, {
-      status: item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    });
-    await load();
-  };
+  const remove = async () => {
+    if (!confirmTarget) return;
 
-  const remove = async (item: Note) => {
-    if (!window.confirm(`Remover nota ${item.title}?`)) return;
-    await api.delete(`/notes/${item.id}`);
-    await load();
+    setRemoving(true);
+    try {
+      await removeItem(confirmTarget.id);
+
+      if (editing?.id === confirmTarget.id) {
+        setModalOpen(false);
+        setEditing(null);
+      }
+    } catch {
+      // O interceptor global já notifica o erro.
+    } finally {
+      setRemoving(false);
+      setConfirmTarget(null);
+    }
   };
 
   return (
@@ -205,7 +195,7 @@ export default function NotesPage() {
             <option value="INACTIVE">Inativas</option>
           </select>
 
-          <button type="button" className="fac-filter-button">
+          <button type="button" className="fac-filter-button" disabled title="Em breve">
             Filtros
           </button>
 
@@ -223,56 +213,62 @@ export default function NotesPage() {
 
         <div className="fac-panel-body">
           {loading ? (
-            <p className="text-[14px] text-muted-foreground">Carregando notas...</p>
+            <div className="fac-loading-state">Carregando notas...</div>
           ) : error ? (
-            <p className="text-[14px] text-red-700">{error}</p>
+            <div className="fac-error-state">{error}</div>
           ) : filtered.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">Nenhuma nota encontrada.</p>
+            <div className="fac-empty-state">Nenhuma nota encontrada.</div>
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((item) => (
                 <article key={item.id} className={`fac-card w-[220px] max-w-full ${item.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
-                  <button type="button" className="relative aspect-square w-full overflow-hidden bg-muted text-left" onClick={() => openEdit(item)}>
+                  <button
+                    type="button"
+                    className="relative aspect-square w-full overflow-hidden bg-muted text-left"
+                    onClick={() => openEdit(item)}
+                  >
                     <div className="absolute inset-0">
-                      {item.imageUrl ? (
-                        <img
-                          src={resolveFileUrl(item.imageUrl)}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                          style={{
-                            objectPosition: normalizeImagePosition(item.imagePosition),
-                            transform: `scale(${item.imageScale || 1})`,
-                            transformOrigin: normalizeImagePosition(item.imagePosition),
-                          }}
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-b from-black/15 to-black/5" />
-                      )}
+                      <ContentCoverImage
+                        src={item.imageUrl}
+                        alt={item.title}
+                        position={item.imagePosition}
+                        scale={item.imageScale}
+                        width={440}
+                        height={440}
+                      />
                     </div>
 
                     <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[12px] font-semibold text-foreground">
                       {item.category?.name || 'Sem categoria'}
                     </span>
+                  </button>
 
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                  <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 pr-2 text-left"
+                      onClick={() => openEdit(item)}
+                    >
                       <div className="pr-2">
                         <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{item.title}</p>
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Nota</p>
                       </div>
+                    </button>
 
-                      <span
-                        className="fac-toggle shrink-0"
-                        data-state={item.status === 'ACTIVE' ? 'on' : 'off'}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void toggleStatus(item);
-                        }}
-                      >
-                        <span className="fac-toggle-dot" />
-                      </span>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={item.status === 'ACTIVE'}
+                      aria-label={item.status === 'ACTIVE' ? `Desativar ${item.title}` : `Ativar ${item.title}`}
+                      className="fac-toggle shrink-0"
+                      data-state={item.status === 'ACTIVE' ? 'on' : 'off'}
+                      onClick={() => {
+                        void toggleStatus(item);
+                      }}
+                    >
+                      <span className="fac-toggle-dot" />
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -294,10 +290,10 @@ export default function NotesPage() {
                 className="fac-button-secondary text-[11px]"
                 onClick={() => {
                   if (editing) {
-                    void remove(editing);
+                    setConfirmTarget(editing);
                   }
                 }}
-                disabled={saving}
+                disabled={saving || removing}
               >
                 Remover
               </button>
@@ -306,7 +302,7 @@ export default function NotesPage() {
               type="button"
               className="fac-button-secondary text-[11px]"
               onClick={() => setModalOpen(false)}
-              disabled={saving}
+              disabled={saving || removing}
             >
               Cancelar
             </button>
@@ -314,7 +310,7 @@ export default function NotesPage() {
               type="button"
               className="fac-button-primary text-[11px]"
               onClick={save}
-              disabled={saving || !form.title.trim() || !form.content.trim()}
+              disabled={saving || removing || !form.title.trim() || !form.content.trim()}
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
@@ -328,7 +324,7 @@ export default function NotesPage() {
             data-active={formTab === 'BASIC' ? 'true' : 'false'}
             onClick={() => setFormTab('BASIC')}
           >
-            Basico
+            Básico
           </button>
           <button
             type="button"
@@ -336,7 +332,7 @@ export default function NotesPage() {
             data-active={formTab === 'CATEGORY' ? 'true' : 'false'}
             onClick={() => setFormTab('CATEGORY')}
           >
-            Categorizacao
+            Categorização
           </button>
           <button
             type="button"
@@ -355,19 +351,31 @@ export default function NotesPage() {
                 <label className="fac-label">Titulo</label>
                 <input
                   value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                  className="fac-input"
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, title: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, title: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.title ? 'border-destructive' : ''}`}
                 />
+                {formErrors.title ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.title}</p>
+                ) : null}
               </div>
 
               <div className="sm:col-span-2">
                 <label className="fac-label">Conteudo</label>
                 <textarea
                   value={form.content}
-                  onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, content: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, content: undefined }));
+                  }}
                   rows={6}
-                  className="fac-textarea"
+                  className={`fac-textarea ${formErrors.content ? 'border-destructive' : ''}`}
                 />
+                {formErrors.content ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.content}</p>
+                ) : null}
               </div>
 
               <div>
@@ -497,27 +505,13 @@ export default function NotesPage() {
 
             <section className="fac-form-card">
               <p className="fac-form-title">Previa do card</p>
-              <article className="fac-card w-full max-w-[280px]">
-                <div className="aspect-square overflow-hidden bg-muted">
-                  {form.imageUrl ? (
-                    <img
-                      src={resolveFileUrl(form.imageUrl)}
-                      alt={form.title || 'Nota'}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: form.imagePosition,
-                        transform: `scale(${form.imageScale})`,
-                        transformOrigin: form.imagePosition,
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-b from-black/15 to-black/5" />
-                  )}
-                </div>
-                <div className="fac-card-content">
-                  <p className="line-clamp-1 text-[15px] font-semibold text-foreground">
-                    {form.title || 'Nome da nota'}
-                  </p>
+              <ContentPreviewCard
+                imageUrl={form.imageUrl}
+                imagePosition={form.imagePosition}
+                imageScale={form.imageScale}
+                title={form.title}
+                fallbackTitle="Nome da nota"
+                footer={
                   <button
                     type="button"
                     className="rounded-lg border border-border bg-white/80 px-3 py-1 text-[13px] uppercase tracking-[0.12em]"
@@ -535,12 +529,28 @@ export default function NotesPage() {
                   >
                     Ver
                   </button>
-                </div>
-              </article>
+                }
+              />
             </section>
           </div>
         ) : null}
       </AdminModal>
+
+      <ConfirmModal
+        open={Boolean(confirmTarget)}
+        title="Remover nota"
+        description={
+          confirmTarget
+            ? `Confirma a remoção permanente da nota "${confirmTarget.title}"?`
+            : 'Confirma a remoção permanente desta nota?'
+        }
+        confirmLabel="Remover nota"
+        loading={removing}
+        onConfirm={() => {
+          void remove();
+        }}
+        onClose={() => setConfirmTarget(null)}
+      />
 
       <AdminModal
         open={Boolean(viewing)}
@@ -550,15 +560,14 @@ export default function NotesPage() {
       >
         {viewing?.imageUrl ? (
           <div className="mb-4 overflow-hidden rounded-xl">
-            <img
-              src={resolveFileUrl(viewing.imageUrl)}
+            <ContentCoverImage
+              src={viewing.imageUrl}
               alt={viewing.title}
+              position={viewing.imagePosition}
+              scale={viewing.imageScale}
+              width={1200}
+              height={560}
               className="h-56 w-full object-cover"
-              style={{
-                objectPosition: normalizeImagePosition(viewing.imagePosition),
-                transform: `scale(${viewing.imageScale || 1})`,
-                transformOrigin: normalizeImagePosition(viewing.imagePosition),
-              }}
             />
           </div>
         ) : null}
@@ -568,4 +577,3 @@ export default function NotesPage() {
     </div>
   );
 }
-

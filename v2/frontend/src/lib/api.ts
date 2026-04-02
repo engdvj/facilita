@@ -1,6 +1,7 @@
 'use client';
 
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import { extractApiErrorMessage } from '@/lib/error';
 import { useAuthStore } from '@/stores/auth-store';
 import { useNotificationStore } from '@/stores/notification-store';
 
@@ -16,12 +17,12 @@ const getBaseURL = (): string => {
 const getServerURL = (): string => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // If API URL is relative (e.g., /api), use current origin
+  // If API URL is relative (e.g., /api), use current origin.
   if (apiUrl?.startsWith('/')) {
     return typeof window !== 'undefined' ? window.location.origin : '';
   }
 
-  // If API URL is absolute, remove /api suffix
+  // If API URL is absolute, remove the /api suffix.
   if (apiUrl) {
     return apiUrl.replace('/api', '');
   }
@@ -31,7 +32,7 @@ const getServerURL = (): string => {
 
 const baseURL = getBaseURL();
 
-// Base URL do servidor (sem /api) para acesso a arquivos estáticos
+// Base URL do servidor (sem /api) para acesso a arquivos estáticos.
 export const serverURL = getServerURL();
 
 const api = axios.create({
@@ -56,20 +57,20 @@ const mutationMethods = new Set(['post', 'put', 'patch', 'delete']);
 const ignoredNotifyPaths = ['/auth/refresh'];
 
 const resolveEntityLabel = (url?: string) => {
-  if (!url) return 'Operacao';
+  if (!url) return 'Operação';
   const normalized = url.toLowerCase();
   if (normalized.includes('/auth/login')) return 'Login';
   if (normalized.includes('/auth/logout')) return 'Logout';
-  if (normalized.includes('/permissions')) return 'Permissoes';
+  if (normalized.includes('/permissions')) return 'Permissões';
   if (normalized.includes('/links')) return 'Link';
   if (normalized.includes('/categories')) return 'Categoria';
   if (normalized.includes('/schedules')) return 'Documento';
   if (normalized.includes('/notes')) return 'Nota';
-  if (normalized.includes('/users')) return 'Usuario';
+  if (normalized.includes('/users')) return 'Usuário';
   if (normalized.includes('/shares')) return 'Compartilhamento';
   if (normalized.includes('/uploads')) return 'Arquivo';
-  if (normalized.includes('/system-config')) return 'Configuracoes';
-  return 'Operacao';
+  if (normalized.includes('/system-config')) return 'Configurações';
+  return 'Operação';
 };
 
 const resolveAction = (method?: string, url?: string) => {
@@ -104,16 +105,6 @@ const shouldNotify = (config?: NotificationConfig) => {
   return !ignoredNotifyPaths.some((path) => url.includes(path));
 };
 
-const parseErrorMessage = (error: AxiosError) => {
-  const apiMessage = error.response?.data as { message?: unknown } | undefined;
-  if (!apiMessage?.message) return error.message;
-  if (typeof apiMessage.message === 'string') return apiMessage.message;
-  if (Array.isArray(apiMessage.message)) {
-    return apiMessage.message.join(', ');
-  }
-  return error.message;
-};
-
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) {
@@ -138,12 +129,11 @@ api.interceptors.response.use(
       const entity = resolveEntityLabel(config.url);
       const action = resolveAction(config.method, config.url);
       const message =
-        entity === 'Operacao'
-          ? 'Operacao concluida.'
+        entity === 'Operação'
+          ? 'Operação concluída.'
           : `${entity} ${action.past} com sucesso.`;
-      useNotificationStore
-        .getState()
-        .push({ variant: 'success', message });
+
+      useNotificationStore.getState().push({ variant: 'success', message });
     }
 
     return response;
@@ -166,22 +156,24 @@ api.interceptors.response.use(
         originalRequest.headers?.set('Authorization', `Bearer ${newAccessToken}`);
 
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch {
         useAuthStore.getState().clearAuth();
       }
     }
 
     if (shouldNotify(originalRequest)) {
       const entity = resolveEntityLabel(originalRequest?.url);
-      const action = resolveAction(originalRequest?.method, originalRequest?.url);
+      const action = resolveAction(
+        originalRequest?.method,
+        originalRequest?.url,
+      );
       const fallback =
-        entity === 'Operacao'
-          ? 'Nao foi possivel concluir a operacao.'
+        entity === 'Operação'
+          ? 'Não foi possível concluir a operação.'
           : `Falha ao ${action.infinitive.toLowerCase()} ${entity.toLowerCase()}.`;
-      const message = parseErrorMessage(error) || fallback;
-      useNotificationStore
-        .getState()
-        .push({ variant: 'error', message });
+      const message = extractApiErrorMessage(error) ?? fallback;
+
+      useNotificationStore.getState().push({ variant: 'error', message });
     }
 
     return Promise.reject(error);

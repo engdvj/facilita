@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import ConfirmModal from '@/components/admin/confirm-modal';
 import { useAuthStore } from '@/stores/auth-store';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import {
   backupOptions,
   buildInitialSelection,
@@ -17,13 +19,14 @@ export default function ResetPage() {
   const [selection, setSelection] = useState<BackupSelection>(buildInitialSelection(false));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const staggerStyle = (index: number) =>
     ({ '--stagger-index': index } as CSSProperties);
 
   useEffect(() => {
     if (!hasHydrated) return;
     if (!user) {
-      setError('Faca login para acessar o reset.');
+      setError('Faça login para acessar o reset.');
       return;
     }
     if (user.role !== 'SUPERADMIN') {
@@ -47,24 +50,16 @@ export default function ResetPage() {
       return;
     }
 
-    if (
-      !window.confirm(
-        'Essa acao remove dados das entidades selecionadas. Deseja continuar?',
-      )
-    ) {
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
       await api.post('/resets', { entities: selectedEntities });
       setSelection(buildInitialSelection(false));
-    } catch (err: any) {
-      const message = err?.response?.data?.message || 'Nao foi possivel executar o reset.';
-      setError(typeof message === 'string' ? message : 'Erro ao executar reset.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Erro ao executar reset.'));
     } finally {
       setLoading(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -81,7 +76,7 @@ export default function ResetPage() {
       <section className="fac-page-head">
         <div>
           <h1 className="fac-subtitle">Reset do sistema</h1>
-          <p className="text-[15px] text-muted-foreground">Limpe entidades especificas e mantenha seed de usuarios/permissoes.</p>
+          <p className="text-[15px] text-muted-foreground">Limpe entidades específicas e mantenha seed de usuários/permissões.</p>
         </div>
       </section>
 
@@ -89,7 +84,7 @@ export default function ResetPage() {
         className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
         style={staggerStyle(2)}
       >
-        Operacao destrutiva: revise a selecao antes de executar. Use reset parcial sempre que possivel.
+        Operação destrutiva: revise a seleção antes de executar. Use reset parcial sempre que possível.
       </div>
 
       <div className="motion-item flex flex-wrap gap-2" style={staggerStyle(3)}>
@@ -116,7 +111,7 @@ export default function ResetPage() {
         {backupOptions.map((option) => (
           <label
             key={option.key}
-            className="flex items-start gap-2 rounded-lg border border-border/70 bg-white/80 px-3 py-2"
+            className="flex items-start gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-2"
           >
             <input
               type="checkbox"
@@ -142,11 +137,23 @@ export default function ResetPage() {
       <button
         type="button"
         className="motion-press rounded-lg bg-destructive px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-primary-foreground disabled:opacity-60"
-        onClick={executeReset}
+        onClick={() => setConfirmOpen(true)}
         disabled={loading || !hasSelection}
       >
         {loading ? 'Executando...' : 'Executar reset'}
       </button>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Executar reset"
+        description="Essa ação remove dados das entidades selecionadas. Deseja continuar?"
+        confirmLabel="Executar reset"
+        loading={loading}
+        onConfirm={() => {
+          void executeReset();
+        }}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

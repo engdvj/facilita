@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import { useAuthStore } from '@/stores/auth-store';
 import { RolePermission, UserRole } from '@/types';
 
@@ -13,19 +14,19 @@ type EditablePermission = Exclude<
 const permissionLabels: Record<EditablePermission, string> = {
   canViewDashboard: 'Ver dashboard',
   canAccessAdmin: 'Acessar admin',
-  canViewUsers: 'Ver usuarios',
-  canCreateUsers: 'Criar usuarios',
-  canEditUsers: 'Editar usuarios',
-  canDeleteUsers: 'Excluir usuarios',
+  canViewUsers: 'Ver usuários',
+  canCreateUsers: 'Criar usuários',
+  canEditUsers: 'Editar usuários',
+  canDeleteUsers: 'Excluir usuários',
   canViewLinks: 'Ver links',
   canManageLinks: 'Gerenciar links',
   canManageCategories: 'Gerenciar categorias',
   canManageSchedules: 'Gerenciar documentos',
-  canViewPrivateContent: 'Ver conteudo privado',
+  canViewPrivateContent: 'Ver conteúdo privado',
   canBackupSystem: 'Executar backup',
   canResetSystem: 'Executar reset',
   canViewAuditLogs: 'Ver auditoria',
-  canManageSystemConfig: 'Gerenciar configuracoes',
+  canManageSystemConfig: 'Gerenciar configurações',
   canManageShares: 'Gerenciar compartilhamentos',
 };
 
@@ -42,7 +43,7 @@ export default function PermissionsPage() {
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!isSuperadmin) {
       setLoading(false);
       return;
@@ -50,6 +51,7 @@ export default function PermissionsPage() {
 
     setLoading(true);
     setError(null);
+
     try {
       const response = await api.get('/permissions');
       const data = Array.isArray(response.data) ? response.data : [];
@@ -59,19 +61,21 @@ export default function PermissionsPage() {
             roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role),
         ),
       );
-    } catch (err: any) {
-      const message = err?.response?.data?.message || 'Nao foi possivel carregar permissoes.';
-      setError(typeof message === 'string' ? message : 'Erro ao carregar permissoes.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Erro ao carregar permissões.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSuperadmin]);
 
   useEffect(() => {
     void load();
-  }, [isSuperadmin]);
+  }, [load]);
 
-  const columns = useMemo(() => Object.keys(permissionLabels) as EditablePermission[], []);
+  const columns = useMemo(
+    () => Object.keys(permissionLabels) as EditablePermission[],
+    [],
+  );
 
   const toggle = (role: UserRole, key: EditablePermission) => {
     setRows((prev) =>
@@ -88,6 +92,7 @@ export default function PermissionsPage() {
 
   const saveRole = async (row: RolePermission) => {
     setSavingRole(row.role);
+
     try {
       const payload = columns.reduce((acc, key) => {
         acc[key] = Boolean(row[key]);
@@ -113,8 +118,10 @@ export default function PermissionsPage() {
     <div className="fac-page motion-stagger">
       <section className="fac-page-head">
         <div>
-          <h1 className="fac-subtitle">Permissoes</h1>
-          <p className="text-[15px] text-muted-foreground">Matriz editavel para os papeis SUPERADMIN e USER.</p>
+          <h1 className="fac-subtitle">Permissões</h1>
+          <p className="text-[15px] text-muted-foreground">
+            Matriz editável para os papéis SUPERADMIN e USER.
+          </p>
         </div>
       </section>
 
@@ -122,12 +129,13 @@ export default function PermissionsPage() {
         className="motion-item rounded-2xl border border-border/70 bg-card/75 px-4 py-3 text-xs text-muted-foreground"
         style={staggerStyle(2)}
       >
-        Altere uma role por vez e salve em seguida. Evite mudanças em lote sem validar o impacto no fluxo diario.
+        Altere uma role por vez e salve em seguida. Evite mudanças em lote sem
+        validar o impacto no fluxo diário.
       </div>
 
       {loading ? (
         <div className="rounded-2xl border border-border/70 bg-card/70 px-5 py-10 text-center text-sm text-muted-foreground">
-          Carregando permissoes...
+          Carregando permissões...
         </div>
       ) : error ? (
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-sm text-destructive">
@@ -143,8 +151,12 @@ export default function PermissionsPage() {
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Role</p>
-                  <h2 className="text-lg font-semibold text-foreground">{row.role}</h2>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                    Role
+                  </p>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {row.role}
+                  </h2>
                 </div>
                 <button
                   type="button"
@@ -152,7 +164,7 @@ export default function PermissionsPage() {
                   onClick={() => saveRole(row)}
                   disabled={savingRole === row.role}
                 >
-                  {savingRole === row.role ? 'Salvando...' : 'Salvar alteracoes'}
+                  {savingRole === row.role ? 'Salvando...' : 'Salvar alterações'}
                 </button>
               </div>
 
@@ -160,7 +172,7 @@ export default function PermissionsPage() {
                 {columns.map((key) => (
                   <label
                     key={`${row.role}-${key}`}
-                    className="flex items-center gap-2 rounded-lg border border-border/70 bg-white/80 px-3 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-sm"
                   >
                     <input
                       type="checkbox"

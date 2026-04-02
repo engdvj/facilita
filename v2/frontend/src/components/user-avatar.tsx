@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { serverURL } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -47,9 +48,12 @@ export default function UserAvatar({
       )}
     >
       {resolvedUrl ? (
-        <img
+        <Image
           src={resolvedUrl}
-          alt={name ? `Foto de ${name}` : 'Foto do usuario'}
+          alt={name ? `Foto de ${name}` : 'Foto do usuário'}
+          width={56}
+          height={56}
+          unoptimized
           className="h-full w-full rounded-full object-cover"
           loading="lazy"
         />

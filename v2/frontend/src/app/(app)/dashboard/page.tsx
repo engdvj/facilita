@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import { useAuthStore } from '@/stores/auth-store';
 import { Link, Note, UploadedSchedule, User } from '@/types';
 
@@ -14,12 +15,6 @@ function filterByDate<T extends { createdAt: string }>(items: T[], period: Perio
   const days = Number(period);
   const limit = Date.now() - days * 24 * 60 * 60 * 1000;
   return items.filter((item) => new Date(item.createdAt).getTime() >= limit);
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
 }
 
 export default function DashboardPage() {
@@ -44,7 +39,7 @@ export default function DashboardPage() {
       if (!hasHydrated) return;
       if (!user) {
         setLoading(false);
-        setError('Faca login para acessar o dashboard.');
+        setError('Faça login para acessar o dashboard.');
         return;
       }
       if (user.role !== 'SUPERADMIN') {
@@ -72,7 +67,7 @@ export default function DashboardPage() {
         setNotes(Array.isArray(notesRes.data) ? notesRes.data : []);
       } catch (err: unknown) {
         if (!active) return;
-        setError(getErrorMessage(err, 'Nao foi possivel carregar o dashboard.'));
+        setError(getApiErrorMessage(err, 'Não foi possível carregar o dashboard.'));
       } finally {
         if (active) {
           setLoading(false);
@@ -164,15 +159,15 @@ export default function DashboardPage() {
   const periodLabel = period === 'ALL' ? 'Periodo completo' : `Ultimos ${period} dias`;
 
   if (loading) {
-    return <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">Carregando dashboard...</div>;
+    return <div className="fac-loading-state">Carregando dashboard...</div>;
   }
 
   if (error) {
-    return <div className="fac-panel border-red-400 bg-red-50 px-6 py-4 text-[14px] text-red-700">{error}</div>;
+    return <div className="fac-error-state">{error}</div>;
   }
 
   return (
-    <div className="fac-page">
+    <div className="fac-page" style={{ animation: 'fadeUp var(--duration-slow) var(--ease-out) both' }}>
       <section>
         <h1 className="fac-subtitle">Indicadores do portal</h1>
         <p className="text-[15px] text-muted-foreground">Acompanhe links criados, publicacao e engajamento.</p>
@@ -180,6 +175,12 @@ export default function DashboardPage() {
 
       <section className="fac-panel">
         <div className="fac-panel-body space-y-6">
+          <div className="rounded-[14px] border border-primary/15 bg-primary/[0.06] px-6 py-5 dark:bg-primary/10">
+            <p className="fac-kicker mb-1">Visao geral</p>
+            <p className="font-display text-[38px] leading-none text-foreground">{stats.totalItems}</p>
+            <p className="mt-1 text-[14px] text-muted-foreground">itens no portal - {periodLabel}</p>
+          </div>
+
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <p className="fac-kicker">Painel administrativo</p>
@@ -272,7 +273,24 @@ export default function DashboardPage() {
                 <p className="fac-kicker">Distribuicao por tipo</p>
                 <p className="text-[13px] text-muted-foreground">{stats.totalItems} itens</p>
               </div>
-              <div className="mb-3 h-2 rounded-full bg-muted/80" />
+              <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-muted/80">
+                {stats.totalItems > 0 ? (
+                  <>
+                    <div
+                      className="h-full bg-primary transition-all duration-500"
+                      style={{ width: `${(stats.links / stats.totalItems) * 100}%` }}
+                    />
+                    <div
+                      className="h-full bg-accent/70 transition-all duration-500"
+                      style={{ width: `${(stats.schedules / stats.totalItems) * 100}%` }}
+                    />
+                    <div
+                      className="h-full bg-muted-foreground/40 transition-all duration-500"
+                      style={{ width: `${(stats.notes / stats.totalItems) * 100}%` }}
+                    />
+                  </>
+                ) : null}
+              </div>
               <div className="space-y-2 text-[14px] text-foreground">
                 <p className="flex items-center justify-between">
                   <span>Links</span>
@@ -294,7 +312,28 @@ export default function DashboardPage() {
                 <p className="fac-kicker">Visibilidade</p>
                 <p className="text-[13px] text-muted-foreground">{visibility === 'ALL' ? 'Todas' : visibility}</p>
               </div>
-              <div className="mb-3 h-2 rounded-full bg-muted/80" />
+              {(() => {
+                const totalPublic = stats.linkPublic + stats.schedulePublic + stats.notePublic;
+                const totalPrivate = stats.linkPrivate + stats.schedulePrivate + stats.notePrivate;
+                const total = totalPublic + totalPrivate;
+
+                return (
+                  <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-muted/80">
+                    {total > 0 ? (
+                      <>
+                        <div
+                          className="h-full bg-primary transition-all duration-500"
+                          style={{ width: `${(totalPublic / total) * 100}%` }}
+                        />
+                        <div
+                          className="h-full bg-muted-foreground/40 transition-all duration-500"
+                          style={{ width: `${(totalPrivate / total) * 100}%` }}
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                );
+              })()}
               <div className="space-y-2 text-[14px] text-foreground">
                 <p className="flex items-center justify-between">
                   <span>Publicos</span>
@@ -338,4 +377,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

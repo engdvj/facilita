@@ -1,7 +1,9 @@
 ﻿'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
-import api, { serverURL } from '@/lib/api';
+import api from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/image';
 import ImageGallery from './image-gallery';
 
 interface ImageSelectorProps {
@@ -11,11 +13,6 @@ interface ImageSelectorProps {
 }
 
 type SelectorMode = 'upload' | 'gallery';
-
-function resolveImageUrl(path?: string) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
 
 export default function ImageSelector({
   value,
@@ -94,9 +91,12 @@ export default function ImageSelector({
 
       {value ? (
         <div className="overflow-hidden rounded-xl border border-border">
-          <img
-            src={resolveImageUrl(value)}
+          <Image
+            src={resolveAssetUrl(value)}
             alt="Imagem selecionada"
+            width={640}
+            height={160}
+            unoptimized
             className="h-40 w-full object-cover"
           />
           <div className="p-2">

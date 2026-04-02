@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Ban, Check, Download } from 'lucide-react';
 import AdminModal from '@/components/admin/modal';
+import ContentCoverImage from '@/components/content-cover-image';
 import { FavoriteButton } from '@/components/FavoriteButton';
-import api, { serverURL } from '@/lib/api';
+import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
+import { resolveAssetUrl } from '@/lib/image';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { Link as LinkEntity, Note, UploadedSchedule } from '@/types';
@@ -34,24 +37,6 @@ const typeLabel: Record<ItemType, string> = {
   SCHEDULE: 'DOC',
   NOTE: 'NOTA',
 };
-
-function normalizeImagePosition(position?: string | null) {
-  if (!position) return '50% 50%';
-  const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
-  const format = (value: string) => (value.includes('%') ? value : `${value}%`);
-  return `${format(x)} ${format(y)}`;
-}
-
-function resolveFileUrl(path?: string) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
-}
 
 function getContrastTextColor(color: string) {
   const hex = color.replace('#', '').trim();
@@ -109,7 +94,7 @@ export default function HomePage() {
         setNotes(Array.isArray(notesRes.data) ? notesRes.data : []);
       } catch (err: unknown) {
         if (!active) return;
-        setError(getErrorMessage(err, 'Nao foi possivel carregar os itens.'));
+        setError(getApiErrorMessage(err, 'Não foi possível carregar os itens.'));
       } finally {
         if (active) {
           setLoading(false);
@@ -235,7 +220,7 @@ export default function HomePage() {
     }
 
     if (item.type === 'SCHEDULE' && item.fileUrl) {
-      window.open(resolveFileUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
+      window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -337,7 +322,7 @@ export default function HomePage() {
         <section className="flex flex-wrap gap-4">
           {filteredItems.map((item) => {
             const isInactive = item.status === 'INACTIVE';
-            const imageUrl = item.imageUrl ? resolveFileUrl(item.imageUrl) : '';
+            const imageUrl = item.imageUrl ? resolveAssetUrl(item.imageUrl) : '';
             const categoryName = item.categoryName || 'Sem categoria';
 
             return (
@@ -357,20 +342,15 @@ export default function HomePage() {
                   role="button"
                   tabIndex={isInactive ? -1 : 0}
                 >
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: normalizeImagePosition(item.imagePosition),
-                        transform: `scale(${item.imageScale || 1})`,
-                        transformOrigin: normalizeImagePosition(item.imagePosition),
-                      }}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/10" />
-                  )}
+                  <ContentCoverImage
+                    src={imageUrl}
+                    alt={item.title}
+                    position={item.imagePosition}
+                    scale={item.imageScale}
+                    width={440}
+                    height={440}
+                    fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
+                  />
 
                   <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground">
                     {categoryName}
@@ -385,7 +365,7 @@ export default function HomePage() {
                         onClick={(event) => {
                           event.stopPropagation();
                           if (isInactive) return;
-                          window.open(resolveFileUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
+                          window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
                         }}
                         aria-label="Baixar documento"
                       >
@@ -420,15 +400,14 @@ export default function HomePage() {
       >
         {selectedNote?.imageUrl ? (
           <div className="mb-4 overflow-hidden rounded-xl">
-            <img
-              src={resolveFileUrl(selectedNote.imageUrl)}
+            <ContentCoverImage
+              src={selectedNote.imageUrl}
               alt={selectedNote.title}
+              position={selectedNote.imagePosition}
+              scale={selectedNote.imageScale}
+              width={1200}
+              height={560}
               className="h-56 w-full object-cover"
-              style={{
-                objectPosition: normalizeImagePosition(selectedNote.imagePosition),
-                transform: `scale(${selectedNote.imageScale || 1})`,
-                transformOrigin: normalizeImagePosition(selectedNote.imagePosition),
-              }}
             />
           </div>
         ) : null}
@@ -440,4 +419,3 @@ export default function HomePage() {
     </div>
   );
 }
-

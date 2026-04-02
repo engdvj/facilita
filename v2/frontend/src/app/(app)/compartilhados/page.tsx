@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ban, Check, Download } from 'lucide-react';
 import AdminModal from '@/components/admin/modal';
+import ContentCoverImage from '@/components/content-cover-image';
 import { FavoriteButton } from '@/components/FavoriteButton';
-import api, { serverURL } from '@/lib/api';
+import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
+import { resolveAssetUrl } from '@/lib/image';
 import { useAuthStore } from '@/stores/auth-store';
 import { Category, Share } from '@/types';
 
@@ -35,7 +38,7 @@ function getShareCategoryColor(share: Share) {
 }
 
 function getShareOwner(share: Share) {
-  return share.owner?.name || 'Usuario';
+  return share.owner?.name || 'Usuário';
 }
 
 function getShareStatus(share: Share): ShareStatus {
@@ -66,24 +69,6 @@ function getShareEntityId(share: Share) {
   if (share.entityType === 'LINK') return share.link?.id;
   if (share.entityType === 'SCHEDULE') return share.schedule?.id;
   return share.note?.id;
-}
-
-function resolveFileUrl(path?: string | null) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
-
-function normalizeImagePosition(position?: string | null) {
-  if (!position) return '50% 50%';
-  const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
-  const ensurePercent = (value: string) => (value.includes('%') ? value : `${value}%`);
-  return `${ensurePercent(x)} ${ensurePercent(y)}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
 }
 
 export default function CompartilhadosPage() {
@@ -118,7 +103,7 @@ export default function CompartilhadosPage() {
       setSent(Array.isArray(sentRes.data) ? sentRes.data : []);
       setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar os compartilhamentos.'));
+      setError(getApiErrorMessage(err, 'Não foi possível carregar os compartilhamentos.'));
     } finally {
       setLoading(false);
     }
@@ -186,7 +171,7 @@ export default function CompartilhadosPage() {
     }
 
     if (share.entityType === 'SCHEDULE' && share.schedule?.fileUrl) {
-      window.open(resolveFileUrl(share.schedule.fileUrl), '_blank', 'noopener,noreferrer');
+      window.open(resolveAssetUrl(share.schedule.fileUrl), '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -202,7 +187,7 @@ export default function CompartilhadosPage() {
   };
 
   const sentStatusLabel = (share: Share) =>
-    share.removedAt ? 'Removido pelo destinatario' : 'Ativo';
+    share.removedAt ? 'Removido pelo destinatário' : 'Ativo';
 
   if (isSuperadmin) {
     return (
@@ -211,7 +196,7 @@ export default function CompartilhadosPage() {
           <p className="fac-kicker">Compartilhados</p>
           <h1 className="fac-subtitle">Fluxo de compartilhamento</h1>
           <p className="text-[15px] text-muted-foreground">
-            Superadmin nao participa do fluxo de compartilhamento.
+            Superadmin não participa do fluxo de compartilhamento.
           </p>
         </section>
       </div>
@@ -224,7 +209,7 @@ export default function CompartilhadosPage() {
         <p className="fac-kicker">Compartilhados</p>
         <h1 className="fac-subtitle">Recebidos e enviados</h1>
         <p className="text-[15px] text-muted-foreground">
-          Organize itens compartilhados sem alterar o conteudo original.
+          Organize itens compartilhados sem alterar o conteúdo original.
         </p>
       </section>
 
@@ -247,7 +232,7 @@ export default function CompartilhadosPage() {
                 {received.map((share) => {
                   const shareStatus = getShareStatus(share);
                   const isInactive = shareStatus === 'INACTIVE';
-                  const imageUrl = getShareImage(share) ? resolveFileUrl(getShareImage(share)) : '';
+                  const imageUrl = getShareImage(share) ? resolveAssetUrl(getShareImage(share)) : '';
                   const categoryName = getShareCategory(share) || 'Sem categoria';
                   const categoryColor = getShareCategoryColor(share);
                   const entityId = getShareEntityId(share);
@@ -269,20 +254,15 @@ export default function CompartilhadosPage() {
                         role="button"
                         tabIndex={isInactive ? -1 : 0}
                       >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={getShareTitle(share)}
-                            className="h-full w-full object-cover"
-                            style={{
-                              objectPosition: normalizeImagePosition(getShareImagePosition(share)),
-                              transform: `scale(${getShareImageScale(share) || 1})`,
-                              transformOrigin: normalizeImagePosition(getShareImagePosition(share)),
-                            }}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/10" />
-                        )}
+                        <ContentCoverImage
+                          src={imageUrl}
+                          alt={getShareTitle(share)}
+                          position={getShareImagePosition(share)}
+                          scale={getShareImageScale(share)}
+                          width={440}
+                          height={440}
+                          fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
+                        />
 
                         <span
                           className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground"
@@ -300,7 +280,7 @@ export default function CompartilhadosPage() {
                               onClick={(event) => {
                                 event.stopPropagation();
                                 if (isInactive) return;
-                                window.open(resolveFileUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
+                                window.open(resolveAssetUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
                               }}
                               aria-label="Baixar documento"
                             >
@@ -388,7 +368,7 @@ export default function CompartilhadosPage() {
                 {sent.map((share) => {
                   const shareStatus = getShareStatus(share);
                   const isInactive = shareStatus === 'INACTIVE';
-                  const imageUrl = getShareImage(share) ? resolveFileUrl(getShareImage(share)) : '';
+                  const imageUrl = getShareImage(share) ? resolveAssetUrl(getShareImage(share)) : '';
                   const categoryName = getShareCategory(share) || 'Sem categoria';
                   const categoryColor = getShareCategoryColor(share);
                   const entityId = getShareEntityId(share);
@@ -410,20 +390,15 @@ export default function CompartilhadosPage() {
                         role="button"
                         tabIndex={isInactive ? -1 : 0}
                       >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={getShareTitle(share)}
-                            className="h-full w-full object-cover"
-                            style={{
-                              objectPosition: normalizeImagePosition(getShareImagePosition(share)),
-                              transform: `scale(${getShareImageScale(share) || 1})`,
-                              transformOrigin: normalizeImagePosition(getShareImagePosition(share)),
-                            }}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/10" />
-                        )}
+                        <ContentCoverImage
+                          src={imageUrl}
+                          alt={getShareTitle(share)}
+                          position={getShareImagePosition(share)}
+                          scale={getShareImageScale(share)}
+                          width={440}
+                          height={440}
+                          fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
+                        />
 
                         <span
                           className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground"
@@ -441,7 +416,7 @@ export default function CompartilhadosPage() {
                               onClick={(event) => {
                                 event.stopPropagation();
                                 if (isInactive) return;
-                                window.open(resolveFileUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
+                                window.open(resolveAssetUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
                               }}
                               aria-label="Baixar documento"
                             >
@@ -513,15 +488,14 @@ export default function CompartilhadosPage() {
       >
         {viewingNote?.imageUrl ? (
           <div className="mb-4 overflow-hidden rounded-xl">
-            <img
-              src={resolveFileUrl(viewingNote.imageUrl)}
+            <ContentCoverImage
+              src={viewingNote.imageUrl}
               alt={viewingNote.title}
+              position={viewingNote.imagePosition}
+              scale={viewingNote.imageScale}
+              width={1200}
+              height={560}
               className="h-56 w-full object-cover"
-              style={{
-                objectPosition: normalizeImagePosition(viewingNote.imagePosition),
-                transform: `scale(${viewingNote.imageScale || 1})`,
-                transformOrigin: normalizeImagePosition(viewingNote.imagePosition),
-              }}
             />
           </div>
         ) : null}

@@ -3,9 +3,10 @@
 import { useMemo, useState } from 'react';
 import { Ban, Check, Download } from 'lucide-react';
 import AdminModal from '@/components/admin/modal';
+import ContentCoverImage from '@/components/content-cover-image';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { useFavorites } from '@/hooks/useFavorites';
-import { serverURL } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/image';
 import { useUiStore } from '@/stores/ui-store';
 import { Note } from '@/types';
 
@@ -33,18 +34,6 @@ const typeLabel: Record<ItemType, string> = {
   SCHEDULE: 'DOC',
   NOTE: 'NOTA',
 };
-
-function normalizeImagePosition(position?: string | null) {
-  if (!position) return '50% 50%';
-  const [x = '50%', y = '50%'] = position.trim().split(/\s+/);
-  const withPercent = (value: string) => (value.includes('%') ? value : `${value}%`);
-  return `${withPercent(x)} ${withPercent(y)}`;
-}
-
-function resolveFileUrl(path?: string) {
-  if (!path) return '';
-  return path.startsWith('http') ? path : `${serverURL}${path}`;
-}
 
 function getContrastTextColor(color: string) {
   const hex = color.replace('#', '').trim();
@@ -189,7 +178,7 @@ export default function FavoritosPage() {
     }
 
     if (item.type === 'SCHEDULE' && item.fileUrl) {
-      window.open(resolveFileUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
+      window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -207,7 +196,7 @@ export default function FavoritosPage() {
         <div>
           <h1 className="fac-subtitle">Links, documentos e notas favoritas</h1>
           <p className="text-[15px] text-muted-foreground">
-            Acesse rapidamente os itens que voce marcou como favoritos.
+            Acesse rapidamente os itens que você marcou como favoritos.
           </p>
         </div>
 
@@ -272,7 +261,7 @@ export default function FavoritosPage() {
         <section className="flex flex-wrap gap-4">
           {filteredItems.map((item) => {
             const isInactive = item.status === 'INACTIVE';
-            const imageUrl = item.imageUrl ? resolveFileUrl(item.imageUrl) : '';
+            const imageUrl = item.imageUrl ? resolveAssetUrl(item.imageUrl) : '';
             const categoryName = item.categoryName || 'Sem categoria';
 
             return (
@@ -292,20 +281,15 @@ export default function FavoritosPage() {
                   role="button"
                   tabIndex={isInactive ? -1 : 0}
                 >
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: normalizeImagePosition(item.imagePosition),
-                        transform: `scale(${item.imageScale || 1})`,
-                        transformOrigin: normalizeImagePosition(item.imagePosition),
-                      }}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/10" />
-                  )}
+                  <ContentCoverImage
+                    src={imageUrl}
+                    alt={item.title}
+                    position={item.imagePosition}
+                    scale={item.imageScale}
+                    width={440}
+                    height={440}
+                    fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
+                  />
 
                   <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground">
                     {categoryName}
@@ -320,7 +304,7 @@ export default function FavoritosPage() {
                         onClick={(event) => {
                           event.stopPropagation();
                           if (isInactive) return;
-                          window.open(resolveFileUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
+                          window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
                         }}
                         aria-label="Baixar documento"
                       >
@@ -355,15 +339,14 @@ export default function FavoritosPage() {
       >
         {selectedNote?.imageUrl ? (
           <div className="mb-4 overflow-hidden rounded-xl">
-            <img
-              src={resolveFileUrl(selectedNote.imageUrl)}
+            <ContentCoverImage
+              src={selectedNote.imageUrl}
               alt={selectedNote.title}
+              position={selectedNote.imagePosition}
+              scale={selectedNote.imageScale}
+              width={1200}
+              height={560}
               className="h-56 w-full object-cover"
-              style={{
-                objectPosition: normalizeImagePosition(selectedNote.imagePosition),
-                transform: `scale(${selectedNote.imageScale || 1})`,
-                transformOrigin: normalizeImagePosition(selectedNote.imagePosition),
-              }}
             />
           </div>
         ) : null}

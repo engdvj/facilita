@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import {
-  ChevronLeft,
-  ChevronRight,
   FileText,
   Folder,
   HardDrive,
@@ -24,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import type { NavMode } from '@/stores/ui-store';
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
@@ -43,10 +42,17 @@ type NavGroup = {
 
 type AppNavProps = {
   collapsed?: boolean;
+  navMode?: NavMode;
   onToggleCollapse?: () => void;
+  onNavigate?: () => void;
 };
 
-export default function AppNav({ collapsed = false, onToggleCollapse }: AppNavProps) {
+export default function AppNav({
+  collapsed = false,
+  navMode = 'manual',
+  onToggleCollapse,
+  onNavigate,
+}: AppNavProps) {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
 
@@ -111,13 +117,46 @@ export default function AppNav({ collapsed = false, onToggleCollapse }: AppNavPr
 
   return (
     <div className="fac-nav-panel" data-collapsed={collapsed ? 'true' : 'false'}>
+      <div className="fac-nav-brand-shell">
+        <button
+          type="button"
+          className="fac-nav-brand"
+          aria-label={
+            navMode === 'manual'
+              ? collapsed
+                ? 'Expandir barra lateral'
+                : 'Recolher barra lateral'
+              : 'Modo automatico ativo'
+          }
+          title={
+            navMode === 'manual'
+              ? collapsed
+                ? 'Expandir barra lateral'
+                : 'Recolher barra lateral'
+              : 'Modo automatico ativo'
+          }
+          onClick={() => {
+            if (onToggleCollapse) {
+              onToggleCollapse();
+              return;
+            }
+
+            onNavigate?.();
+          }}
+        >
+          {collapsed ? 'F' : 'FACILITA'}
+        </button>
+      </div>
+
       <div className="fac-nav-sections">
         {groups.map((group) => (
           <section key={group.label} className="fac-nav-group">
+            {!collapsed ? <p className="fac-nav-label">{group.label}</p> : null}
             <nav className="fac-nav-list">
               {group.items.map((item) => {
                 const active = isActive(pathname, item.href);
                 const Icon = item.icon;
+
                 return (
                   <Link
                     key={item.href}
@@ -129,6 +168,7 @@ export default function AppNav({ collapsed = false, onToggleCollapse }: AppNavPr
                       if (active) {
                         event.preventDefault();
                       }
+                      onNavigate?.();
                     }}
                     aria-current={active ? 'page' : undefined}
                     aria-disabled={active}
@@ -143,7 +183,6 @@ export default function AppNav({ collapsed = false, onToggleCollapse }: AppNavPr
           </section>
         ))}
       </div>
-
     </div>
   );
 }

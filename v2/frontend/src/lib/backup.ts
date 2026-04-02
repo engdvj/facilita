@@ -1,8 +1,8 @@
 export const backupOptions = [
-  { key: 'users', label: 'Usuarios', hint: 'Perfis e credenciais.' },
-  { key: 'rolePermissions', label: 'Permissoes', hint: 'Regras por role.' },
-  { key: 'categories', label: 'Categorias', hint: 'Categorias dos usuarios.' },
-  { key: 'links', label: 'Links', hint: 'Links criados pelos usuarios.' },
+  { key: 'users', label: 'Usuários', hint: 'Perfis e credenciais.' },
+  { key: 'rolePermissions', label: 'Permissões', hint: 'Regras por role.' },
+  { key: 'categories', label: 'Categorias', hint: 'Categorias dos usuários.' },
+  { key: 'links', label: 'Links', hint: 'Links criados pelos usuários.' },
   {
     key: 'uploadedSchedules',
     label: 'Documentos',
@@ -11,7 +11,7 @@ export const backupOptions = [
   {
     key: 'notes',
     label: 'Notas',
-    hint: 'Notas dos usuarios.',
+    hint: 'Notas dos usuários.',
   },
   {
     key: 'uploadedImages',
@@ -21,22 +21,22 @@ export const backupOptions = [
   {
     key: 'shares',
     label: 'Compartilhamentos',
-    hint: 'Relacoes de compartilhamento entre usuarios.',
+    hint: 'Relações de compartilhamento entre usuários.',
   },
   {
     key: 'favorites',
     label: 'Favoritos',
-    hint: 'Itens favoritos dos usuarios.',
+    hint: 'Itens favoritos dos usuários.',
   },
   {
     key: 'notifications',
-    label: 'Notificacoes',
-    hint: 'Notificacoes in-app.',
+    label: 'Notificações',
+    hint: 'Notificações in-app.',
   },
   {
     key: 'systemConfig',
-    label: 'Configuracoes',
-    hint: 'Configuracoes globais da plataforma.',
+    label: 'Configurações',
+    hint: 'Configurações globais da plataforma.',
   },
 ] as const;
 

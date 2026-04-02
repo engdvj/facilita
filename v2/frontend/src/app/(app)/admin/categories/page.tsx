@@ -1,8 +1,10 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import ConfirmModal from '@/components/admin/confirm-modal';
 import AdminModal from '@/components/admin/modal';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import { useUiStore } from '@/stores/ui-store';
 import { Category } from '@/types';
 
@@ -12,12 +14,9 @@ const emptyForm = {
   icon: '',
   adminOnly: false,
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const payload = error as { response?: { data?: { message?: unknown } } };
-  const message = payload.response?.data?.message;
-  return typeof message === 'string' ? message : fallback;
-}
+type CategoryFormErrors = {
+  name?: string;
+};
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -31,9 +30,11 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<CategoryFormErrors>({});
   const [deleting, setDeleting] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<Category | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -41,15 +42,15 @@ export default function CategoriesPage() {
       const response = await api.get('/categories', { params: { includeInactive: true } });
       setCategories(Array.isArray(response.data) ? response.data : []);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar categorias.'));
+      setError(getApiErrorMessage(err, 'Não foi possível carregar categorias.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
@@ -66,6 +67,7 @@ export default function CategoriesPage() {
   const openCreate = () => {
     setEditing(null);
     setForm({ ...emptyForm });
+    setFormErrors({});
     setModalOpen(true);
   };
 
@@ -77,11 +79,23 @@ export default function CategoriesPage() {
       icon: category.icon || '',
       adminOnly: category.adminOnly,
     });
+    setFormErrors({});
     setModalOpen(true);
   };
 
+  const validateForm = () => {
+    const nextErrors: CategoryFormErrors = {};
+
+    if (!form.name.trim()) {
+      nextErrors.name = 'Nome é obrigatório.';
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const save = async () => {
-    if (!form.name.trim()) return;
+    if (!validateForm()) return;
 
     setSaving(true);
     try {
@@ -108,23 +122,29 @@ export default function CategoriesPage() {
   };
 
   const toggleStatus = async (category: Category) => {
-    await api.patch(`/categories/${category.id}`, {
-      status: category.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    });
-    await load();
+    try {
+      await api.patch(`/categories/${category.id}`, {
+        status: category.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+      });
+    } catch {
+      // O interceptor global já notifica o erro.
+    } finally {
+      await load();
+    }
   };
 
   const remove = async () => {
-    if (!editing) return;
-    if (!window.confirm(`Remover categoria ${editing.name}?`)) return;
+    if (!confirmTarget) return;
 
     setDeleting(true);
     try {
-      await api.delete(`/categories/${editing.id}`);
+      await api.delete(`/categories/${confirmTarget.id}`);
       setModalOpen(false);
-      await load();
+      setEditing(null);
     } finally {
       setDeleting(false);
+      setConfirmTarget(null);
+      await load();
     }
   };
 
@@ -149,7 +169,7 @@ export default function CategoriesPage() {
             <option value="INACTIVE">Inativas</option>
           </select>
 
-          <button type="button" className="fac-filter-button">
+          <button type="button" className="fac-filter-button" disabled title="Em breve">
             Filtros
           </button>
 
@@ -167,11 +187,11 @@ export default function CategoriesPage() {
 
         <div className="fac-panel-body">
           {loading ? (
-            <p className="text-[14px] text-muted-foreground">Carregando categorias...</p>
+            <div className="fac-loading-state">Carregando categorias...</div>
           ) : error ? (
-            <p className="text-[14px] text-red-700">{error}</p>
+            <div className="fac-error-state">{error}</div>
           ) : filtered.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">Nenhuma categoria encontrada.</p>
+            <div className="fac-empty-state">Nenhuma categoria encontrada.</div>
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((category) => {
@@ -202,29 +222,40 @@ export default function CategoriesPage() {
                         <span className="line-clamp-1">{category.name}</span>
                       </span>
 
-                      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                        <div className="pr-2">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                            {category.adminOnly ? 'Admin' : 'Equipe'}
-                          </p>
-                          <p className="mt-1 text-[13px] font-semibold text-foreground">
-                            {total} {total === 1 ? 'item' : 'itens'}
-                          </p>
-                        </div>
-
-                        <span
-                          className="fac-toggle shrink-0"
-                          data-state={category.status === 'ACTIVE' ? 'on' : 'off'}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            void toggleStatus(category);
-                          }}
-                        >
-                          <span className="fac-toggle-dot" />
-                        </span>
-                      </div>
                     </button>
+
+                    <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
+                      <button
+                        type="button"
+                        className="pr-2 text-left"
+                        onClick={() => openEdit(category)}
+                      >
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          {category.adminOnly ? 'Admin' : 'Equipe'}
+                        </p>
+                        <p className="mt-1 text-[13px] font-semibold text-foreground">
+                          {total} {total === 1 ? 'item' : 'itens'}
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={category.status === 'ACTIVE'}
+                        aria-label={
+                          category.status === 'ACTIVE'
+                            ? `Desativar ${category.name}`
+                            : `Ativar ${category.name}`
+                        }
+                        className="fac-toggle shrink-0"
+                        data-state={category.status === 'ACTIVE' ? 'on' : 'off'}
+                        onClick={() => {
+                          void toggleStatus(category);
+                        }}
+                      >
+                        <span className="fac-toggle-dot" />
+                      </button>
+                    </div>
                   </article>
                 );
               })}
@@ -244,7 +275,7 @@ export default function CategoriesPage() {
               <button
                 type="button"
                 className="fac-button-secondary text-[11px]"
-                onClick={remove}
+                onClick={() => setConfirmTarget(editing)}
                 disabled={saving || deleting}
               >
                 {deleting ? 'Removendo...' : 'Remover'}
@@ -277,9 +308,15 @@ export default function CategoriesPage() {
               <label className="fac-label">Nome</label>
               <input
                 value={form.name}
-                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                className="fac-input"
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, name: event.target.value }));
+                  setFormErrors((prev) => ({ ...prev, name: undefined }));
+                }}
+                className={`fac-input ${formErrors.name ? 'border-destructive' : ''}`}
               />
+              {formErrors.name ? (
+                <p className="mt-1 text-[12px] text-destructive">{formErrors.name}</p>
+              ) : null}
             </div>
 
             <div>
@@ -305,7 +342,7 @@ export default function CategoriesPage() {
         </section>
 
         <section className="fac-form-card mt-4">
-          <p className="fac-form-title">Permissoes</p>
+          <p className="fac-form-title">Permissões</p>
           <label className="flex items-center gap-2 text-[14px] text-foreground">
             <input
               type="checkbox"
@@ -318,7 +355,22 @@ export default function CategoriesPage() {
           </label>
         </section>
       </AdminModal>
+
+      <ConfirmModal
+        open={Boolean(confirmTarget)}
+        title="Remover categoria"
+        description={
+          confirmTarget
+            ? `Confirma a remoção permanente da categoria "${confirmTarget.name}"?`
+            : 'Confirma a remoção permanente desta categoria?'
+        }
+        confirmLabel="Remover categoria"
+        loading={deleting}
+        onConfirm={() => {
+          void remove();
+        }}
+        onClose={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
-

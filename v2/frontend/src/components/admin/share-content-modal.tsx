@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/error';
 import AdminModal from './modal';
 
 type ShareEntityType = 'LINK' | 'SCHEDULE' | 'NOTE';
@@ -55,15 +56,9 @@ export default function ShareContentModal({
         });
         if (!active) return;
         setRecipients(Array.isArray(response.data) ? response.data : []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!active) return;
-        const message =
-          err?.response?.data?.message || 'Nao foi possivel carregar destinatarios.';
-        setError(
-          typeof message === 'string'
-            ? message
-            : 'Erro ao carregar destinatarios.',
-        );
+        setError(getApiErrorMessage(err, 'Não foi possível carregar destinatários.'));
       } finally {
         if (active) setLoadingRecipients(false);
       }
@@ -106,9 +101,8 @@ export default function ShareContentModal({
         await onShared();
       }
       onClose();
-    } catch (err: any) {
-      const message = err?.response?.data?.message || 'Nao foi possivel compartilhar.';
-      setError(typeof message === 'string' ? message : 'Erro ao compartilhar.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Não foi possível compartilhar.'));
     } finally {
       setSaving(false);
     }
@@ -118,7 +112,7 @@ export default function ShareContentModal({
     <AdminModal
       open={open}
       title="Compartilhar"
-      description={`Selecione usuarios para compartilhar "${entityTitle}".`}
+      description={`Selecione usuários para compartilhar "${entityTitle}".`}
       onClose={onClose}
       panelClassName="max-w-2xl"
       footer={
@@ -146,21 +140,21 @@ export default function ShareContentModal({
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar destinatario por nome ou email"
+          placeholder="Buscar destinatário por nome ou email"
           className="w-full rounded-lg border border-border/70 bg-white/80 px-4 py-2 text-sm"
         />
 
         <div className="rounded-lg border border-border/70 bg-card/75 px-3 py-2 text-xs text-muted-foreground">
-          {selectedRecipientIds.length} destinatario(s) selecionado(s)
+          {selectedRecipientIds.length} destinatário(s) selecionado(s)
         </div>
 
         {loadingRecipients ? (
           <div className="rounded-lg border border-border/70 bg-card/75 px-4 py-6 text-center text-sm text-muted-foreground">
-            Carregando destinatarios...
+            Carregando destinatários...
           </div>
         ) : filteredRecipients.length === 0 ? (
           <div className="rounded-lg border border-border/70 bg-card/75 px-4 py-6 text-center text-sm text-muted-foreground">
-            Nenhum destinatario disponivel.
+            Nenhum destinatário disponível.
           </div>
         ) : (
           <div className="max-h-72 space-y-2 overflow-y-auto pr-1">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import BackupSelectionPanel from '@/components/admin/backup-selection';
+import { getApiErrorMessage } from '@/lib/error';
 import {
   buildInitialSelection,
   countSelectedOptions,
@@ -25,7 +26,7 @@ export default function BackupPage() {
     if (!hasHydrated) return;
 
     if (!user) {
-      setError('Faca login para acessar o backup.');
+      setError('Faça login para acessar o backup.');
       return;
     }
 
@@ -73,13 +74,8 @@ export default function BackupPage() {
       anchor.remove();
       URL.revokeObjectURL(url);
       notify.success('Backup gerado com sucesso.');
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        'Nao foi possivel gerar o backup.';
-      notify.error(
-        typeof message === 'string' ? message : 'Erro ao gerar backup.',
-      );
+    } catch (error: unknown) {
+      notify.error(getApiErrorMessage(error, 'Erro ao gerar backup.'));
     } finally {
       setExporting(false);
     }
@@ -97,12 +93,12 @@ export default function BackupPage() {
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <BackupSelectionPanel
           title="Itens do backup"
-          subtitle="Marque apenas o que voce precisa."
+          subtitle="Marque apenas o que você precisa."
           selection={selection}
           setSelection={setSelection}
         />
 
-        <section className="surface animate-in fade-in slide-in-from-bottom-2 p-3 sm:p-4">
+        <section className="fac-panel p-3 sm:p-4">
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Backup manual
