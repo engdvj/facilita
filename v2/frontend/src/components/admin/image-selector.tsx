@@ -10,6 +10,7 @@ interface ImageSelectorProps {
   value: string;
   onChange: (imageUrl: string) => void;
   disabled?: boolean;
+  showPreview?: boolean;
 }
 
 type SelectorMode = 'upload' | 'gallery';
@@ -18,6 +19,7 @@ export default function ImageSelector({
   value,
   onChange,
   disabled = false,
+  showPreview = true,
 }: ImageSelectorProps) {
   const [mode, setMode] = useState<SelectorMode>('upload');
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -89,7 +91,7 @@ export default function ImageSelector({
         </button>
       )}
 
-      {value ? (
+      {showPreview && value ? (
         <div className="overflow-hidden rounded-xl border border-border">
           <Image
             src={resolveAssetUrl(value)}

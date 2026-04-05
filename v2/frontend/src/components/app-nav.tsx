@@ -3,42 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
-import {
-  FileText,
-  Folder,
-  HardDrive,
-  Home,
-  ImageIcon,
-  LayoutDashboard,
-  Link2,
-  Power,
-  RefreshCw,
-  Settings,
-  Share2,
-  Shield,
-  Star,
-  StickyNote,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import { getAccessibleNavGroups } from '@/lib/permissions';
 import type { NavMode } from '@/stores/ui-store';
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
 }
-
-type NavItem = {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-};
-
-type NavGroup = {
-  label: string;
-  items: NavItem[];
-};
 
 type AppNavProps = {
   collapsed?: boolean;
@@ -56,63 +28,10 @@ export default function AppNav({
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
 
-  const groups = useMemo<NavGroup[]>(() => {
+  const groups = useMemo(() => {
     if (!user) return [];
 
-    if (user.role === 'SUPERADMIN') {
-      return [
-        {
-          label: 'Navegacao',
-          items: [
-            { href: '/', icon: Home, label: 'Inicio' },
-            { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-            { href: '/favoritos', icon: Star, label: 'Favoritos' },
-          ],
-        },
-        {
-          label: 'Portal',
-          items: [
-            { href: '/admin/categories', icon: Folder, label: 'Categorias' },
-            { href: '/admin/links', icon: Link2, label: 'Links' },
-            { href: '/admin/schedules', icon: FileText, label: 'Documentos' },
-            { href: '/admin/notes', icon: StickyNote, label: 'Notas' },
-            { href: '/admin/images', icon: ImageIcon, label: 'Galeria' },
-          ],
-        },
-        {
-          label: 'Cadastros',
-          items: [
-            { href: '/admin/users', icon: Users, label: 'Usuarios' },
-            { href: '/admin/permissions', icon: Shield, label: 'Permissoes' },
-            { href: '/admin/settings', icon: Settings, label: 'Configuracoes' },
-            { href: '/admin/backup', icon: HardDrive, label: 'Backup' },
-            { href: '/admin/restore', icon: RefreshCw, label: 'Restauracao' },
-            { href: '/admin/reset', icon: Power, label: 'Reset' },
-          ],
-        },
-      ];
-    }
-
-    return [
-      {
-        label: 'Navegacao',
-        items: [
-          { href: '/', icon: Home, label: 'Inicio' },
-          { href: '/favoritos', icon: Star, label: 'Favoritos' },
-          { href: '/compartilhados', icon: Share2, label: 'Compartilhados' },
-        ],
-      },
-      {
-        label: 'Portal',
-        items: [
-          { href: '/admin/categories', icon: Folder, label: 'Categorias' },
-          { href: '/admin/links', icon: Link2, label: 'Links' },
-          { href: '/admin/schedules', icon: FileText, label: 'Documentos' },
-          { href: '/admin/notes', icon: StickyNote, label: 'Notas' },
-          { href: '/admin/images', icon: ImageIcon, label: 'Galeria' },
-        ],
-      },
-    ];
+    return getAccessibleNavGroups(user);
   }, [user]);
 
   return (
@@ -144,7 +63,7 @@ export default function AppNav({
             onNavigate?.();
           }}
         >
-          {collapsed ? 'F' : 'FACILITA'}
+          <span className="fac-nav-brand-wordmark">{collapsed ? 'F' : 'FACILITA'}</span>
         </button>
       </div>
 

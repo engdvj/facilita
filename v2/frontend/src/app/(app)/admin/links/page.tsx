@@ -1,17 +1,23 @@
 ﻿'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import ConfirmModal from '@/components/admin/confirm-modal';
-import ContentPreviewCard from '@/components/admin/content-preview-card';
+import AdminFilterSelect from '@/components/admin/filter-select';
+import SortableLinkList from '@/components/admin/sortable-link-list';
 import ImageSelector from '@/components/admin/image-selector';
+import AdminLinkCard from '@/components/admin/link-card';
 import AdminModal from '@/components/admin/modal';
-import ContentCoverImage from '@/components/content-cover-image';
+import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
+import ShareContentModal from '@/components/admin/share-content-modal';
 import useAdminContentCatalog from '@/hooks/use-admin-content-catalog';
 import api from '@/lib/api';
 import { normalizeImagePosition, parseImagePosition } from '@/lib/image';
+import { hasPermission } from '@/lib/permissions';
+import { formatSharePreview, formatShareSummary } from '@/lib/shares';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
-import { ContentVisibility, Link } from '@/types';
+import { Link } from '@/types';
 
 const emptyForm = {
   title: '',
@@ -22,12 +28,10 @@ const emptyForm = {
   imageUrl: '',
   imagePosition: '50% 50%',
   imageScale: 1,
-  visibility: 'PRIVATE' as ContentVisibility,
-  publicToken: '',
   order: 0,
 };
 
-type FormTab = 'BASIC' | 'CATEGORY' | 'VISUAL';
+type FormTab = 'BASIC' | 'VISUAL';
 type LinkFormErrors = {
   title?: string;
   url?: string;
@@ -35,6 +39,8 @@ type LinkFormErrors = {
 
 export default function LinksPage() {
   const user = useAuthStore((state) => state.user);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const globalSearch = useUiStore((state) => state.globalSearch);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -46,9 +52,14 @@ export default function LinksPage() {
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<LinkFormErrors>({});
   const [confirmTarget, setConfirmTarget] = useState<Link | null>(null);
+  const [shareTarget, setShareTarget] = useState<Link | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState(false);
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
+  const canManageLinks = hasPermission(user, 'canManageLinks');
+  const canManageShares = hasPermission(user, 'canManageShares');
   const userId = user?.id;
 
   const {
@@ -80,16 +91,53 @@ export default function LinksPage() {
   }, [links, globalSearch, statusFilter]);
 
   const imagePosition = useMemo(() => parseImagePosition(form.imagePosition), [form.imagePosition]);
+  const currentEditing = useMemo(
+    () => (editing ? links.find((item) => item.id === editing.id) ?? editing : null),
+    [editing, links],
+  );
+  const activeSearch = globalSearch.trim();
+
+  const clearEditParam = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('edit')) return;
+
+    params.delete('edit');
+    const nextQuery = params.toString();
+
+    setEditId(null);
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [pathname, router]);
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    setEditing(null);
+    clearEditParam();
+  }, [clearEditParam]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setEditId(new URLSearchParams(window.location.search).get('edit'));
+  }, []);
 
   const openCreate = () => {
+    if (!canManageLinks) {
+      return;
+    }
+
     setEditing(null);
-    setForm({ ...emptyForm, visibility: 'PRIVATE' });
+    setForm({ ...emptyForm });
     setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
   };
 
-  const openEdit = (link: Link) => {
+  const openEdit = useCallback((link: Link) => {
+    if (!canManageLinks) {
+      return;
+    }
+
     setEditing(link);
     setForm({
       title: link.title,
@@ -100,14 +148,22 @@ export default function LinksPage() {
       imageUrl: link.imageUrl || '',
       imagePosition: normalizeImagePosition(link.imagePosition),
       imageScale: link.imageScale || 1,
-      visibility: link.visibility,
-      publicToken: link.publicToken || '',
       order: link.order,
     });
     setFormErrors({});
     setFormTab('BASIC');
     setModalOpen(true);
-  };
+  }, [canManageLinks]);
+
+  useEffect(() => {
+    if (!editId || loading) return;
+
+    const target = links.find((item) => item.id === editId);
+    if (!target) return;
+    if (modalOpen && editing?.id === target.id) return;
+
+    openEdit(target);
+  }, [editId, editing?.id, links, loading, modalOpen, openEdit]);
 
   const validateForm = () => {
     const nextErrors: LinkFormErrors = {};
@@ -125,6 +181,7 @@ export default function LinksPage() {
   };
 
   const save = async () => {
+    if (!canManageLinks) return;
     if (!validateForm()) return;
 
     setSaving(true);
@@ -139,11 +196,6 @@ export default function LinksPage() {
         imagePosition: form.imageUrl ? form.imagePosition : undefined,
         imageScale: form.imageUrl ? form.imageScale : undefined,
         order: form.order,
-        visibility: isSuperadmin ? form.visibility : 'PRIVATE',
-        publicToken:
-          isSuperadmin && form.visibility === 'PUBLIC'
-            ? form.publicToken || undefined
-            : undefined,
       };
 
       if (editing) {
@@ -152,7 +204,7 @@ export default function LinksPage() {
         await api.post('/links', payload);
       }
 
-      setModalOpen(false);
+      closeModal();
       await load();
     } finally {
       setSaving(false);
@@ -160,6 +212,7 @@ export default function LinksPage() {
   };
 
   const remove = async () => {
+    if (!canManageLinks) return;
     if (!confirmTarget) return;
 
     setRemoving(true);
@@ -167,8 +220,7 @@ export default function LinksPage() {
       await removeItem(confirmTarget.id);
 
       if (editing?.id === confirmTarget.id) {
-        setModalOpen(false);
-        setEditing(null);
+        closeModal();
       }
     } catch {
       // O interceptor global já notifica o erro.
@@ -178,102 +230,102 @@ export default function LinksPage() {
     }
   };
 
+  const saveOrder = async (orderedIds: string[]) => {
+    if (!canManageLinks) return;
+    await Promise.all(
+      orderedIds.map((id, index) => api.patch(`/links/${id}`, { order: index })),
+    );
+    setSortMode(false);
+    await load();
+  };
+
   return (
     <div className="fac-page">
-      <section className="fac-page-head">
-        <div>
-          <h1 className="fac-subtitle">Links</h1>
-          <p className="text-[15px] text-muted-foreground">Gerencie os links que aparecem no portal.</p>
-        </div>
-
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[190px_auto_auto]">
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
-            }
-            className="fac-select"
-          >
-            <option value="ALL">Todos os status</option>
-            <option value="ACTIVE">Ativos</option>
-            <option value="INACTIVE">Inativos</option>
-          </select>
-
-          <button type="button" className="fac-filter-button" disabled title="Em breve">
-            Filtros
-          </button>
-
-          <button type="button" className="fac-button-primary" onClick={openCreate}>
-            Novo link
-          </button>
-        </div>
-      </section>
-
       <section className="fac-panel">
-        <div className="fac-panel-head">
-          <p className="fac-panel-title">Lista</p>
-          <p className="fac-panel-meta">{filtered.length} registros</p>
-        </div>
+        <AdminPanelHeaderBar
+          title="Links"
+          count={filtered.length}
+          actionsClassName="sm:grid-cols-[180px_auto]"
+          actions={
+            <>
+              <AdminFilterSelect
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
+                }
+              >
+                <option value="ALL">Todos os status</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </AdminFilterSelect>
 
-        <div className="fac-panel-body">
+              {canManageLinks && !sortMode && filtered.length > 1 && (
+                <button
+                  type="button"
+                  className="fac-button-secondary !h-10 !px-4 !text-[11px]"
+                  onClick={() => setSortMode(true)}
+                  title="Reordenar links"
+                >
+                  Reordenar
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="fac-button-primary !h-10 !w-10 !rounded-full !px-0 !tracking-normal transition-colors duration-200 hover:!bg-accent hover:!text-accent-foreground"
+                onClick={openCreate}
+                aria-label="Novo link"
+                title="Novo link"
+                disabled={!canManageLinks}
+              >
+                <span className="text-[22px] leading-none">+</span>
+              </button>
+            </>
+          }
+        />
+
+        <div className="fac-panel-body space-y-4">
+          {activeSearch ? (
+            <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+              Busca ativa:{' '}
+              <span className="normal-case tracking-normal text-foreground">{activeSearch}</span>
+            </p>
+          ) : null}
+
           {loading ? (
             <div className="fac-loading-state">Carregando links...</div>
           ) : error ? (
             <div className="fac-error-state">{error}</div>
           ) : filtered.length === 0 ? (
             <div className="fac-empty-state">Nenhum link encontrado.</div>
+          ) : sortMode ? (
+            <SortableLinkList
+              links={filtered}
+              onSave={(ids) => saveOrder(ids)}
+              onCancel={() => setSortMode(false)}
+            />
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((link) => (
-                <article key={link.id} className={`fac-card w-[220px] max-w-full ${link.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
-                  <button
-                    type="button"
-                    className="relative aspect-square w-full overflow-hidden bg-muted text-left"
-                    onClick={() => openEdit(link)}
-                  >
-                    <div className="absolute inset-0">
-                      <ContentCoverImage
-                        src={link.imageUrl}
-                        alt={link.title}
-                        position={link.imagePosition}
-                        scale={link.imageScale}
-                        width={440}
-                        height={440}
-                      />
-                    </div>
-
-                    <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[12px] font-semibold text-foreground">
-                      {link.category?.name || 'Sem categoria'}
-                    </span>
-                  </button>
-
-                  <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 pr-2 text-left"
-                      onClick={() => openEdit(link)}
-                    >
-                      <div>
-                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{link.title}</p>
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Link</p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={link.status === 'ACTIVE'}
-                      aria-label={link.status === 'ACTIVE' ? `Desativar ${link.title}` : `Ativar ${link.title}`}
-                      className="fac-toggle shrink-0"
-                      data-state={link.status === 'ACTIVE' ? 'on' : 'off'}
-                      onClick={() => {
-                        void toggleStatus(link);
-                      }}
-                    >
-                      <span className="fac-toggle-dot" />
-                    </button>
-                  </div>
-                </article>
+                <AdminLinkCard
+                  key={link.id}
+                  link={link}
+                  onEdit={canManageLinks ? () => openEdit(link) : undefined}
+                  onShare={
+                    canManageShares && !isSuperadmin
+                      ? () => {
+                          setShareTarget(link);
+                        }
+                      : undefined
+                  }
+                  onToggleStatus={
+                    canManageLinks
+                      ? () => {
+                          void toggleStatus(link);
+                        }
+                      : undefined
+                  }
+                />
               ))}
             </div>
           )}
@@ -284,11 +336,11 @@ export default function LinksPage() {
         open={modalOpen}
         title={editing ? 'Editar link' : 'Novo link'}
         description="Atualize os principais dados do link."
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         panelClassName="max-w-[820px]"
         footer={
           <>
-            {editing ? (
+            {editing && canManageLinks ? (
               <button
                 type="button"
                 className="fac-button-secondary text-[11px]"
@@ -305,7 +357,7 @@ export default function LinksPage() {
             <button
               type="button"
               className="fac-button-secondary text-[11px]"
-              onClick={() => setModalOpen(false)}
+              onClick={closeModal}
               disabled={saving || removing}
             >
               Cancelar
@@ -314,14 +366,14 @@ export default function LinksPage() {
               type="button"
               className="fac-button-primary text-[11px]"
               onClick={save}
-              disabled={saving || removing || !form.title.trim() || !form.url.trim()}
+              disabled={saving || removing || !canManageLinks || !form.title.trim() || !form.url.trim()}
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
           </>
         }
       >
-        <div className="fac-tabs">
+        <div className="fac-tabs !grid-cols-2">
           <button
             type="button"
             className="fac-tab"
@@ -329,14 +381,6 @@ export default function LinksPage() {
             onClick={() => setFormTab('BASIC')}
           >
             Básico
-          </button>
-          <button
-            type="button"
-            className="fac-tab"
-            data-active={formTab === 'CATEGORY' ? 'true' : 'false'}
-            onClick={() => setFormTab('CATEGORY')}
-          >
-            Categorização
           </button>
           <button
             type="button"
@@ -396,66 +440,57 @@ export default function LinksPage() {
               </div>
 
               <div>
-                <label className="fac-label">Visibilidade</label>
+                <label className="fac-label">Categoria</label>
                 <select
-                  value={isSuperadmin ? form.visibility : 'PRIVATE'}
+                  value={form.categoryId}
                   onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      visibility: event.target.value as ContentVisibility,
-                    }))
+                    setForm((prev) => ({ ...prev, categoryId: event.target.value }))
                   }
                   className="fac-select"
-                  disabled={!isSuperadmin}
                 >
-                  <option value="PRIVATE">Somente eu</option>
-                  <option value="PUBLIC">Publica</option>
+                  <option value="">Sem categoria</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div>
-                <label className="fac-label">Ordem</label>
-                <input
-                  type="number"
-                  value={form.order}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, order: Number(event.target.value) || 0 }))
-                  }
-                  className="fac-input"
-                />
-              </div>
+              {canManageShares && !isSuperadmin ? (
+                <div className="sm:col-span-2 rounded-2xl border border-border/70 bg-card/70 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="fac-form-title">Compartilhamento</p>
+                      <p className="text-[13px] text-foreground">
+                        {currentEditing
+                          ? formatShareSummary(currentEditing.shareCount)
+                          : 'Salve o link para compartilhar com usuários específicos.'}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {currentEditing
+                          ? formatSharePreview(currentEditing.sharedWithPreview) ||
+                            'Compartilhe sem alterar a visibilidade do item.'
+                          : 'Disponível apenas depois que o link for salvo.'}
+                      </p>
+                    </div>
 
-              {isSuperadmin && form.visibility === 'PUBLIC' ? (
-                <div className="sm:col-span-2">
-                  <label className="fac-label">Token publico (opcional)</label>
-                  <input
-                    value={form.publicToken}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, publicToken: event.target.value }))
-                    }
-                    className="fac-input"
-                  />
+                    <button
+                      type="button"
+                      className="fac-button-secondary !h-10 !px-4 text-[11px]"
+                      onClick={() => {
+                        if (currentEditing) {
+                          setShareTarget(currentEditing);
+                        }
+                      }}
+                      disabled={!currentEditing || saving || removing}
+                    >
+                      Compartilhar
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </div>
-          </section>
-        ) : null}
-
-        {formTab === 'CATEGORY' ? (
-          <section className="fac-form-card mt-4">
-            <label className="fac-label">Categoria</label>
-            <select
-              value={form.categoryId}
-              onChange={(event) => setForm((prev) => ({ ...prev, categoryId: event.target.value }))}
-              className="fac-select"
-            >
-              <option value="">Sem categoria</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
           </section>
         ) : null}
 
@@ -466,87 +501,105 @@ export default function LinksPage() {
               <ImageSelector
                 value={form.imageUrl}
                 onChange={(url) => setForm((prev) => ({ ...prev, imageUrl: url }))}
+                showPreview={false}
               />
               <p className="mt-1 text-[12px] text-muted-foreground">Opcional</p>
-
-              {form.imageUrl ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <label className="fac-label">Largura</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={imagePosition.x}
-                      onChange={(event) => {
-                        const nextX = Number.parseInt(event.target.value, 10);
-                        setForm((prev) => ({
-                          ...prev,
-                          imagePosition: `${nextX}% ${imagePosition.y}%`,
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                    <p className="mt-1 text-[12px] text-muted-foreground">{imagePosition.x}%</p>
-                  </div>
-
-                  <div>
-                    <label className="fac-label">Altura</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={imagePosition.y}
-                      onChange={(event) => {
-                        const nextY = Number.parseInt(event.target.value, 10);
-                        setForm((prev) => ({
-                          ...prev,
-                          imagePosition: `${imagePosition.x}% ${nextY}%`,
-                        }));
-                      }}
-                      className="w-full"
-                    />
-                    <p className="mt-1 text-[12px] text-muted-foreground">{imagePosition.y}%</p>
-                  </div>
-
-                  <div>
-                    <label className="fac-label">Zoom</label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="0.1"
-                      value={form.imageScale}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          imageScale: Number.parseFloat(event.target.value),
-                        }))
-                      }
-                      className="w-full"
-                    />
-                    <p className="mt-1 text-[12px] text-muted-foreground">
-                      {form.imageScale.toFixed(1)}x
-                    </p>
-                  </div>
-                </div>
-              ) : null}
             </section>
 
             <section className="fac-form-card">
-              <p className="fac-form-title">Previa do card</p>
-              <ContentPreviewCard
-                imageUrl={form.imageUrl}
-                imagePosition={form.imagePosition}
-                imageScale={form.imageScale}
-                title={form.title}
-                fallbackTitle="Nome do link"
-                footer={
-                  <span className="rounded-lg border border-border bg-white/80 px-3 py-1 text-[13px] uppercase tracking-[0.12em]">
-                    LINK
-                  </span>
+              <p className="fac-form-title">Prévia do card</p>
+              <div
+                className={
+                  form.imageUrl
+                    ? 'mt-4 grid gap-6 md:grid-cols-[minmax(0,248px)_minmax(0,1fr)] md:items-center'
+                    : 'mt-4'
                 }
-              />
+              >
+                <div className="flex justify-center md:justify-start">
+                  <AdminLinkCard
+                    size="preview"
+                    link={{
+                      title: form.title || 'Nome do link',
+                      category:
+                        categories.find((category) => category.id === form.categoryId) ?? null,
+                      status: 'ACTIVE',
+                      imageUrl: form.imageUrl || undefined,
+                      imagePosition: form.imagePosition,
+                      imageScale: form.imageScale,
+                      color: form.color,
+                      shareCount: 0,
+                    }}
+                    previewAction={
+                      <span className="rounded-lg border border-border bg-white/80 px-3 py-1 text-[13px] uppercase tracking-[0.12em]">
+                        LINK
+                      </span>
+                    }
+                  />
+                </div>
+
+                {form.imageUrl ? (
+                  <div className="grid gap-4">
+                    <div>
+                      <label className="fac-label">Largura</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={imagePosition.x}
+                        onChange={(event) => {
+                          const nextX = Number.parseInt(event.target.value, 10);
+                          setForm((prev) => ({
+                            ...prev,
+                            imagePosition: `${nextX}% ${imagePosition.y}%`,
+                          }));
+                        }}
+                        className="w-full"
+                      />
+                      <p className="mt-1 text-[12px] text-muted-foreground">{imagePosition.x}%</p>
+                    </div>
+
+                    <div>
+                      <label className="fac-label">Altura</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={imagePosition.y}
+                        onChange={(event) => {
+                          const nextY = Number.parseInt(event.target.value, 10);
+                          setForm((prev) => ({
+                            ...prev,
+                            imagePosition: `${imagePosition.x}% ${nextY}%`,
+                          }));
+                        }}
+                        className="w-full"
+                      />
+                      <p className="mt-1 text-[12px] text-muted-foreground">{imagePosition.y}%</p>
+                    </div>
+
+                    <div>
+                      <label className="fac-label">Zoom</label>
+                      <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.1"
+                        value={form.imageScale}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            imageScale: Number.parseFloat(event.target.value),
+                          }))
+                        }
+                        className="w-full"
+                      />
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        {form.imageScale.toFixed(1)}x
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </section>
           </div>
         ) : null}
@@ -566,6 +619,15 @@ export default function LinksPage() {
           void remove();
         }}
         onClose={() => setConfirmTarget(null)}
+      />
+
+      <ShareContentModal
+        open={Boolean(shareTarget)}
+        entityType="LINK"
+        entityId={shareTarget?.id ?? null}
+        entityTitle={shareTarget?.title || 'Link'}
+        onClose={() => setShareTarget(null)}
+        onShared={load}
       />
     </div>
   );

@@ -1,23 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Ban, Check, Download } from 'lucide-react';
-import AdminModal from '@/components/admin/modal';
-import ContentCoverImage from '@/components/content-cover-image';
-import { FavoriteButton } from '@/components/FavoriteButton';
+import { useRouter } from 'next/navigation';
+import AdminFilterSelect from '@/components/admin/filter-select';
+import FileViewerModal from '@/components/admin/file-viewer-modal';
+import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
+import CardCarousel from '@/components/card-carousel';
+import ShareItemCard from '@/components/share-item-card';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/error';
-import { resolveAssetUrl } from '@/lib/image';
+import { hasPermission } from '@/lib/permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import { Category, Share } from '@/types';
+import { useUiStore } from '@/stores/ui-store';
+import type { Category, Share } from '@/types';
 
-type ShareStatus = 'ACTIVE' | 'INACTIVE';
+type ShareTypeFilter = 'ALL' | Share['entityType'];
 
-const typeLabel: Record<Share['entityType'], string> = {
-  LINK: 'LINK',
-  SCHEDULE: 'DOC',
-  NOTE: 'NOTA',
-};
+function getShareCounterparty(share: Share, variant: 'received' | 'sent') {
+  return variant === 'received' ? share.owner : share.recipient;
+}
 
 function getShareTitle(share: Share) {
   if (share.entityType === 'LINK') return share.link?.title || 'Link';
@@ -31,48 +32,29 @@ function getShareCategory(share: Share) {
   return share.note?.category?.name;
 }
 
-function getShareCategoryColor(share: Share) {
-  if (share.entityType === 'LINK') return share.link?.category?.color || null;
-  if (share.entityType === 'SCHEDULE') return share.schedule?.category?.color || null;
-  return share.note?.category?.color || null;
-}
-
-function getShareOwner(share: Share) {
-  return share.owner?.name || 'Usuário';
-}
-
-function getShareStatus(share: Share): ShareStatus {
+function getShareStatus(share: Share) {
   if (share.entityType === 'LINK') return share.link?.status || 'ACTIVE';
   if (share.entityType === 'SCHEDULE') return share.schedule?.status || 'ACTIVE';
   return share.note?.status || 'ACTIVE';
 }
 
-function getShareImage(share: Share) {
-  if (share.entityType === 'LINK') return share.link?.imageUrl || null;
-  if (share.entityType === 'SCHEDULE') return share.schedule?.imageUrl || null;
-  return share.note?.imageUrl || null;
-}
-
-function getShareImagePosition(share: Share) {
-  if (share.entityType === 'LINK') return share.link?.imagePosition;
-  if (share.entityType === 'SCHEDULE') return share.schedule?.imagePosition;
-  return share.note?.imagePosition;
-}
-
-function getShareImageScale(share: Share) {
-  if (share.entityType === 'LINK') return share.link?.imageScale;
-  if (share.entityType === 'SCHEDULE') return share.schedule?.imageScale;
-  return share.note?.imageScale;
-}
-
-function getShareEntityId(share: Share) {
-  if (share.entityType === 'LINK') return share.link?.id;
-  if (share.entityType === 'SCHEDULE') return share.schedule?.id;
-  return share.note?.id;
+function getShareSearchText(share: Share) {
+  return [
+    getShareTitle(share),
+    getShareCategory(share),
+    share.owner?.name,
+    share.recipient?.name,
+    share.localCategory?.name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 }
 
 export default function CompartilhadosPage() {
   const user = useAuthStore((state) => state.user);
+  const router = useRouter();
+  const globalSearch = useUiStore((state) => state.globalSearch);
 
   const [received, setReceived] = useState<Share[]>([]);
   const [sent, setSent] = useState<Share[]>([]);
@@ -80,7 +62,13 @@ export default function CompartilhadosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [viewingNote, setViewingNote] = useState<Share['note'] | null>(null);
+  const [viewingFile, setViewingFile] = useState<{ id: string; url: string; name: string } | null>(null);
+  const [typeFilter, setTypeFilter] = useState<ShareTypeFilter>('ALL');
+  const [userFilter, setUserFilter] = useState('ALL');
+  const canViewLinks = hasPermission(user, 'canViewLinks');
+  const canViewSchedules = hasPermission(user, 'canViewSchedules');
+  const canViewNotes = hasPermission(user, 'canViewNotes');
+  const canManageShares = hasPermission(user, 'canManageShares');
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
 
@@ -92,6 +80,7 @@ export default function CompartilhadosPage() {
 
     setLoading(true);
     setError(null);
+
     try {
       const [receivedRes, sentRes, categoriesRes] = await Promise.all([
         api.get('/shares/received'),
@@ -113,10 +102,73 @@ export default function CompartilhadosPage() {
     void load();
   }, [load]);
 
+  const availableTypes = useMemo(
+    () =>
+      [
+        canViewLinks ? 'LINK' : null,
+        canViewSchedules ? 'SCHEDULE' : null,
+        canViewNotes ? 'NOTE' : null,
+      ].filter((type): type is Share['entityType'] => Boolean(type)),
+    [canViewLinks, canViewNotes, canViewSchedules],
+  );
+  const effectiveTypeFilter =
+    typeFilter === 'ALL' || availableTypes.includes(typeFilter) ? typeFilter : 'ALL';
+
   const localCategories = useMemo(
     () => categories.filter((category) => category.status === 'ACTIVE'),
     [categories],
   );
+
+  const userOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    received.forEach((share) => {
+      const user = getShareCounterparty(share, 'received');
+      if (user?.name) {
+        map.set(user.id || `received:${user.name}`, user.name);
+      }
+    });
+
+    sent.forEach((share) => {
+      const user = getShareCounterparty(share, 'sent');
+      if (user?.name) {
+        map.set(user.id || `sent:${user.name}`, user.name);
+      }
+    });
+
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [received, sent]);
+
+  const searchTerm = globalSearch.trim().toLowerCase();
+  const activeSearch = globalSearch.trim();
+
+  const filterShares = useCallback(
+    (shares: Share[], variant: 'received' | 'sent') =>
+      shares
+        .filter((share) =>
+          effectiveTypeFilter === 'ALL' ? true : share.entityType === effectiveTypeFilter,
+        )
+        .filter((share) => {
+          if (userFilter === 'ALL') return true;
+          const counterparty = getShareCounterparty(share, variant);
+          return (counterparty?.id || `${variant}:${counterparty?.name || ''}`) === userFilter;
+        })
+        .filter((share) => {
+          if (!searchTerm) return true;
+          return getShareSearchText(share).includes(searchTerm);
+        })
+        .sort((a, b) => getShareTitle(a).localeCompare(getShareTitle(b))),
+    [effectiveTypeFilter, searchTerm, userFilter],
+  );
+
+  const filteredReceived = useMemo(
+    () => filterShares(received, 'received'),
+    [filterShares, received],
+  );
+  const filteredSent = useMemo(() => filterShares(sent, 'sent'), [filterShares, sent]);
+  const totalFiltered = filteredReceived.length + filteredSent.length;
 
   const removeReceived = async (shareId: string) => {
     setProcessingId(shareId);
@@ -128,22 +180,13 @@ export default function CompartilhadosPage() {
     }
   };
 
-  const revokeSent = async (shareId: string) => {
-    setProcessingId(shareId);
-    try {
-      await api.delete(`/shares/${shareId}/revoke`);
-      setSent((prev) => prev.filter((share) => share.id !== shareId));
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
   const updateLocalCategory = async (shareId: string, categoryId: string) => {
     setProcessingId(shareId);
     try {
       await api.patch(`/shares/${shareId}/local-category`, {
         categoryId: categoryId || null,
       });
+
       setReceived((prev) =>
         prev.map((share) =>
           share.id === shareId
@@ -151,7 +194,7 @@ export default function CompartilhadosPage() {
                 ...share,
                 localCategoryId: categoryId || null,
                 localCategory: categoryId
-                  ? localCategories.find((category) => category.id === categoryId)
+                  ? localCategories.find((category) => category.id === categoryId) || null
                   : null,
               }
             : share,
@@ -165,39 +208,31 @@ export default function CompartilhadosPage() {
   const openShare = (share: Share) => {
     if (getShareStatus(share) !== 'ACTIVE') return;
 
-    if (share.entityType === 'LINK' && share.link?.url) {
-      window.open(share.link.url, '_blank', 'noopener,noreferrer');
+    if (share.entityType === 'LINK' && share.link?.id) {
+      router.push(`/admin/links?edit=${share.link.id}`);
       return;
     }
 
-    if (share.entityType === 'SCHEDULE' && share.schedule?.fileUrl) {
-      window.open(resolveAssetUrl(share.schedule.fileUrl), '_blank', 'noopener,noreferrer');
+    if (share.entityType === 'SCHEDULE' && share.schedule?.id) {
+      router.push(`/admin/schedules?edit=${share.schedule.id}`);
       return;
     }
 
-    if (share.entityType === 'NOTE' && share.note) {
-      setViewingNote(share.note);
+    if (share.entityType === 'NOTE' && share.note?.id) {
+      router.push(`/admin/notes?edit=${share.note.id}`);
     }
   };
-
-  const hasOpenAction = (share: Share) => {
-    if (share.entityType === 'LINK') return Boolean(share.link?.url);
-    if (share.entityType === 'SCHEDULE') return Boolean(share.schedule?.fileUrl);
-    return Boolean(share.note);
-  };
-
-  const sentStatusLabel = (share: Share) =>
-    share.removedAt ? 'Removido pelo destinatário' : 'Ativo';
 
   if (isSuperadmin) {
     return (
       <div className="fac-page">
-        <section className="space-y-2">
-          <p className="fac-kicker">Compartilhados</p>
-          <h1 className="fac-subtitle">Fluxo de compartilhamento</h1>
-          <p className="text-[15px] text-muted-foreground">
-            Superadmin não participa do fluxo de compartilhamento.
-          </p>
+        <section className="fac-panel">
+          <AdminPanelHeaderBar title="Compartilhados" count={0} />
+          <div className="fac-panel-body">
+            <div className="fac-empty-state">
+              Superadmin nao participa do fluxo de compartilhamento.
+            </div>
+          </div>
         </section>
       </div>
     );
@@ -205,302 +240,121 @@ export default function CompartilhadosPage() {
 
   return (
     <div className="fac-page">
-      <section className="space-y-2">
-        <p className="fac-kicker">Compartilhados</p>
-        <h1 className="fac-subtitle">Recebidos e enviados</h1>
-        <p className="text-[15px] text-muted-foreground">
-          Organize itens compartilhados sem alterar o conteúdo original.
-        </p>
+      <section className="fac-panel">
+        <AdminPanelHeaderBar
+          title="Compartilhados"
+          count={totalFiltered}
+          actionsClassName="sm:grid-cols-2 xl:grid-cols-[180px_180px]"
+          actions={
+            <>
+              <AdminFilterSelect
+                value={effectiveTypeFilter}
+                onChange={(event) =>
+                  setTypeFilter(event.target.value as ShareTypeFilter)
+                }
+              >
+                <option value="ALL">Todos os tipos</option>
+                {canViewLinks ? <option value="LINK">Links</option> : null}
+                {canViewSchedules ? <option value="SCHEDULE">Documentos</option> : null}
+                {canViewNotes ? <option value="NOTE">Notas</option> : null}
+              </AdminFilterSelect>
+
+              <AdminFilterSelect
+                value={userFilter}
+                onChange={(event) => setUserFilter(event.target.value)}
+              >
+                <option value="ALL">Todos os usuários</option>
+                {userOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </AdminFilterSelect>
+            </>
+          }
+        />
+
+        <div className="fac-panel-body space-y-4">
+          {activeSearch ? (
+            <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+              Busca ativa:{' '}
+              <span className="normal-case tracking-normal text-foreground">{activeSearch}</span>
+            </p>
+          ) : null}
+
+          {loading ? (
+            <div className="fac-loading-state">Carregando compartilhamentos...</div>
+          ) : error ? (
+            <div className="fac-error-state">{error}</div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <section className="fac-form-card min-w-0">
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="fac-form-title !mb-0">Recebidos</p>
+                  <div className="flex h-8 min-w-8 items-center justify-center rounded-full border border-primary/60 bg-primary px-2 text-[12px] font-medium text-primary-foreground shadow-[0_8px_18px_rgba(15,22,26,0.18)]">
+                    {filteredReceived.length}
+                  </div>
+                </div>
+
+                {filteredReceived.length === 0 ? (
+                  <div className="fac-empty-state">Nenhum item recebido.</div>
+                ) : (
+                  <CardCarousel
+                    items={filteredReceived.map((share) => (
+                      <ShareItemCard
+                        key={share.id}
+                        share={share}
+                        variant="received"
+                        processingId={processingId}
+                        localCategories={localCategories}
+                        onOpen={openShare}
+                        onOpenFile={(id, url, name) => setViewingFile({ id, url, name })}
+                        onRemove={canManageShares ? removeReceived : undefined}
+                        onUpdateCategory={canManageShares ? updateLocalCategory : undefined}
+                      />
+                    ))}
+                  />
+                )}
+              </section>
+
+              <section className="fac-form-card min-w-0">
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="fac-form-title !mb-0">Enviados</p>
+                  <div className="flex h-8 min-w-8 items-center justify-center rounded-full border border-primary/60 bg-primary px-2 text-[12px] font-medium text-primary-foreground shadow-[0_8px_18px_rgba(15,22,26,0.18)]">
+                    {filteredSent.length}
+                  </div>
+                </div>
+
+                {filteredSent.length === 0 ? (
+                  <div className="fac-empty-state">Nenhum item enviado.</div>
+                ) : (
+                  <CardCarousel
+                    items={filteredSent.map((share) => (
+                      <ShareItemCard
+                        key={share.id}
+                        share={share}
+                        variant="sent"
+                        processingId={processingId}
+                        localCategories={localCategories}
+                        onOpen={openShare}
+                        onOpenFile={(id, url, name) => setViewingFile({ id, url, name })}
+                      />
+                    ))}
+                  />
+                )}
+              </section>
+            </div>
+          )}
+        </div>
       </section>
 
-      {loading ? (
-        <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">
-          Carregando compartilhamentos...
-        </div>
-      ) : error ? (
-        <div className="fac-panel border-red-400 bg-red-50 px-6 py-4 text-[14px] text-red-700">{error}</div>
-      ) : (
-        <>
-          <section className="space-y-3">
-            <h2 className="text-[18px] font-semibold text-foreground">Recebidos ({received.length})</h2>
-            {received.length === 0 ? (
-              <div className="fac-panel px-6 py-8 text-[14px] text-muted-foreground">
-                Nenhum item recebido.
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-4">
-                {received.map((share) => {
-                  const shareStatus = getShareStatus(share);
-                  const isInactive = shareStatus === 'INACTIVE';
-                  const imageUrl = getShareImage(share) ? resolveAssetUrl(getShareImage(share)) : '';
-                  const categoryName = getShareCategory(share) || 'Sem categoria';
-                  const categoryColor = getShareCategoryColor(share);
-                  const entityId = getShareEntityId(share);
-
-                  return (
-                    <article
-                      key={share.id}
-                      className={`fac-card w-[240px] ${isInactive ? 'opacity-80 grayscale' : ''}`}
-                    >
-                      <div
-                        className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
-                        onClick={() => openShare(share)}
-                        onKeyDown={(event) => {
-                          if ((event.key === 'Enter' || event.key === ' ') && !isInactive) {
-                            event.preventDefault();
-                            openShare(share);
-                          }
-                        }}
-                        role="button"
-                        tabIndex={isInactive ? -1 : 0}
-                      >
-                        <ContentCoverImage
-                          src={imageUrl}
-                          alt={getShareTitle(share)}
-                          position={getShareImagePosition(share)}
-                          scale={getShareImageScale(share)}
-                          width={440}
-                          height={440}
-                          fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
-                        />
-
-                        <span
-                          className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground"
-                          style={categoryColor ? { borderColor: categoryColor, color: categoryColor } : undefined}
-                        >
-                          {categoryName}
-                        </span>
-
-                        <div className="absolute right-3 top-3 flex items-center gap-2">
-                          {entityId ? <FavoriteButton entityType={share.entityType} entityId={entityId} /> : null}
-                          {share.entityType === 'SCHEDULE' && share.schedule?.fileUrl ? (
-                            <button
-                              type="button"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/95 text-foreground"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (isInactive) return;
-                                window.open(resolveAssetUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
-                              }}
-                              aria-label="Baixar documento"
-                            >
-                              <Download className="h-4 w-4" />
-                            </button>
-                          ) : null}
-                        </div>
-
-                        <span className="fac-status-badge absolute bottom-3 left-3" data-status={shareStatus}>
-                          {shareStatus === 'ACTIVE' ? (
-                            <Check className="h-5 w-5" />
-                          ) : (
-                            <Ban className="h-5 w-5" />
-                          )}
-                        </span>
-
-                        <span className="absolute bottom-3 right-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-foreground">
-                          {typeLabel[share.entityType]}
-                        </span>
-                      </div>
-
-                      <div className="space-y-2 p-3">
-                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">
-                          {getShareTitle(share)}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground">
-                          Compartilhado por {getShareOwner(share)}
-                        </p>
-
-                        <div>
-                          <label className="mb-1 block text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Categoria local
-                          </label>
-                          <select
-                            className="fac-select !h-9 text-[13px]"
-                            value={share.localCategoryId || ''}
-                            onChange={(event) => updateLocalCategory(share.id, event.target.value)}
-                            disabled={processingId === share.id}
-                          >
-                            <option value="">Sem categoria local</option>
-                            {localCategories.map((category) => (
-                              <option key={category.id} value={category.id}>
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {hasOpenAction(share) ? (
-                            <button
-                              type="button"
-                              className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
-                              onClick={() => openShare(share)}
-                              disabled={isInactive}
-                            >
-                              Abrir
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
-                            onClick={() => removeReceived(share.id)}
-                            disabled={processingId === share.id}
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="text-[18px] font-semibold text-foreground">Enviados ({sent.length})</h2>
-            {sent.length === 0 ? (
-              <div className="fac-panel px-6 py-8 text-[14px] text-muted-foreground">
-                Nenhum item enviado.
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-4">
-                {sent.map((share) => {
-                  const shareStatus = getShareStatus(share);
-                  const isInactive = shareStatus === 'INACTIVE';
-                  const imageUrl = getShareImage(share) ? resolveAssetUrl(getShareImage(share)) : '';
-                  const categoryName = getShareCategory(share) || 'Sem categoria';
-                  const categoryColor = getShareCategoryColor(share);
-                  const entityId = getShareEntityId(share);
-
-                  return (
-                    <article
-                      key={share.id}
-                      className={`fac-card w-[240px] ${isInactive ? 'opacity-80 grayscale' : ''}`}
-                    >
-                      <div
-                        className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
-                        onClick={() => openShare(share)}
-                        onKeyDown={(event) => {
-                          if ((event.key === 'Enter' || event.key === ' ') && !isInactive) {
-                            event.preventDefault();
-                            openShare(share);
-                          }
-                        }}
-                        role="button"
-                        tabIndex={isInactive ? -1 : 0}
-                      >
-                        <ContentCoverImage
-                          src={imageUrl}
-                          alt={getShareTitle(share)}
-                          position={getShareImagePosition(share)}
-                          scale={getShareImageScale(share)}
-                          width={440}
-                          height={440}
-                          fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
-                        />
-
-                        <span
-                          className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground"
-                          style={categoryColor ? { borderColor: categoryColor, color: categoryColor } : undefined}
-                        >
-                          {categoryName}
-                        </span>
-
-                        <div className="absolute right-3 top-3 flex items-center gap-2">
-                          {entityId ? <FavoriteButton entityType={share.entityType} entityId={entityId} /> : null}
-                          {share.entityType === 'SCHEDULE' && share.schedule?.fileUrl ? (
-                            <button
-                              type="button"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/95 text-foreground"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (isInactive) return;
-                                window.open(resolveAssetUrl(share.schedule?.fileUrl), '_blank', 'noopener,noreferrer');
-                              }}
-                              aria-label="Baixar documento"
-                            >
-                              <Download className="h-4 w-4" />
-                            </button>
-                          ) : null}
-                        </div>
-
-                        <span className="fac-status-badge absolute bottom-3 left-3" data-status={shareStatus}>
-                          {shareStatus === 'ACTIVE' ? (
-                            <Check className="h-5 w-5" />
-                          ) : (
-                            <Ban className="h-5 w-5" />
-                          )}
-                        </span>
-
-                        <span className="absolute bottom-3 right-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-foreground">
-                          {typeLabel[share.entityType]}
-                        </span>
-                      </div>
-
-                      <div className="space-y-2 p-3">
-                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">
-                          {getShareTitle(share)}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground">
-                          Destinatario: {share.recipient?.name || 'Usuario'}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground">{sentStatusLabel(share)}</p>
-
-                        <div className="flex items-center gap-2">
-                          {hasOpenAction(share) ? (
-                            <button
-                              type="button"
-                              className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
-                              onClick={() => openShare(share)}
-                              disabled={isInactive}
-                            >
-                              Abrir
-                            </button>
-                          ) : null}
-
-                          {!share.removedAt ? (
-                            <button
-                              type="button"
-                              className="fac-button-secondary !h-9 !px-3 text-[10px] tracking-[0.16em]"
-                              onClick={() => revokeSent(share.id)}
-                              disabled={processingId === share.id}
-                            >
-                              Revogar
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </>
-      )}
-
-      <AdminModal
-        open={Boolean(viewingNote)}
-        title={viewingNote?.title || 'Nota compartilhada'}
-        onClose={() => setViewingNote(null)}
-        panelClassName="max-w-3xl"
-      >
-        {viewingNote?.imageUrl ? (
-          <div className="mb-4 overflow-hidden rounded-xl">
-            <ContentCoverImage
-              src={viewingNote.imageUrl}
-              alt={viewingNote.title}
-              position={viewingNote.imagePosition}
-              scale={viewingNote.imageScale}
-              width={1200}
-              height={560}
-              className="h-56 w-full object-cover"
-            />
-          </div>
-        ) : null}
-        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{viewingNote?.content}</p>
-      </AdminModal>
+      <FileViewerModal
+        open={Boolean(viewingFile)}
+        scheduleId={viewingFile?.id}
+        fileName={viewingFile?.name ?? ''}
+        fileUrl={viewingFile?.url ?? ''}
+        onClose={() => setViewingFile(null)}
+      />
     </div>
   );
 }

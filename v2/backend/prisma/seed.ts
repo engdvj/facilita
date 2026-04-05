@@ -1,7 +1,11 @@
 import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { defaultRolePermissions } from '../src/permissions/permissions.constants';
 import { createPrismaAdapter } from '../src/prisma/prisma-adapter';
-import { SYSTEM_CONFIG_DEFAULTS } from '../src/system-config/system-config.defaults';
+import {
+  INITIAL_SUPERADMIN_BOOTSTRAP_KEY,
+  SYSTEM_CONFIG_DEFAULTS,
+} from '../src/system-config/system-config.defaults';
 
 const prisma = new PrismaClient({ adapter: createPrismaAdapter() });
 
@@ -9,41 +13,11 @@ async function seedRolePermissions() {
   const roles = [
     {
       role: UserRole.USER,
-      canViewDashboard: false,
-      canAccessAdmin: false,
-      canViewUsers: false,
-      canCreateUsers: false,
-      canEditUsers: false,
-      canDeleteUsers: false,
-      canViewLinks: true,
-      canManageLinks: true,
-      canManageCategories: true,
-      canManageSchedules: true,
-      canViewPrivateContent: false,
-      canBackupSystem: false,
-      canResetSystem: false,
-      canViewAuditLogs: false,
-      canManageSystemConfig: false,
-      canManageShares: true,
+      ...defaultRolePermissions[UserRole.USER],
     },
     {
       role: UserRole.SUPERADMIN,
-      canViewDashboard: true,
-      canAccessAdmin: true,
-      canViewUsers: true,
-      canCreateUsers: true,
-      canEditUsers: true,
-      canDeleteUsers: true,
-      canViewLinks: true,
-      canManageLinks: true,
-      canManageCategories: true,
-      canManageSchedules: true,
-      canViewPrivateContent: true,
-      canBackupSystem: true,
-      canResetSystem: true,
-      canViewAuditLogs: true,
-      canManageSystemConfig: true,
-      canManageShares: false,
+      ...defaultRolePermissions[UserRole.SUPERADMIN],
     },
   ];
 
@@ -77,6 +51,19 @@ async function seedSuperAdmin() {
       passwordHash,
       role: UserRole.SUPERADMIN,
       status: UserStatus.ACTIVE,
+    },
+  });
+
+  await prisma.systemConfig.upsert({
+    where: { key: INITIAL_SUPERADMIN_BOOTSTRAP_KEY },
+    update: { value: 'true' },
+    create: {
+      key: INITIAL_SUPERADMIN_BOOTSTRAP_KEY,
+      value: 'true',
+      description: 'Indica se o superadmin inicial ja foi provisionado.',
+      type: 'boolean',
+      isEditable: false,
+      category: 'system',
     },
   });
 }

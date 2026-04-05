@@ -13,10 +13,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { UserRole } from '@prisma/client';
+import { EntityStatus, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { parsePagination } from '../common/utils/pagination';
 import { CreateLinkDto } from './dto/create-link.dto';
@@ -28,8 +30,8 @@ export class LinksController {
   constructor(private readonly linksService: LinksService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageLinks')
   create(@Body() createLinkDto: CreateLinkDto, @Request() req: any) {
     return this.linksService.create(req.user, createLinkDto);
   }
@@ -50,8 +52,9 @@ export class LinksController {
   }
 
   @Get('admin/list')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.SUPERADMIN)
+  @Permissions('canViewLinks')
   async findAllAdmin(
     @Request() req: any,
     @Query('categoryId') categoryId?: string,
@@ -88,8 +91,9 @@ export class LinksController {
   }
 
   @Get('admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.SUPERADMIN)
+  @Permissions('canViewLinks')
   findAllAdminAlias(
     @Request() req: any,
     @Query('categoryId') categoryId?: string,
@@ -117,8 +121,8 @@ export class LinksController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageLinks')
   update(
     @Param('id') id: string,
     @Body() updateLinkDto: UpdateLinkDto,
@@ -128,30 +132,30 @@ export class LinksController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageLinks')
   remove(@Param('id') id: string, @Request() req: any) {
     return this.linksService.remove(id, req.user);
   }
 
   @Post(':id/restore')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageLinks')
   restore(@Param('id') id: string, @Request() req: any) {
     return this.linksService.restore(id, req.user);
   }
 
   @Post(':id/activate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageLinks')
   activate(@Param('id') id: string, @Request() req: any) {
-    return this.linksService.activate(id, req.user);
+    return this.linksService.setStatus(id, req.user, EntityStatus.ACTIVE);
   }
 
   @Post(':id/deactivate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageLinks')
   deactivate(@Param('id') id: string, @Request() req: any) {
-    return this.linksService.deactivate(id, req.user);
+    return this.linksService.setStatus(id, req.user, EntityStatus.INACTIVE);
   }
 }

@@ -384,33 +384,39 @@ v2/frontend/src/
 ## 11. Checklist de implementação
 
 ### Etapa 1 — lib/color.ts
-- [ ] Criar `lib/color.ts` com `getContrastTextColor`
-- [ ] Substituir a função local na home pelo import
-- [ ] Buscar globalmente por `getContrastTextColor` — verificar se está duplicado em outro lugar
+- [x] Criar `lib/color.ts` com `getContrastTextColor`
+- [x] Substituir a função local na home pelo import
+- [x] Buscar globalmente por `getContrastTextColor` — verificar se está duplicado em outro lugar
 - [ ] Verificar que a cor das pills de categoria continua correta
 
 ### Etapa 2 — button acessível
-- [ ] Substituir `<div role="button">` por `<button type="button">`
-- [ ] Remover `onKeyDown` manual
-- [ ] Adicionar `disabled={isInactive}` no botão
-- [ ] Adicionar `aria-label={`Abrir ${item.title}`}`
-- [ ] Remover `tabIndex` (desnecessário com `<button>`)
+- [x] Substituir `<div role="button">` por `<button type="button">`
+- [x] Remover `onKeyDown` manual
+- [x] Adicionar `disabled={isInactive}` no botão
+- [x] Adicionar `aria-label={`Abrir ${item.title}`}`
+- [x] Remover `tabIndex` (desnecessário com `<button>`)
 - [ ] Verificar layout do card — especialmente `aspect-square` e `overflow-hidden`
 - [ ] Testar navegação por teclado (Tab → Enter → abre item)
 
 ### Etapa 3 — design system states
-- [ ] Substituir loading div por `<div className="fac-loading-state">`
-- [ ] Substituir error div por `<div className="fac-error-state">`
-- [ ] Substituir empty div por `<div className="fac-empty-state">` com mensagem contextual
+- [x] Substituir loading div por `<div className="fac-loading-state">`
+- [x] Substituir error div por `<div className="fac-error-state">`
+- [x] Substituir empty div por `<div className="fac-empty-state">` com mensagem contextual
 - [ ] Verificar visualmente no tema claro e no tema escuro
 
 ### Etapa 4 — badge condicional
-- [ ] Remover `<Check>` do badge de status
-- [ ] Tornar o badge condicional para `isInactive` apenas
+- [x] Remover `<Check>` do badge de status
+- [x] Tornar o badge condicional para `isInactive` apenas
 - [ ] Verificar que o layout do card não quebrou sem o badge em todos os cards
 
 ### Etapa 5 — acentuação
-- [ ] Corrigir "Publicas" → "Públicas"
+- [x] Corrigir "Publicas" → "Públicas"
+
+---
+
+## 11.1. Ajuste complementar desta rodada
+
+- [x] Reintroduzir o CTA de login para visitantes no cabeÃ§alho da home (`/login`)
 
 ---
 

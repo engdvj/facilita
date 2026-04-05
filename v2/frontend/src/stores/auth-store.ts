@@ -2,14 +2,14 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-
-export type UserRole = 'SUPERADMIN' | 'USER';
+import type { PermissionFlags, UserRole } from '@/types';
 
 export type AuthUser = {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  permissions?: PermissionFlags | null;
   avatarUrl?: string | null;
   theme?: Record<string, unknown> | null;
 };

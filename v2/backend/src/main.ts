@@ -7,6 +7,7 @@ import * as express from 'express';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { SystemConfigService } from './system-config/system-config.service';
 
 async function bootstrap() {
@@ -54,6 +55,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const corsOrigin = config.get<string>('CORS_ORIGIN');
   const allowAllOrigins =

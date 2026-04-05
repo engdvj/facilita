@@ -15,6 +15,7 @@ import {
 import UserNotificationsModal from '@/components/user-notifications-modal';
 import UserAvatar from '@/components/user-avatar';
 import api from '@/lib/api';
+import { getUserRoleLabel } from '@/lib/user-role';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRealtimeNotificationStore } from '@/stores/realtime-notification-store';
 import { type NavMode, useUiStore } from '@/stores/ui-store';
@@ -93,7 +94,7 @@ export default function UserNavMenu(props: UserNavMenuProps) {
     }
   };
 
-  const roleLabel = user.role === 'SUPERADMIN' ? 'Super Admin' : 'Usuario';
+  const roleLabel = getUserRoleLabel(user.role);
   const hasActivity = unreadCount > 0;
   const hasSearchTerm = globalSearch.trim().length > 0;
   const nextThemeLabel = theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro';
@@ -128,7 +129,7 @@ export default function UserNavMenu(props: UserNavMenuProps) {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[12px] font-semibold text-foreground">
-                  {user.name || 'Usuario'}
+                  {user.name || 'Usuário'}
                 </span>
                 <span className="mt-0.5 block text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
                   {roleLabel}

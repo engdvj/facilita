@@ -6,7 +6,7 @@ Este plano detalha a **reescrita completa** do projeto FACILITA em **NestJS + Ne
 1. **Portal de Links/Agendas/Arquivos** (FACILITA atual modernizado)
 2. **Arquitetura multi-empresa nativa** (Company → Unit → Sector → User)
 3. **Sistema de Backup/Reset automatizado** (inspirado no CHECK-IN)
-4. **Permissões granulares por role** (SUPERADMIN, ADMIN, COLLABORATOR)
+4. **Permissões granulares por role** (SUPERADMIN, ADMIN, USER)
 5. **8 funcionalidades extras priorizadas**:
    - Sistema de Favoritos (login obrigatório)
    - Busca Avançada Full-Text
@@ -88,7 +88,7 @@ backend/
 - ✅ Reset controlado por flags
 - ✅ Configurações persistentes (SystemConfig)
 - ✅ Permissões granulares por role
-- ✅ 3 tipos de usuários (COLLABORATOR, MANAGER, ADMIN)
+- ✅ 3 tipos de usuários (USER, MANAGER, ADMIN)
 - ✅ Auditoria completa (AuditLog)
 - ✅ Guards e decorators para autorização
 - ✅ Soft delete (deletedAt)
@@ -125,7 +125,7 @@ backend/
 4. **SystemConfig** (Configurações do sistema)
 
 **Modificações em User:**
-- Adicionar `role` (COLLABORATOR, MANAGER, ADMIN)
+- Adicionar `role` (USER, MANAGER, ADMIN)
 - Adicionar `sector_id` (FK para Sector)
 - Adicionar `status` (ACTIVE, INACTIVE)
 - Adicionar `cpf`, `matricula` (identificadores alternativos)
@@ -139,7 +139,7 @@ backend/
 ### 2.3 Sistema de Permissões
 
 **Implementar:**
-1. Enum `UserRole` (COLLABORATOR, MANAGER, ADMIN)
+1. Enum `UserRole` (USER, MANAGER, ADMIN)
 2. Tabela `RolePermission` com permissões granulares:
    - can_view_dashboard
    - can_manage_users
@@ -493,7 +493,7 @@ flask db init
 import enum
 
 class UserRole(str, enum.Enum):
-    COLLABORATOR = "COLLABORATOR"
+    USER = "USER"
     MANAGER = "MANAGER"
     ADMIN = "ADMIN"
 
@@ -517,7 +517,7 @@ class User(db.Model):
     cpf = db.Column(db.String(11), unique=True, nullable=True)  # NOVO
     matricula = db.Column(db.String(50), unique=True, nullable=True)  # NOVO
     password_hash = db.Column(db.String(512), nullable=False)
-    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.COLLABORATOR)  # NOVO
+    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.USER)  # NOVO
     status = db.Column(db.Enum(UserStatus), nullable=False, default=UserStatus.ACTIVE)  # NOVO
     sector_id = db.Column(UUID(as_uuid=True), db.ForeignKey('sector.id'), nullable=True)  # NOVO
     theme = db.Column(JSON, nullable=True)  # Alterado de Text para JSON
@@ -724,9 +724,9 @@ class AuthorizationService:
         if actor.role == UserRole.ADMIN:
             return True
 
-        # Manager só pode gerenciar COLLABORATOR do próprio setor
+        # Manager só pode gerenciar USER do próprio setor
         if actor.role == UserRole.MANAGER:
-            if target_user.role == UserRole.COLLABORATOR and target_user.sector_id == actor.sector_id:
+            if target_user.role == UserRole.USER and target_user.sector_id == actor.sector_id:
                 return True
 
         return False
@@ -1244,15 +1244,15 @@ class ResetService:
 
     @staticmethod
     def seed_permissions():
-        # COLLABORATOR
-        collaborator_perm = RolePermission.query.filter_by(role=UserRole.COLLABORATOR).first()
-        if not collaborator_perm:
-            collaborator_perm = RolePermission(
-                role=UserRole.COLLABORATOR,
+        # USER
+        user_perm = RolePermission.query.filter_by(role=UserRole.USER).first()
+        if not user_perm:
+            user_perm = RolePermission(
+                role=UserRole.USER,
                 can_view_links=True,
                 restrict_to_own_sector=True
             )
-            db.session.add(collaborator_perm)
+            db.session.add(user_perm)
 
         # MANAGER
         manager_perm = RolePermission.query.filter_by(role=UserRole.MANAGER).first()
@@ -1407,7 +1407,7 @@ def import_data():
             user = User(
                 username=row['username'],
                 password_hash=row['password_hash'],
-                role=UserRole.ADMIN if row['is_admin'] else UserRole.COLLABORATOR,
+                role=UserRole.ADMIN if row['is_admin'] else UserRole.USER,
                 status=UserStatus.ACTIVE,
                 theme=json.loads(row['theme']) if row['theme'] else None
             )
@@ -1469,7 +1469,7 @@ python backend/scripts/import_from_sqlite.py
 1. Login com admin padrão
 2. Criar setor
 3. Criar usuário MANAGER vinculado ao setor
-4. Criar usuário COLLABORATOR vinculado ao setor
+4. Criar usuário USER vinculado ao setor
 5. Testar permissões (MANAGER não pode deletar setor)
 6. Criar link vinculado a setor
 7. Exportar backup completo
@@ -1491,7 +1491,7 @@ python backend/scripts/import_from_sqlite.py
 
 ```typescript
 export enum UserRole {
-  COLLABORATOR = 'COLLABORATOR',
+  USER = 'USER',
   MANAGER = 'MANAGER',
   ADMIN = 'ADMIN'
 }
@@ -1799,7 +1799,7 @@ function MyComponent() {
 ### Added
 - Sistema de setores/departamentos
 - Permissões granulares por tipo de usuário
-- 3 tipos de usuários (COLLABORATOR, MANAGER, ADMIN)
+- 3 tipos de usuários (USER, MANAGER, ADMIN)
 - Sistema de backup/restore automatizado
 - Sistema de reset controlado
 - Logs de auditoria
@@ -2002,7 +2002,7 @@ Company → Unit → Sector → User
 enum UserRole {
   SUPERADMIN    // Acesso total à plataforma
   ADMIN         // Admin de uma empresa
-  COLLABORATOR  // Usuário final
+  USER  // Usuário final
 }
 
 enum UserStatus {
@@ -2248,7 +2248,7 @@ O **FACILITA V2.0** será uma plataforma moderna e escalável que oferece:
 1. **Portal de Links/Agendas/Arquivos** (FACILITA modernizado)
 2. **Multi-empresa nativa** (Company → Unit → Sector → User)
 3. **Backup/Reset automatizado** (inspirado no CHECK-IN)
-4. **Permissões granulares por role** (SUPERADMIN, ADMIN, COLLABORATOR)
+4. **Permissões granulares por role** (SUPERADMIN, ADMIN, USER)
 5. **8 Funcionalidades Extras Priorizadas**:
    - ✅ Sistema de Favoritos (login obrigatório)
    - ✅ Busca Avançada Full-Text (PostgreSQL tsvector)

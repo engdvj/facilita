@@ -1,204 +1,280 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Ban, Check, Download } from 'lucide-react';
-import AdminModal from '@/components/admin/modal';
-import ContentCoverImage from '@/components/content-cover-image';
-import { FavoriteButton } from '@/components/FavoriteButton';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, BookOpen, FileText, Link2, Share2, Star } from 'lucide-react';
+import AdminFilterSelect from '@/components/admin/filter-select';
+import FileViewerModal from '@/components/admin/file-viewer-modal';
+import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
+import FavoriteItemCard, { type FavoriteCardItem } from '@/components/favorite-item-card';
+import NoteViewerModal from '@/components/note-viewer-modal';
+import { getContrastTextColor } from '@/lib/color';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/error';
-import { resolveAssetUrl } from '@/lib/image';
+import { hasPermission } from '@/lib/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
-import { Link as LinkEntity, Note, UploadedSchedule } from '@/types';
+import type { Link as LinkType, Note, UploadedSchedule } from '@/types';
 
-type ItemType = 'LINK' | 'SCHEDULE' | 'NOTE';
+// ─── Landing page ─────────────────────────────────────────────────────────────
 
-type HomeItem = {
-  id: string;
-  type: ItemType;
-  title: string;
-  description?: string;
-  content?: string;
-  url?: string;
-  fileUrl?: string;
-  fileName?: string;
-  categoryName?: string;
-  categoryColor?: string | null;
-  imageUrl?: string | null;
-  imagePosition?: string | null;
-  imageScale?: number | null;
-  visibility: 'PRIVATE' | 'PUBLIC';
-  status: 'ACTIVE' | 'INACTIVE';
-};
+const staggerStyle = (index: number) => ({ '--stagger-index': index } as CSSProperties);
 
-const typeLabel: Record<ItemType, string> = {
-  LINK: 'LINK',
-  SCHEDULE: 'DOC',
-  NOTE: 'NOTA',
-};
+const pillars = [
+  {
+    icon: Link2,
+    label: 'Links',
+    title: 'Centralize seus links',
+    description: 'Salve e organize links com categorias, capas e descrições. Encontre qualquer um em segundos com busca instantânea.',
+  },
+  {
+    icon: FileText,
+    label: 'Documentos',
+    title: 'Acesse seus documentos',
+    description: 'Faça upload de PDFs, planilhas e apresentações. Visualize direto no navegador, sem precisar baixar.',
+  },
+  {
+    icon: BookOpen,
+    label: 'Notas',
+    title: 'Escreva e consulte notas',
+    description: 'Editor de texto completo para criar notas ricas. Organize por categoria e acesse de qualquer lugar.',
+  },
+];
 
-function getContrastTextColor(color: string) {
-  const hex = color.replace('#', '').trim();
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#263238';
-  const value = Number.parseInt(hex, 16);
-  const r = (value >> 16) & 255;
-  const g = (value >> 8) & 255;
-  const b = value & 255;
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 150 ? '#263238' : '#ffffff';
+function LandingPage() {
+  return (
+    <div className="min-h-screen" style={{ animation: 'fadeUp var(--duration-slow) var(--ease-out) both' }}>
+
+      {/* Hero */}
+      <section className="mx-auto max-w-3xl px-6 pb-20 pt-24 text-center motion-stagger">
+
+        <div
+          className="motion-item inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground shadow-[0_6px_18px_rgba(16,44,50,0.06)] backdrop-blur-sm"
+          style={staggerStyle(1)}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          Facilita
+        </div>
+
+        <div className="motion-item mt-7 space-y-4" style={staggerStyle(2)}>
+          <h1 className="font-display text-5xl leading-[1.1] text-foreground sm:text-6xl lg:text-7xl">
+            Links, documentos<br />
+            <span className="sm:whitespace-nowrap">
+            e notas —{' '}
+            <span className="text-primary">organizados.</span>
+            </span>
+          </h1>
+
+          <p className="mx-auto max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+            <span className="sm:whitespace-nowrap">
+            Um portal pessoal para guardar o que importa, encontrar rápido e compartilhar quando precisar.
+            </span>
+          </p>
+        </div>
+
+        <div className="motion-item mt-9" style={staggerStyle(3)}>
+          <Link
+            href="/login"
+            className="motion-press inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-[13px] font-semibold text-primary-foreground shadow-[0_12px_28px_rgba(15,55,65,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(15,55,65,0.3)] sm:text-sm"
+          >
+            Entrar no Facilita
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Pillars */}
+      <section className="mx-auto max-w-5xl px-6 pb-16">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {pillars.map((pillar, i) => {
+            const Icon = pillar.icon;
+            return (
+              <article
+                key={pillar.label}
+                className="group flex flex-col gap-4 rounded-[20px] border border-border/60 bg-card/80 p-7 shadow-[0_6px_20px_rgba(15,22,26,0.06)]"
+                style={staggerStyle(i + 1)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-primary/[0.09] text-primary">
+                    <Icon className="h-4.5 w-4.5" aria-hidden="true" />
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/70">
+                    {pillar.label}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-foreground">{pillar.title}</h3>
+                  <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{pillar.description}</p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Extras row */}
+      <section className="mx-auto max-w-5xl px-6 pb-20">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-start gap-4 rounded-[16px] border border-border/50 bg-card/50 px-6 py-5">
+            <Share2 className="mt-0.5 h-5 w-5 shrink-0 text-primary/60" aria-hidden="true" />
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">Compartilhamento seletivo</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                Envie itens específicos para colegas sem tornar nada público. Você controla quem vê o quê.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4 rounded-[16px] border border-border/50 bg-card/50 px-6 py-5">
+            <Star className="mt-0.5 h-5 w-5 shrink-0 text-primary/60" aria-hidden="true" />
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">Favoritos de acesso rápido</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                Marque os itens mais usados para acessá-los diretamente, sem precisar buscar toda vez.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  );
 }
 
-export default function HomePage() {
-  const user = useAuthStore((state) => state.user);
+// ─── Home (authenticated) ─────────────────────────────────────────────────────
 
-  const [links, setLinks] = useState<LinkEntity[]>([]);
+type ContentType = 'ALL' | 'LINK' | 'SCHEDULE' | 'NOTE';
+
+function HomePage() {
+  const user = useAuthStore((state) => state.user);
+  const globalSearch = useUiStore((state) => state.globalSearch);
+  const canViewLinks = hasPermission(user, 'canViewLinks');
+  const canViewSchedules = hasPermission(user, 'canViewSchedules');
+  const canViewNotes = hasPermission(user, 'canViewNotes');
+  const [typeFilter, setTypeFilter] = useState<ContentType>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+
+  const [links, setLinks] = useState<LinkType[]>([]);
   const [schedules, setSchedules] = useState<UploadedSchedule[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const globalSearch = useUiStore((state) => state.globalSearch);
-  const [typeFilter, setTypeFilter] = useState<'ALL' | ItemType>('ALL');
-  const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'PUBLIC' | 'PRIVATE'>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [viewingFile, setViewingFile] = useState<{ id: string; url: string; name: string } | null>(null);
 
-  const isSuperadmin = user?.role === 'SUPERADMIN';
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [linksRes, schedulesRes, notesRes] = await Promise.all([
+        canViewLinks ? api.get('/links') : Promise.resolve({ data: [] }),
+        canViewSchedules ? api.get('/schedules') : Promise.resolve({ data: [] }),
+        canViewNotes ? api.get('/notes') : Promise.resolve({ data: [] }),
+      ]);
+      setLinks(Array.isArray(linksRes.data) ? linksRes.data : []);
+      setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
+      setNotes(Array.isArray(notesRes.data) ? notesRes.data : []);
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Não foi possível carregar os itens.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [canViewLinks, canViewNotes, canViewSchedules]);
 
   useEffect(() => {
-    let active = true;
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const endpointLinks = isSuperadmin ? '/links/admin/list' : '/links';
-        const endpointSchedules = isSuperadmin ? '/schedules/admin/list' : '/schedules';
-        const endpointNotes = isSuperadmin ? '/notes/admin/list' : '/notes';
-
-        const params = user ? { includeInactive: true } : undefined;
-
-        const [linksRes, schedulesRes, notesRes] = await Promise.all([
-          api.get(endpointLinks, { params }),
-          api.get(endpointSchedules, { params }),
-          api.get(endpointNotes, { params }),
-        ]);
-
-        if (!active) return;
-
-        setLinks(Array.isArray(linksRes.data) ? linksRes.data : []);
-        setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
-        setNotes(Array.isArray(notesRes.data) ? notesRes.data : []);
-      } catch (err: unknown) {
-        if (!active) return;
-        setError(getApiErrorMessage(err, 'Não foi possível carregar os itens.'));
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
     void load();
+  }, [load]);
 
-    return () => {
-      active = false;
-    };
-  }, [isSuperadmin, user]);
+  const availableTypes = useMemo(
+    () =>
+      [
+        canViewLinks ? 'LINK' : null,
+        canViewSchedules ? 'SCHEDULE' : null,
+        canViewNotes ? 'NOTE' : null,
+      ].filter((type): type is Exclude<ContentType, 'ALL'> => Boolean(type)),
+    [canViewLinks, canViewNotes, canViewSchedules],
+  );
 
-  const mappedItems = useMemo<HomeItem[]>(() => {
-    const mappedLinks: HomeItem[] = links.map((link) => ({
+  const effectiveTypeFilter =
+    typeFilter === 'ALL' || availableTypes.includes(typeFilter) ? typeFilter : 'ALL';
+
+  const allItems = useMemo<FavoriteCardItem[]>(() => {
+    const linkItems: FavoriteCardItem[] = links.map((link) => ({
       id: link.id,
       type: 'LINK',
       title: link.title,
       description: link.description || undefined,
       url: link.url,
-      categoryName: link.category?.name,
-      categoryColor: link.category?.color || null,
       imageUrl: link.imageUrl,
       imagePosition: link.imagePosition,
       imageScale: link.imageScale,
-      visibility: link.visibility,
+      categoryName: link.category?.name,
+      categoryColor: link.category?.color || null,
+      categoryIcon: link.category?.icon || null,
       status: link.status,
     }));
 
-    const mappedSchedules: HomeItem[] = schedules.map((item) => ({
-      id: item.id,
+    const scheduleItems: FavoriteCardItem[] = schedules.map((schedule) => ({
+      id: schedule.id,
       type: 'SCHEDULE',
-      title: item.title,
-      fileUrl: item.fileUrl,
-      fileName: item.fileName,
-      categoryName: item.category?.name,
-      categoryColor: item.category?.color || null,
-      imageUrl: item.imageUrl,
-      imagePosition: item.imagePosition,
-      imageScale: item.imageScale,
-      visibility: item.visibility,
-      status: item.status,
+      title: schedule.title,
+      fileUrl: schedule.fileUrl,
+      fileName: schedule.fileName,
+      imageUrl: schedule.imageUrl,
+      imagePosition: schedule.imagePosition,
+      imageScale: schedule.imageScale,
+      categoryName: schedule.category?.name,
+      categoryColor: schedule.category?.color || null,
+      categoryIcon: schedule.category?.icon || null,
+      status: schedule.status,
     }));
 
-    const mappedNotes: HomeItem[] = notes.map((note) => ({
+    const noteItems: FavoriteCardItem[] = notes.map((note) => ({
       id: note.id,
       type: 'NOTE',
       title: note.title,
       content: note.content,
-      categoryName: note.category?.name,
-      categoryColor: note.category?.color || null,
       imageUrl: note.imageUrl,
       imagePosition: note.imagePosition,
       imageScale: note.imageScale,
-      visibility: note.visibility,
+      categoryName: note.category?.name,
+      categoryColor: note.category?.color || null,
+      categoryIcon: note.category?.icon || null,
       status: note.status,
     }));
 
-    return [...mappedLinks, ...mappedSchedules, ...mappedNotes].sort((a, b) =>
-      a.title.localeCompare(b.title),
-    );
-  }, [links, notes, schedules]);
+    return [...linkItems, ...scheduleItems, ...noteItems];
+  }, [links, schedules, notes]);
 
   const searchedItems = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
 
-    return mappedItems
-      .filter((item) => (typeFilter === 'ALL' ? true : item.type === typeFilter))
-      .filter((item) => (visibilityFilter === 'ALL' ? true : item.visibility === visibilityFilter))
+    return allItems
+      .filter((item) => (effectiveTypeFilter === 'ALL' ? true : item.type === effectiveTypeFilter))
       .filter((item) => {
         if (!term) return true;
-
-        const haystack = [
-          item.title,
-          item.description,
-          item.content,
-          item.categoryName,
-          item.fileName,
-        ]
+        const haystack = [item.title, item.description, item.content, item.categoryName, item.fileName]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
-
         return haystack.includes(term);
-      });
-  }, [mappedItems, globalSearch, typeFilter, visibilityFilter]);
+      })
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [allItems, effectiveTypeFilter, globalSearch]);
 
   const categoryTabs = useMemo(() => {
     const map = new Map<string, { count: number; color?: string | null }>();
-
     searchedItems.forEach((item) => {
       const name = item.categoryName || 'Sem categoria';
       const current = map.get(name);
       if (current) {
         current.count += 1;
-        if (!current.color && item.categoryColor) {
-          current.color = item.categoryColor;
-        }
+        if (!current.color && item.categoryColor) current.color = item.categoryColor;
       } else {
         map.set(name, { count: 1, color: item.categoryColor || null });
       }
     });
-
     return Array.from(map.entries())
       .map(([name, data]) => ({ name, count: data.count, color: data.color || null }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -209,9 +285,13 @@ export default function HomePage() {
     return searchedItems.filter((item) => (item.categoryName || 'Sem categoria') === categoryFilter);
   }, [searchedItems, categoryFilter]);
 
-  const noteMap = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
+  const noteMap = useMemo(() => {
+    const map = new Map<string, Note>();
+    notes.forEach((note) => map.set(note.id, note));
+    return map;
+  }, [notes]);
 
-  const openItem = (item: HomeItem) => {
+  const openItem = (item: FavoriteCardItem) => {
     if (item.status !== 'ACTIVE') return;
 
     if (item.type === 'LINK' && item.url) {
@@ -220,202 +300,143 @@ export default function HomePage() {
     }
 
     if (item.type === 'SCHEDULE' && item.fileUrl) {
-      window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
+      setViewingFile({ id: item.id, url: item.fileUrl, name: item.fileName || item.title });
       return;
     }
 
     if (item.type === 'NOTE') {
       const note = noteMap.get(item.id);
-      if (note) {
-        setSelectedNote(note);
-      }
+      if (note) setSelectedNote(note);
     }
   };
 
+  const activeSearch = globalSearch.trim();
+  const hasActiveFilters =
+    activeSearch.length > 0 || effectiveTypeFilter !== 'ALL' || categoryFilter !== 'ALL';
+  const emptyMessage = activeSearch
+    ? `Nenhum resultado para "${activeSearch}".`
+    : hasActiveFilters
+      ? 'Nenhum item corresponde ao filtro.'
+      : 'Nenhum item encontrado.';
+
   return (
     <div className="fac-page">
-      <section className="fac-page-head">
-        <div>
-          <h1 className="fac-subtitle">Links, documentos e notas do portal</h1>
-          <p className="text-[15px] text-muted-foreground">
-            Encontre rapidamente documentos, sistemas, atalhos e notas.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <div>
-            <label className="fac-label">Tipo</label>
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as 'ALL' | ItemType)}
-              className="fac-select !w-auto"
+      <section className="fac-panel">
+        <AdminPanelHeaderBar
+          title="Início"
+          count={filteredItems.length}
+          actionsClassName="sm:max-w-[220px] xl:w-[220px]"
+          actions={
+            <AdminFilterSelect
+              value={effectiveTypeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as ContentType)}
             >
-              <option value="ALL">Todos</option>
-              <option value="LINK">Links</option>
-              <option value="SCHEDULE">Documentos</option>
-              <option value="NOTE">Notas</option>
-            </select>
-          </div>
+              <option value="ALL">Todos os tipos</option>
+              {canViewLinks ? <option value="LINK">Links</option> : null}
+              {canViewSchedules ? <option value="SCHEDULE">Documentos</option> : null}
+              {canViewNotes ? <option value="NOTE">Notas</option> : null}
+            </AdminFilterSelect>
+          }
+        />
 
-          <div>
-            <label className="fac-label">Visibilidade</label>
-            <select
-              value={visibilityFilter}
-              onChange={(event) =>
-                setVisibilityFilter(event.target.value as 'ALL' | 'PUBLIC' | 'PRIVATE')
-              }
-              className="fac-select !w-auto"
-            >
-              <option value="ALL">Todas</option>
-              <option value="PUBLIC">Publicas</option>
-              <option value="PRIVATE">Restritas</option>
-            </select>
-          </div>
-        </div>
-      </section>
+        <div className="fac-panel-body space-y-4">
+          {activeSearch ? (
+            <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+              Busca ativa:{' '}
+              <span className="normal-case tracking-normal text-foreground">{activeSearch}</span>
+            </p>
+          ) : null}
 
-      <section className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          data-active={categoryFilter === 'ALL' ? 'true' : 'false'}
-          className="fac-pill"
-          onClick={() => setCategoryFilter('ALL')}
-        >
-          Todos ({searchedItems.length})
-        </button>
-
-        {categoryTabs.map((tab) => {
-          const isActive = categoryFilter === tab.name;
-          const textColor = tab.color ? getContrastTextColor(tab.color) : undefined;
-          return (
+          <div className="flex flex-wrap gap-2">
             <button
-              key={tab.name}
               type="button"
-              data-active={isActive ? 'true' : 'false'}
+              data-active={categoryFilter === 'ALL' ? 'true' : 'false'}
               className="fac-pill"
-              style={
-                tab.color
-                  ? isActive
-                    ? { backgroundColor: tab.color, borderColor: tab.color, color: textColor }
-                    : { borderColor: tab.color, color: tab.color }
-                  : undefined
-              }
-              onClick={() => setCategoryFilter(tab.name)}
+              onClick={() => setCategoryFilter('ALL')}
             >
-              {tab.name} ({tab.count})
+              Todos ({searchedItems.length})
             </button>
-          );
-        })}
+
+            {categoryTabs.map((tab) => {
+              const isActive = categoryFilter === tab.name;
+              const textColor = tab.color ? getContrastTextColor(tab.color) : undefined;
+              return (
+                <button
+                  key={tab.name}
+                  type="button"
+                  data-active={isActive ? 'true' : 'false'}
+                  className="fac-pill"
+                  style={
+                    tab.color
+                      ? isActive
+                        ? { backgroundColor: tab.color, borderColor: tab.color, color: textColor }
+                        : { borderColor: tab.color, color: tab.color }
+                      : undefined
+                  }
+                  onClick={() => setCategoryFilter(tab.name)}
+                >
+                  {tab.name} ({tab.count})
+                </button>
+              );
+            })}
+          </div>
+
+          {loading ? (
+            <div className="fac-loading-state">Carregando itens...</div>
+          ) : error ? (
+            <div className="fac-error-state">{error}</div>
+          ) : filteredItems.length === 0 ? (
+            <div className="fac-empty-state">{emptyMessage}</div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {filteredItems.map((item) => (
+                <FavoriteItemCard
+                  key={`${item.type}-${item.id}`}
+                  item={item}
+                  detailsVariant="home"
+                  onOpen={() => openItem(item)}
+                  onDownload={
+                    item.type === 'SCHEDULE' && item.fileUrl
+                      ? () => setViewingFile({ id: item.id, url: item.fileUrl!, name: item.fileName || item.title })
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
-      {loading ? (
-        <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">
-          Carregando itens...
-        </div>
-      ) : error ? (
-        <div className="fac-panel border-red-400 bg-red-50 px-6 py-4 text-[14px] text-red-700">{error}</div>
-      ) : filteredItems.length === 0 ? (
-        <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">
-          Nenhum item encontrado.
-        </div>
-      ) : (
-        <section className="flex flex-wrap gap-4">
-          {filteredItems.map((item) => {
-            const isInactive = item.status === 'INACTIVE';
-            const imageUrl = item.imageUrl ? resolveAssetUrl(item.imageUrl) : '';
-            const categoryName = item.categoryName || 'Sem categoria';
-
-            return (
-              <article
-                key={`${item.type}-${item.id}`}
-                className={`fac-card w-[220px] ${isInactive ? 'opacity-80 grayscale' : ''}`}
-              >
-                <div
-                  className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
-                  onClick={() => openItem(item)}
-                  onKeyDown={(event) => {
-                    if ((event.key === 'Enter' || event.key === ' ') && !isInactive) {
-                      event.preventDefault();
-                      openItem(item);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={isInactive ? -1 : 0}
-                >
-                  <ContentCoverImage
-                    src={imageUrl}
-                    alt={item.title}
-                    position={item.imagePosition}
-                    scale={item.imageScale}
-                    width={440}
-                    height={440}
-                    fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
-                  />
-
-                  <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground">
-                    {categoryName}
-                  </span>
-
-                  <div className="absolute right-3 top-3 flex items-center gap-2">
-                    <FavoriteButton entityType={item.type} entityId={item.id} />
-                    {item.type === 'SCHEDULE' && item.fileUrl ? (
-                      <button
-                        type="button"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/95 text-foreground"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (isInactive) return;
-                          window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
-                        }}
-                        aria-label="Baixar documento"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <span className="fac-status-badge absolute bottom-3 left-3" data-status={item.status}>
-                    {item.status === 'ACTIVE' ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <Ban className="h-5 w-5" />
-                    )}
-                  </span>
-
-                  <span className="absolute bottom-3 right-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-foreground">
-                    {typeLabel[item.type]}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
-
-      <AdminModal
+      <NoteViewerModal
         open={Boolean(selectedNote)}
-        title={selectedNote?.title || 'Nota'}
+        note={selectedNote}
         onClose={() => setSelectedNote(null)}
-        panelClassName="max-w-3xl"
-      >
-        {selectedNote?.imageUrl ? (
-          <div className="mb-4 overflow-hidden rounded-xl">
-            <ContentCoverImage
-              src={selectedNote.imageUrl}
-              alt={selectedNote.title}
-              position={selectedNote.imagePosition}
-              scale={selectedNote.imageScale}
-              width={1200}
-              height={560}
-              className="h-56 w-full object-cover"
-            />
-          </div>
-        ) : null}
+      />
 
-        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-          {selectedNote?.content}
-        </p>
-      </AdminModal>
+      <FileViewerModal
+        open={Boolean(viewingFile)}
+        scheduleId={viewingFile?.id}
+        fileName={viewingFile?.name ?? ''}
+        fileUrl={viewingFile?.url ?? ''}
+        onClose={() => setViewingFile(null)}
+      />
     </div>
   );
+}
+
+// ─── Root page ─────────────────────────────────────────────────────────────────
+
+export default function RootPage() {
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
+  if (!hasHydrated) {
+    return null;
+  }
+
+  if (user) {
+    return <HomePage />;
+  }
+
+  return <LandingPage />;
 }

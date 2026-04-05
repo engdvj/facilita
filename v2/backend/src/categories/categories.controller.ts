@@ -10,17 +10,16 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { UserRole } from '@prisma/client';
+import { Permissions } from '../common/decorators/permissions.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoriesService } from './categories.service';
 
 @Controller('categories')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPERADMIN, UserRole.USER)
+@UseGuards(JwtAuthGuard)
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
@@ -33,7 +32,7 @@ export class CategoriesController {
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
     return this.categoriesService.findAll({
       ownerId: isSuperAdmin ? ownerId : req.user?.id,
-      includeInactive: includeInactive === 'true' && isSuperAdmin,
+      includeInactive: includeInactive === 'true',
     });
   }
 
@@ -43,11 +42,15 @@ export class CategoriesController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageCategories')
   create(@Request() req: any, @Body() data: CreateCategoryDto) {
     return this.categoriesService.create(req.user.id, data);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageCategories')
   update(
     @Param('id') id: string,
     @Request() req: any,
@@ -57,6 +60,8 @@ export class CategoriesController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageCategories')
   remove(@Param('id') id: string, @Request() req: any) {
     return this.categoriesService.remove(id, req.user);
   }

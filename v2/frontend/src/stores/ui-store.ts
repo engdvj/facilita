@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { CustomShortcut } from '@/types';
 
 type Theme = 'light' | 'dark';
 export type NavMode = 'manual' | 'auto';
@@ -48,6 +49,8 @@ type UiState = {
   resetNavWidth: () => void;
   globalSearch: string;
   setGlobalSearch: (q: string) => void;
+  shortcutCatalog: CustomShortcut[];
+  setShortcutCatalog: (items: CustomShortcut[]) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -92,6 +95,8 @@ export const useUiStore = create<UiState>((set) => ({
   },
   globalSearch: '',
   setGlobalSearch: (q) => set({ globalSearch: q }),
+  shortcutCatalog: [],
+  setShortcutCatalog: (items) => set({ shortcutCatalog: items }),
   theme: getInitialTheme(),
   setTheme: (theme) => {
     localStorage.setItem('theme', theme);

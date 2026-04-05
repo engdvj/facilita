@@ -11,6 +11,25 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly categoryInclude = {
+    owner: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+      },
+    },
+    _count: {
+      select: {
+        links: true,
+        schedules: true,
+        notes: true,
+      },
+    },
+  } as const;
+
   async findAll(options: {
     ownerId?: string;
     includeInactive?: boolean;
@@ -20,15 +39,7 @@ export class CategoriesService {
         ...(options.ownerId ? { ownerId: options.ownerId } : {}),
         ...(options.includeInactive ? {} : { status: 'ACTIVE' }),
       },
-      include: {
-        _count: {
-          select: {
-            links: true,
-            schedules: true,
-            notes: true,
-          },
-        },
-      },
+      include: this.categoryInclude,
       orderBy: { name: 'asc' },
     });
   }
@@ -36,15 +47,7 @@ export class CategoriesService {
   async findOne(id: string) {
     const category = await this.prisma.category.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: {
-            links: true,
-            schedules: true,
-            notes: true,
-          },
-        },
-      },
+      include: this.categoryInclude,
     });
 
     if (!category) {
@@ -64,15 +67,7 @@ export class CategoriesService {
         adminOnly: data.adminOnly ?? false,
         status: data.status ?? 'ACTIVE',
       },
-      include: {
-        _count: {
-          select: {
-            links: true,
-            schedules: true,
-            notes: true,
-          },
-        },
-      },
+      include: this.categoryInclude,
     });
   }
 
@@ -85,15 +80,7 @@ export class CategoriesService {
     return this.prisma.category.update({
       where: { id },
       data,
-      include: {
-        _count: {
-          select: {
-            links: true,
-            schedules: true,
-            notes: true,
-          },
-        },
-      },
+      include: this.categoryInclude,
     });
   }
 

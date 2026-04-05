@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { backupEntities, type BackupEntity } from '../backups/backups.types';
+import { defaultRolePermissions } from '../permissions/permissions.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { INITIAL_SUPERADMIN_BOOTSTRAP_KEY } from '../system-config/system-config.defaults';
 
 @Injectable()
 export class ResetsService {
@@ -82,41 +84,11 @@ export class ResetsService {
     const roles = [
       {
         role: UserRole.USER,
-        canViewDashboard: false,
-        canAccessAdmin: false,
-        canViewUsers: false,
-        canCreateUsers: false,
-        canEditUsers: false,
-        canDeleteUsers: false,
-        canViewLinks: true,
-        canManageLinks: true,
-        canManageCategories: true,
-        canManageSchedules: true,
-        canViewPrivateContent: false,
-        canBackupSystem: false,
-        canResetSystem: false,
-        canViewAuditLogs: false,
-        canManageSystemConfig: false,
-        canManageShares: true,
+        ...defaultRolePermissions[UserRole.USER],
       },
       {
         role: UserRole.SUPERADMIN,
-        canViewDashboard: true,
-        canAccessAdmin: true,
-        canViewUsers: true,
-        canCreateUsers: true,
-        canEditUsers: true,
-        canDeleteUsers: true,
-        canViewLinks: true,
-        canManageLinks: true,
-        canManageCategories: true,
-        canManageSchedules: true,
-        canViewPrivateContent: true,
-        canBackupSystem: true,
-        canResetSystem: true,
-        canViewAuditLogs: true,
-        canManageSystemConfig: true,
-        canManageShares: false,
+        ...defaultRolePermissions[UserRole.SUPERADMIN],
       },
     ];
 
@@ -149,6 +121,19 @@ export class ResetsService {
         passwordHash,
         role: UserRole.SUPERADMIN,
         status: UserStatus.ACTIVE,
+      },
+    });
+
+    await tx.systemConfig.upsert({
+      where: { key: INITIAL_SUPERADMIN_BOOTSTRAP_KEY },
+      update: { value: 'true' },
+      create: {
+        key: INITIAL_SUPERADMIN_BOOTSTRAP_KEY,
+        value: 'true',
+        description: 'Indica se o superadmin inicial ja foi provisionado.',
+        type: 'boolean',
+        isEditable: false,
+        category: 'system',
       },
     });
   }

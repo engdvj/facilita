@@ -9,8 +9,10 @@ import {
   useState,
 } from "react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/error";
 import { notify } from "@/lib/notify";
 import { useAuthStore } from "@/stores/auth-store";
+import type { Link, Note, UploadedSchedule } from "@/types";
 
 export type EntityType = "LINK" | "SCHEDULE" | "NOTE";
 
@@ -22,14 +24,15 @@ export interface Favorite {
   scheduleId?: string;
   noteId?: string;
   createdAt: string;
-  link?: any;
-  schedule?: any;
-  note?: any;
+  link?: Link | null;
+  schedule?: UploadedSchedule | null;
+  note?: Note | null;
 }
 
 type FavoritesContextValue = {
   favorites: Favorite[];
   loading: boolean;
+  error: string | null;
   favoritedItems: Set<string>;
   fetchFavorites: (type?: EntityType) => Promise<Favorite[]>;
   addFavorite: (entityType: EntityType, entityId: string) => Promise<Favorite>;
@@ -40,6 +43,13 @@ type FavoritesContextValue = {
   checkFavorited: (entityType: EntityType, entityId: string) => Promise<boolean>;
   countMyFavorites: () => Promise<number>;
   countEntityFavorites: (entityType: EntityType, entityId: string) => Promise<number>;
+};
+
+type CreateFavoritePayload = {
+  entityType: EntityType;
+  linkId?: string;
+  scheduleId?: string;
+  noteId?: string;
 };
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
@@ -53,6 +63,7 @@ export function FavoritesProvider({
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [favoritedItems, setFavoritedItems] = useState<Set<string>>(new Set());
 
   const findFavoriteByEntity = useCallback(
@@ -84,15 +95,18 @@ export function FavoritesProvider({
   const fetchFavorites = useCallback(
     async (type?: EntityType): Promise<Favorite[]> => {
       setLoading(true);
+      setError(null);
       try {
         const url = type ? `/favorites/me?type=${type}` : "/favorites/me";
         const response = await api.get(url);
         setFavorites(response.data);
         syncFavoritedItems(response.data);
         return response.data;
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = getApiErrorMessage(error, "Erro ao carregar favoritos");
+        setError(message);
         console.error("Erro ao buscar favoritos:", error);
-        notify.error("Erro ao carregar favoritos");
+        notify.error(message);
         throw error;
       } finally {
         setLoading(false);
@@ -104,7 +118,7 @@ export function FavoritesProvider({
   const addFavorite = useCallback(
     async (entityType: EntityType, entityId: string) => {
       try {
-        const payload: any = { entityType };
+        const payload: CreateFavoritePayload = { entityType };
 
         if (entityType === "LINK") {
           payload.linkId = entityId;
@@ -125,16 +139,23 @@ export function FavoritesProvider({
 
         notify.success("Adicionado aos favoritos!");
         return response.data;
-      } catch (error: any) {
-        if (error.response?.status === 409) {
+      } catch (error: unknown) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "response" in error &&
+          typeof error.response === "object" &&
+          error.response !== null &&
+          "status" in error.response &&
+          error.response.status === 409
+        ) {
           const refreshed = await fetchFavorites();
           const existing = findFavoriteByEntity(refreshed, entityType, entityId);
           if (existing) {
             return existing;
           }
         }
-        const message =
-          error.response?.data?.message || "Erro ao adicionar favorito";
+        const message = getApiErrorMessage(error, "Erro ao adicionar favorito");
         notify.error(message);
         throw error;
       }
@@ -165,9 +186,8 @@ export function FavoritesProvider({
       });
 
       notify.success("Removido dos favoritos");
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || "Erro ao remover favorito";
+    } catch (error: unknown) {
+      const message = getApiErrorMessage(error, "Erro ao remover favorito");
       notify.error(message);
       throw error;
     }
@@ -196,9 +216,8 @@ export function FavoritesProvider({
         });
 
         notify.success("Removido dos favoritos");
-      } catch (error: any) {
-        const message =
-          error.response?.data?.message || "Erro ao remover favorito";
+      } catch (error: unknown) {
+        const message = getApiErrorMessage(error, "Erro ao remover favorito");
         notify.error(message);
         throw error;
       }
@@ -271,16 +290,18 @@ export function FavoritesProvider({
     if (!user) {
       setFavorites([]);
       setFavoritedItems(new Set());
+      setError(null);
       setLoading(false);
       return;
     }
     fetchFavorites().catch(() => undefined);
-  }, [fetchFavorites, hasHydrated, user?.id]);
+  }, [fetchFavorites, hasHydrated, user]);
 
   const value = useMemo(
     () => ({
       favorites,
       loading,
+      error,
       favoritedItems,
       fetchFavorites,
       addFavorite,
@@ -295,6 +316,7 @@ export function FavoritesProvider({
     [
       favorites,
       loading,
+      error,
       favoritedItems,
       fetchFavorites,
       addFavorite,

@@ -45,7 +45,7 @@ export default function ContentCoverImage({
       width={width}
       height={height}
       unoptimized
-      className={cn('h-full w-full object-cover', className)}
+      className={cn('block h-full w-full object-cover', className)}
       style={{
         objectPosition,
         transform: `scale(${scale ?? 1})`,

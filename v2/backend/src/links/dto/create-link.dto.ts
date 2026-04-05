@@ -1,17 +1,7 @@
-import {
-  IsEnum,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUrl,
-  IsUUID,
-  Min,
-  MinLength,
-} from 'class-validator';
-import { ContentVisibility, EntityStatus } from '@prisma/client';
+import { IsInt, IsOptional, IsString, IsUrl, Min, MinLength } from 'class-validator';
+import { BaseContentDto } from '../../common/dto/base-content.dto';
 
-export class CreateLinkDto {
+export class CreateLinkDto extends BaseContentDto {
   @IsString()
   @MinLength(2)
   title!: string;
@@ -25,39 +15,7 @@ export class CreateLinkDto {
   description?: string;
 
   @IsOptional()
-  @IsString()
-  color?: string;
-
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  imagePosition?: string;
-
-  @IsOptional()
-  @IsNumber()
-  imageScale?: number;
-
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string;
-
-  @IsOptional()
-  @IsEnum(ContentVisibility)
-  visibility?: ContentVisibility;
-
-  @IsOptional()
-  @IsString()
-  publicToken?: string;
-
-  @IsOptional()
   @IsInt()
   @Min(0)
   order?: number;
-
-  @IsOptional()
-  @IsEnum(EntityStatus)
-  status?: EntityStatus;
 }

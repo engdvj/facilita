@@ -13,10 +13,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { UserRole } from '@prisma/client';
+import { EntityStatus, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { parsePagination } from '../common/utils/pagination';
 import { CreateNoteDto } from './dto/create-note.dto';
@@ -28,8 +30,8 @@ export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageNotes')
   create(@Body() dto: CreateNoteDto, @Request() req: any) {
     return this.notesService.create(req.user, dto);
   }
@@ -50,8 +52,9 @@ export class NotesController {
   }
 
   @Get('admin/list')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.SUPERADMIN)
+  @Permissions('canViewNotes')
   async findAllAdmin(
     @Request() req: any,
     @Query('categoryId') categoryId?: string,
@@ -88,8 +91,9 @@ export class NotesController {
   }
 
   @Get('admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.SUPERADMIN)
+  @Permissions('canViewNotes')
   findAllAdminAlias(
     @Request() req: any,
     @Query('categoryId') categoryId?: string,
@@ -117,8 +121,8 @@ export class NotesController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageNotes')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateNoteDto,
@@ -128,30 +132,30 @@ export class NotesController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageNotes')
   remove(@Param('id') id: string, @Request() req: any) {
     return this.notesService.remove(id, req.user);
   }
 
   @Post(':id/restore')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageNotes')
   restore(@Param('id') id: string, @Request() req: any) {
     return this.notesService.restore(id, req.user);
   }
 
   @Post(':id/activate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageNotes')
   activate(@Param('id') id: string, @Request() req: any) {
-    return this.notesService.activate(id, req.user);
+    return this.notesService.setStatus(id, req.user, EntityStatus.ACTIVE);
   }
 
   @Post(':id/deactivate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageNotes')
   deactivate(@Param('id') id: string, @Request() req: any) {
-    return this.notesService.deactivate(id, req.user);
+    return this.notesService.setStatus(id, req.user, EntityStatus.INACTIVE);
   }
 }

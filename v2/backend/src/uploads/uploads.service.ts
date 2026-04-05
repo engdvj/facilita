@@ -14,13 +14,21 @@ const resolveUploadRoot = () => {
   return isAbsolute(value) ? value : resolve(process.cwd(), value);
 };
 
+const isFullyResolvedPath = (filePath: string) => {
+  // On Windows, path.isAbsolute('/foo') returns true (drive-relative),
+  // but '/uploads/...' is a URL-style relative path that must be resolved
+  // against the upload root. Only treat as already-resolved if it has a
+  // drive letter (C:\...) or UNC prefix (\\...).
+  return /^([a-zA-Z]:[/\\]|[/\\]{2})/.test(filePath);
+};
+
 const resolveUploadPath = (filePath: string) => {
-  if (isAbsolute(filePath)) {
+  if (isFullyResolvedPath(filePath)) {
     return filePath;
   }
   const trimmed = filePath.replace(/^[/\\]+/, '');
   const root = resolveUploadRoot();
-  if (trimmed.startsWith('uploads/')) {
+  if (trimmed.startsWith('uploads/') || trimmed.startsWith('uploads\\')) {
     return resolve(root, trimmed.slice('uploads/'.length));
   }
   return resolve(root, trimmed);
@@ -29,6 +37,62 @@ const resolveUploadPath = (filePath: string) => {
 @Injectable()
 export class UploadsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  resolveStoredFilePath(filePath: string): string {
+    return resolveUploadPath(filePath);
+  }
+
+  private async getImageUsageCounts(imageUrls: string[]) {
+    const uniqueImageUrls = [...new Set(imageUrls.filter(Boolean))];
+
+    if (uniqueImageUrls.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const [noteUsage, linkUsage, scheduleUsage] = await Promise.all([
+      this.prisma.note.groupBy({
+        by: ['imageUrl'],
+        where: {
+          imageUrl: { in: uniqueImageUrls },
+          deletedAt: null,
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.link.groupBy({
+        by: ['imageUrl'],
+        where: {
+          imageUrl: { in: uniqueImageUrls },
+          deletedAt: null,
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.uploadedSchedule.groupBy({
+        by: ['imageUrl'],
+        where: {
+          imageUrl: { in: uniqueImageUrls },
+          deletedAt: null,
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const usageCounts = new Map<string, number>();
+    const appendCounts = (items: Array<{ imageUrl: string | null; _count: { _all: number } }>) => {
+      items.forEach((item) => {
+        if (!item.imageUrl) {
+          return;
+        }
+
+        usageCounts.set(item.imageUrl, (usageCounts.get(item.imageUrl) ?? 0) + item._count._all);
+      });
+    };
+
+    appendCounts(noteUsage);
+    appendCounts(linkUsage);
+    appendCounts(scheduleUsage);
+
+    return usageCounts;
+  }
 
   async deleteFile(filePath: string): Promise<void> {
     try {
@@ -86,7 +150,7 @@ export class UploadsService {
       where.tags = { hasSome: tags };
     }
 
-    const [data, total] = await Promise.all([
+    const [images, total] = await Promise.all([
       this.prisma.uploadedImage.findMany({
         where,
         skip,
@@ -106,8 +170,13 @@ export class UploadsService {
       this.prisma.uploadedImage.count({ where }),
     ]);
 
+    const usageCounts = await this.getImageUsageCounts(images.map((image) => image.url));
+
     return {
-      data,
+      data: images.map((image) => ({
+        ...image,
+        usageCount: usageCounts.get(image.url) ?? 0,
+      })),
       total,
       page,
       limit,

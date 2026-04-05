@@ -16,8 +16,8 @@ import { Response } from 'express';
 import { UserRole, UserStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -25,12 +25,12 @@ import { UsersService } from './users.service';
 import { parsePagination } from '../common/utils/pagination';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPERADMIN)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @Permissions('canViewUsers')
   async findAll(
     @Query('role', new ParseEnumPipe(UserRole, { optional: true })) role?: UserRole,
     @Query('status', new ParseEnumPipe(UserStatus, { optional: true })) status?: UserStatus,
@@ -60,30 +60,33 @@ export class UsersController {
   }
 
   @Get(':id')
+  @Permissions('canViewUsers')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.usersService.findOne(id);
   }
 
   @Get(':id/dependencies')
+  @Permissions('canViewUsers')
   getDependencies(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.usersService.getDependencies(id);
   }
 
   @Post()
+  @Permissions('canCreateUsers')
   create(@Body() data: CreateUserDto) {
     return this.usersService.create(data);
   }
 
   @Patch('me')
-  @Roles(UserRole.SUPERADMIN, UserRole.USER)
   updateMe(
     @CurrentUser() user: { id: string },
     @Body() data: UpdateProfileDto,
   ) {
-    return this.usersService.updateProfile(user.id, data);
+    return this.usersService.updateOwnProfile(user.id, data);
   }
 
   @Patch(':id')
+  @Permissions('canEditUsers')
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() data: UpdateUserDto,
@@ -92,6 +95,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @Permissions('canDeleteUsers')
   remove(
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser() actor: { id: string },

@@ -1,10 +1,17 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import AdminCategoryCard from '@/components/admin/category-card';
+import ColorPicker from '@/components/admin/color-picker';
+import IconPicker from '@/components/admin/icon-picker';
 import ConfirmModal from '@/components/admin/confirm-modal';
+import AdminFilterSelect from '@/components/admin/filter-select';
 import AdminModal from '@/components/admin/modal';
+import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/error';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { Category } from '@/types';
 
@@ -19,11 +26,13 @@ type CategoryFormErrors = {
 };
 
 export default function CategoriesPage() {
+  const authUser = useAuthStore((state) => state.user);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const globalSearch = useUiStore((state) => state.globalSearch);
+  const [ownerFilter, setOwnerFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -52,19 +61,42 @@ export default function CategoriesPage() {
     void load();
   }, [load]);
 
+  const isSuperadmin = authUser?.role === 'SUPERADMIN';
+  const canManageCategories = hasPermission(authUser, 'canManageCategories');
+
+  const ownerOptions = useMemo(() => {
+    const owners = new Map<string, string>();
+
+    categories.forEach((category) => {
+      if (category.owner?.id && category.owner.name) {
+        owners.set(category.owner.id, category.owner.name);
+      }
+    });
+
+    return [...owners.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories]);
+
   const filtered = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
 
     return categories
+      .filter((category) => (ownerFilter === 'ALL' ? true : category.owner?.id === ownerFilter))
       .filter((category) => (statusFilter === 'ALL' ? true : category.status === statusFilter))
       .filter((category) => {
         if (!term) return true;
         return category.name.toLowerCase().includes(term);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [categories, globalSearch, statusFilter]);
+  }, [categories, globalSearch, ownerFilter, statusFilter]);
+  const activeSearch = globalSearch.trim();
 
   const openCreate = () => {
+    if (!canManageCategories) {
+      return;
+    }
+
     setEditing(null);
     setForm({ ...emptyForm });
     setFormErrors({});
@@ -72,6 +104,10 @@ export default function CategoriesPage() {
   };
 
   const openEdit = (category: Category) => {
+    if (!canManageCategories) {
+      return;
+    }
+
     setEditing(category);
     setForm({
       name: category.name,
@@ -95,6 +131,7 @@ export default function CategoriesPage() {
   };
 
   const save = async () => {
+    if (!canManageCategories) return;
     if (!validateForm()) return;
 
     setSaving(true);
@@ -122,6 +159,7 @@ export default function CategoriesPage() {
   };
 
   const toggleStatus = async (category: Category) => {
+    if (!canManageCategories) return;
     try {
       await api.patch(`/categories/${category.id}`, {
         status: category.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
@@ -134,6 +172,7 @@ export default function CategoriesPage() {
   };
 
   const remove = async () => {
+    if (!canManageCategories) return;
     if (!confirmTarget) return;
 
     setDeleting(true);
@@ -150,42 +189,64 @@ export default function CategoriesPage() {
 
   return (
     <div className="fac-page">
-      <section className="fac-page-head">
-        <div>
-          <h1 className="fac-subtitle">Categorias</h1>
-          <p className="text-[15px] text-muted-foreground">Gerencie as categorias usadas no portal.</p>
-        </div>
-
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[190px_auto_auto]">
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
-            }
-            className="fac-select"
-          >
-            <option value="ALL">Todos os status</option>
-            <option value="ACTIVE">Ativas</option>
-            <option value="INACTIVE">Inativas</option>
-          </select>
-
-          <button type="button" className="fac-filter-button" disabled title="Em breve">
-            Filtros
-          </button>
-
-          <button type="button" className="fac-button-primary" onClick={openCreate}>
-            Nova categoria
-          </button>
-        </div>
-      </section>
-
       <section className="fac-panel">
-        <div className="fac-panel-head">
-          <p className="fac-panel-title">Lista</p>
-          <p className="fac-panel-meta">{filtered.length} registros</p>
-        </div>
+        <AdminPanelHeaderBar
+          title="Categorias"
+          count={filtered.length}
+          actionsClassName={
+            isSuperadmin
+              ? 'sm:grid-cols-[180px_180px_auto]'
+              : 'sm:grid-cols-[180px_auto]'
+          }
+          actions={
+            <>
+              {isSuperadmin ? (
+                <AdminFilterSelect
+                  value={ownerFilter}
+                  onChange={(event) => setOwnerFilter(event.target.value)}
+                >
+                  <option value="ALL">Todos os usuários</option>
+                  {ownerOptions.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.name}
+                    </option>
+                  ))}
+                </AdminFilterSelect>
+              ) : null}
 
-        <div className="fac-panel-body">
+              <AdminFilterSelect
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
+                }
+              >
+                <option value="ALL">Todos os status</option>
+                <option value="ACTIVE">Ativas</option>
+                <option value="INACTIVE">Inativas</option>
+              </AdminFilterSelect>
+
+              <button
+                type="button"
+                className="fac-button-primary !h-10 !w-10 !rounded-full !px-0 !tracking-normal transition-colors duration-200 hover:!bg-accent hover:!text-accent-foreground"
+                onClick={openCreate}
+                aria-label="Nova categoria"
+                title="Nova categoria"
+                disabled={!canManageCategories}
+              >
+                <span className="text-[22px] leading-none">+</span>
+              </button>
+            </>
+          }
+        />
+
+        <div className="fac-panel-body space-y-4">
+          {activeSearch ? (
+            <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+              Busca ativa:{' '}
+              <span className="normal-case tracking-normal text-foreground">{activeSearch}</span>
+            </p>
+          ) : null}
+
           {loading ? (
             <div className="fac-loading-state">Carregando categorias...</div>
           ) : error ? (
@@ -194,71 +255,20 @@ export default function CategoriesPage() {
             <div className="fac-empty-state">Nenhuma categoria encontrada.</div>
           ) : (
             <div className="flex flex-wrap gap-3">
-              {filtered.map((category) => {
-                const total =
-                  (category._count?.links || 0) +
-                  (category._count?.schedules || 0) +
-                  (category._count?.notes || 0);
-
-                return (
-                  <article key={category.id} className={`fac-card w-[220px] max-w-full ${category.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
-                    <button
-                      type="button"
-                      className="relative aspect-square w-full overflow-hidden bg-muted text-left"
-                      onClick={() => openEdit(category)}
-                    >
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background: `linear-gradient(160deg, ${category.color || '#64748b'}33 0%, rgba(15, 22, 26, 0.08) 100%)`,
-                        }}
-                      />
-
-                      <span className="absolute left-3 top-3 flex max-w-[calc(100%-24px)] items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[12px] font-semibold text-foreground">
-                        <span
-                          className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: category.color || '#64748b' }}
-                        />
-                        <span className="line-clamp-1">{category.name}</span>
-                      </span>
-
-                    </button>
-
-                    <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                      <button
-                        type="button"
-                        className="pr-2 text-left"
-                        onClick={() => openEdit(category)}
-                      >
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                          {category.adminOnly ? 'Admin' : 'Equipe'}
-                        </p>
-                        <p className="mt-1 text-[13px] font-semibold text-foreground">
-                          {total} {total === 1 ? 'item' : 'itens'}
-                        </p>
-                      </button>
-
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={category.status === 'ACTIVE'}
-                        aria-label={
-                          category.status === 'ACTIVE'
-                            ? `Desativar ${category.name}`
-                            : `Ativar ${category.name}`
-                        }
-                        className="fac-toggle shrink-0"
-                        data-state={category.status === 'ACTIVE' ? 'on' : 'off'}
-                        onClick={() => {
+              {filtered.map((category) => (
+                <AdminCategoryCard
+                  key={category.id}
+                  category={category}
+                  onEdit={canManageCategories ? () => openEdit(category) : undefined}
+                  onToggleStatus={
+                    canManageCategories
+                      ? () => {
                           void toggleStatus(category);
-                        }}
-                      >
-                        <span className="fac-toggle-dot" />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+                        }
+                      : undefined
+                  }
+                />
+              ))}
             </div>
           )}
         </div>
@@ -271,7 +281,7 @@ export default function CategoriesPage() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
-            {editing ? (
+            {editing && canManageCategories ? (
               <button
                 type="button"
                 className="fac-button-secondary text-[11px]"
@@ -293,7 +303,7 @@ export default function CategoriesPage() {
               type="button"
               className="fac-button-primary text-[11px]"
               onClick={save}
-              disabled={saving || !form.name.trim()}
+              disabled={saving || !canManageCategories || !form.name.trim()}
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
@@ -301,10 +311,10 @@ export default function CategoriesPage() {
         }
       >
         <section className="fac-form-card">
-          <p className="fac-form-title">Detalhes</p>
+          <p className="fac-form-title">Configuração</p>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+          <div className="grid gap-4">
+            <div>
               <label className="fac-label">Nome</label>
               <input
                 value={form.name}
@@ -320,39 +330,54 @@ export default function CategoriesPage() {
             </div>
 
             <div>
-              <label className="fac-label">Cor</label>
-              <input
-                type="color"
-                value={form.color}
-                onChange={(event) => setForm((prev) => ({ ...prev, color: event.target.value }))}
-                className="fac-input !h-11 !px-2"
+              <label className="fac-label">Ícone (opcional)</label>
+              <IconPicker
+                value={form.icon}
+                onChange={(icon) => setForm((prev) => ({ ...prev, icon }))}
               />
             </div>
 
-            <div>
-              <label className="fac-label">Icone (opcional)</label>
-              <input
-                value={form.icon}
-                onChange={(event) => setForm((prev) => ({ ...prev, icon: event.target.value }))}
-                className="fac-input"
-                placeholder="Nome do icone"
-              />
+            <div className="grid gap-6 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)] md:gap-10">
+              <div>
+                <label className="fac-label">Cor</label>
+                <ColorPicker
+                  value={form.color}
+                  onChange={(color) => setForm((prev) => ({ ...prev, color }))}
+                />
+              </div>
+
+              <div>
+                <label className="fac-label">Permissão</label>
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    className={`fac-button-secondary !justify-start !px-4 !normal-case !tracking-normal ${
+                      !form.adminOnly
+                        ? '!border-primary !bg-primary !text-primary-foreground hover:!bg-primary/90'
+                        : ''
+                    }`}
+                    onClick={() => setForm((prev) => ({ ...prev, adminOnly: false }))}
+                  >
+                    Usuário
+                  </button>
+                  <button
+                    type="button"
+                    className={`fac-button-secondary !justify-start !px-4 !normal-case !tracking-normal ${
+                      form.adminOnly
+                        ? '!border-primary !bg-primary !text-primary-foreground hover:!bg-primary/90'
+                        : ''
+                    }`}
+                    onClick={() => setForm((prev) => ({ ...prev, adminOnly: true }))}
+                  >
+                    Somente admins
+                  </button>
+                </div>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Define quem pode visualizar itens desta categoria.
+                </p>
+              </div>
             </div>
           </div>
-        </section>
-
-        <section className="fac-form-card mt-4">
-          <p className="fac-form-title">Permissões</p>
-          <label className="flex items-center gap-2 text-[14px] text-foreground">
-            <input
-              type="checkbox"
-              checked={form.adminOnly}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, adminOnly: event.target.checked }))
-              }
-            />
-            Apenas administradores podem ver itens desta categoria
-          </label>
         </section>
       </AdminModal>
 

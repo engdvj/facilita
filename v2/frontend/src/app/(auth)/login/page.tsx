@@ -1,8 +1,9 @@
 'use client';
 
 import { FormEvent, useState, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -12,13 +13,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
-  const staggerStyle = (index: number) =>
-    ({ '--stagger-index': index } as CSSProperties);
+
+  const staggerStyle = (index: number) => ({ '--stagger-index': index } as CSSProperties);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
-
     try {
       const response = await api.post('/auth/login', { username, password });
       setAuth(response.data.user, response.data.accessToken);
@@ -32,74 +32,83 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-8 motion-stagger">
-      <Link
-        href="/"
-        className="motion-item motion-press inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground shadow-[0_10px_20px_rgba(16,44,50,0.08)] transition hover:border-foreground/30 hover:text-foreground hover:bg-card/80 dark:bg-card/50 dark:shadow-[0_12px_24px_rgba(0,0,0,0.4)]"
-        style={staggerStyle(1)}
-      >
-        Voltar para a pagina inicial
-      </Link>
-      <div className="motion-item space-y-4" style={staggerStyle(2)}>
-        <div className="flex items-center gap-3">
-          <div className="grid grid-cols-2 gap-1" aria-hidden="true">
-            <span className="h-2.5 w-2.5 rounded-[4px] bg-accent shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.45)]" />
-            <span className="h-2.5 w-2.5 rounded-[4px] bg-primary shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.45)]" />
-            <span className="h-2.5 w-2.5 rounded-[4px] bg-secondary shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.45)]" />
-            <span className="h-2.5 w-2.5 rounded-[4px] bg-muted shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.45)]" />
-          </div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Facilita admin
-          </p>
+
+      {/* Header */}
+      <div className="motion-item space-y-3" style={staggerStyle(1)}>
+        <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/50 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          Facilita
         </div>
-        <h1 className="font-display text-2xl sm:text-3xl text-foreground">
-          Acesso ao painel
+        <h1 className="font-display text-[32px] leading-tight text-foreground">
+          Bem-vindo de volta
         </h1>
-        <p className="text-[13px] sm:text-sm text-muted-foreground">
-          Use seu usuario para acessar o painel e ter acesso aos seus próprios itens.
+        <p className="text-[14px] leading-relaxed text-muted-foreground">
+          Entre com suas credenciais para acessar o portal.
         </p>
       </div>
 
-      <form
-        onSubmit={onSubmit}
-        className="motion-item space-y-6"
-        style={staggerStyle(3)}
-      >
+      {/* Divider */}
+      <div className="motion-item h-px bg-gradient-to-r from-transparent via-border to-transparent" style={staggerStyle(2)} />
+
+      {/* Form */}
+      <form onSubmit={onSubmit} className="motion-item space-y-5" style={staggerStyle(3)}>
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground" htmlFor="username">
-            Usuario
+          <label
+            className="block text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+            htmlFor="username"
+          >
+            Usuário
           </label>
           <input
             id="username"
             type="text"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2.5 text-[13px] text-foreground shadow-[0_6px_14px_rgba(16,44,50,0.08)] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-border/80 dark:shadow-[0_10px_24px_rgba(0,0,0,0.45)] dark:focus:ring-primary/25 sm:px-4 sm:py-3 sm:text-sm"
+            autoComplete="username"
+            placeholder="seu.usuario"
+            className="w-full rounded-[11px] border border-border/70 bg-background/60 px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground/40 shadow-[0_4px_12px_rgba(16,44,50,0.07)] transition focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
             value={username}
-            onChange={(event) => setUsername(event.target.value)}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground" htmlFor="password">
+          <label
+            className="block text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+            htmlFor="password"
+          >
             Senha
           </label>
           <input
             id="password"
             type="password"
-            className="w-full rounded-lg border border-border/70 bg-white/80 px-3 py-2.5 text-[13px] text-foreground shadow-[0_6px_14px_rgba(16,44,50,0.08)] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-border/80 dark:shadow-[0_10px_24px_rgba(0,0,0,0.45)] dark:focus:ring-primary/25 sm:px-4 sm:py-3 sm:text-sm"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            className="w-full rounded-[11px] border border-border/70 bg-background/60 px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground/40 shadow-[0_4px_12px_rgba(16,44,50,0.07)] transition focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
 
         <button
           type="submit"
-          className="motion-press w-full rounded-lg bg-primary px-3 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-[0_12px_24px_rgba(16,44,50,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_30px_rgba(16,44,50,0.28)] disabled:opacity-60 dark:shadow-[0_16px_32px_rgba(0,0,0,0.45)] dark:hover:shadow-[0_20px_36px_rgba(0,0,0,0.55)] sm:px-4 sm:py-3 sm:text-sm"
+          className="motion-press mt-1 w-full rounded-[11px] bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-[0_12px_28px_rgba(16,44,50,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(16,44,50,0.30)] disabled:opacity-60"
           disabled={loading}
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
+
+      {/* Back link */}
+      <div className="motion-item" style={staggerStyle(4)}>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground/70 transition hover:text-muted-foreground"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Voltar para a página inicial
+        </Link>
+      </div>
 
     </div>
   );

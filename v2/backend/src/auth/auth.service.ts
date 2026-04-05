@@ -25,15 +25,15 @@ export class AuthService {
     const user = await this.usersService.findByUsername(username);
 
     if (!user || user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Credenciais inválidas');
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    const profile = await this.usersService.findOne(user.id);
+    const profile = await this.usersService.findAuthProfile(user.id);
     const tokens = await this.issueTokens(profile);
 
     return {
@@ -44,7 +44,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token missing');
+      throw new UnauthorizedException('Token de renovação ausente');
     }
 
     const payload = await this.verifyRefreshToken(refreshToken);
@@ -59,7 +59,7 @@ export class AuthService {
     });
 
     if (!storedToken || storedToken.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token invalid');
+      throw new UnauthorizedException('Token de renovação inválido');
     }
 
     await this.prisma.refreshToken.update({
@@ -69,10 +69,10 @@ export class AuthService {
 
     const user = await this.usersService.findActiveById(payload.sub);
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('Usuário não encontrado');
     }
 
-    const profile = await this.usersService.findOne(user.id);
+    const profile = await this.usersService.findAuthProfile(user.id);
     const tokens = await this.issueTokens(profile);
 
     return {
@@ -147,7 +147,7 @@ export class AuthService {
         secret: refreshSecret,
       });
     } catch {
-      throw new UnauthorizedException('Refresh token invalid');
+      throw new UnauthorizedException('Token de renovação inválido');
     }
   }
 

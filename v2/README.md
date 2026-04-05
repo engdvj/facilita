@@ -9,7 +9,7 @@ Sistema moderno de portal de links, agendas e documentos com arquitetura multi-e
 - ✅ **Portal de Links**: Gestão de links com categorias, imagens e tags
 - ✅ **Agendas/Documentos**: Upload e gerenciamento de arquivos (PDF, DOC, XLS, PPT)
 - ✅ **Autenticação JWT**: Sistema seguro com refresh tokens
-- ✅ **Permissões Granulares**: 5 níveis de acesso (SUPERADMIN, ADMIN, COORDINATOR, MANAGER, COLLABORATOR)
+- ✅ **Permissões Granulares**: 5 níveis de acesso (SUPERADMIN, ADMIN, COORDINATOR, MANAGER, USER)
 - ✅ **Sistema de Upload**: Validação de tipos e tamanhos de arquivos
 
 ### Recursos Avançados
@@ -176,7 +176,7 @@ Company (Empresa)
 | ADMIN        | Administrador da empresa            | Gerenciar sua empresa completa              |
 | COORDINATOR  | Gestor de unidade                   | Gerenciar unidade e setores                 |
 | MANAGER      | Gestor de setor                     | Gerenciar apenas seu setor                  |
-| COLLABORATOR | Usuário final                       | Visualizar e usar o portal                  |
+| USER         | Usuário final                       | Visualizar e usar o portal                  |
 
 ## 🔌 Endpoints Principais
 

@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Controller,
   Post,
   Get,
@@ -16,11 +17,37 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { UploadsService } from './uploads.service';
 import { imageMulterConfig, documentMulterConfig } from './config/multer.config';
 import { imageFileFilter, documentFileFilter } from './filters/file-type.filter';
 import { QueryImagesDto } from './dto/query-images.dto';
 import { UpdateImageDto } from './dto/update-image.dto';
+import { normalizeUploadedFilename } from './utils/filename.util';
+
+function canUseImageLibrary(user: {
+  role?: UserRole;
+  permissions?: {
+    canViewImages?: boolean;
+    canManageImages?: boolean;
+    canManageLinks?: boolean;
+    canManageSchedules?: boolean;
+    canManageNotes?: boolean;
+  } | null;
+}) {
+  if (user.role === UserRole.SUPERADMIN) {
+    return true;
+  }
+
+  return Boolean(
+    user.permissions?.canViewImages ||
+      user.permissions?.canManageImages ||
+      user.permissions?.canManageLinks ||
+      user.permissions?.canManageSchedules ||
+      user.permissions?.canManageNotes,
+  );
+}
 
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
@@ -42,12 +69,13 @@ export class UploadsController {
       throw new BadRequestException('No file uploaded');
     }
 
+    const originalName = normalizeUploadedFilename(file.originalname);
     const url = this.uploadsService.getFileUrl(file.filename, 'images');
 
     const image = await this.uploadsService.createImageRecord({
       uploadedBy: req.user.id,
       filename: file.filename,
-      originalName: file.originalname,
+      originalName,
       url,
       mimeType: file.mimetype,
       size: file.size,
@@ -57,7 +85,12 @@ export class UploadsController {
   }
 
   @Get('images')
+  @UseGuards(JwtAuthGuard)
   async listImages(@Query() query: QueryImagesDto, @Req() req: any) {
+    if (!canUseImageLibrary(req.user)) {
+      throw new ForbiddenException('Access denied');
+    }
+
     if (req.user.role !== UserRole.SUPERADMIN) {
       query.uploadedBy = req.user.id;
     }
@@ -66,16 +99,25 @@ export class UploadsController {
   }
 
   @Get('images/:id')
-  async getImage(@Param('id') id: string) {
+  @UseGuards(JwtAuthGuard)
+  async getImage(@Param('id') id: string, @Req() req: any) {
+    if (!canUseImageLibrary(req.user)) {
+      throw new ForbiddenException('Access denied');
+    }
+
     return this.uploadsService.getImageById(id);
   }
 
   @Patch('images/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageImages')
   async updateImage(@Param('id') id: string, @Body() dto: UpdateImageDto) {
     return this.uploadsService.updateImage(id, dto);
   }
 
   @Delete('images/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('canManageImages')
   async deleteImage(@Param('id') id: string) {
     return this.uploadsService.deleteImage(id);
   }
@@ -92,9 +134,11 @@ export class UploadsController {
       throw new BadRequestException('No file uploaded');
     }
 
+    const originalName = normalizeUploadedFilename(file.originalname);
+
     return {
       filename: file.filename,
-      originalName: file.originalname,
+      originalName,
       size: file.size,
       url: this.uploadsService.getFileUrl(file.filename, 'documents'),
     };

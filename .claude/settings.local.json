@@ -42,7 +42,11 @@
       "Bash(cmd.exe /c \"taskkill /PID 38368 /F\")",
       "Bash(cmd.exe /c \"taskkill /PID 38368 /F 2>&1\")",
       "Bash(cmd /c \"taskkill /PID 38368 /F\")",
-      "Bash(cmd /c \"netstat -ano | findstr :3001\")"
+      "Bash(cmd /c \"netstat -ano | findstr :3001\")",
+      "Bash(npx ts-node -e \":*)",
+      "Bash(PGPASSWORD=admin psql -U postgres -h 127.0.0.1 -d facilita_v2 -c \"SELECT key, value FROM \"\"SystemConfig\"\" WHERE key = ''upload_directory'';\")",
+      "Bash(echo \"SELECT key, value FROM \"\"SystemConfig\"\" WHERE key = ''''upload_directory'''';\")",
+      "Bash(find \"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\" -type f -name \"*.tsx\" -o -name \"*.ts\")"
     ]
   }
 }

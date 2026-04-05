@@ -3,7 +3,19 @@ import { IsBoolean, IsOptional } from 'class-validator';
 export class UpdateRolePermissionDto {
   @IsOptional()
   @IsBoolean()
+  canViewHome?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   canViewDashboard?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canViewFavorites?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canViewSharesPage?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -27,6 +39,14 @@ export class UpdateRolePermissionDto {
 
   @IsOptional()
   @IsBoolean()
+  canViewCategories?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageCategories?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   canViewLinks?: boolean;
 
   @IsOptional()
@@ -35,7 +55,7 @@ export class UpdateRolePermissionDto {
 
   @IsOptional()
   @IsBoolean()
-  canManageCategories?: boolean;
+  canViewSchedules?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -43,7 +63,19 @@ export class UpdateRolePermissionDto {
 
   @IsOptional()
   @IsBoolean()
-  canViewPrivateContent?: boolean;
+  canViewNotes?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageNotes?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canViewImages?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageImages?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -52,10 +84,6 @@ export class UpdateRolePermissionDto {
   @IsOptional()
   @IsBoolean()
   canResetSystem?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canViewAuditLogs?: boolean;
 
   @IsOptional()
   @IsBoolean()

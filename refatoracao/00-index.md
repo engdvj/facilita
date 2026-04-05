@@ -350,6 +350,12 @@ Esses documentos garantem que a refatoração de Links não seja feita no vácuo
 - [x] Quick wins de texto/acentuação aplicados em navegação, galerias, compartilhamento e páginas admin secundárias
 - [x] Capa/preview extraídos para componentes compartilhados nos CRUDs principais e no portal
 - [x] `load`, `toggleStatus` e `remove` extraídos para hook compartilhado nos CRUDs principais
+- [x] Home/Portal alinhada com `lib/color.ts`, card acessível, estados `fac-*` e badge condicional
+- [x] Dashboard alinhado com textos corrigidos, guard de SUPERADMIN no render e visibilidade derivada em `stats`
+- [x] Login alinhado com acentuação, `autoComplete` e link de volta mantido para a home pública
+- [x] Compartilhados alinhada com `ShareCard` local, card acessível, overlay externo e estados `fac-*`
+- [x] Categorias e galeria de imagens finalizadas com acentuação e `formatBytes` compartilhado
+- [x] Usuários, permissões e configurações finalizados com guards `fac-*` e `formatBytes` compartilhado
 - [x] Mover `navCollapsed` para `ui-store`
 - [ ] Validar manualmente no navegador os fluxos de toggle, confirmação de deleção e re-fetch em caso de erro
 - [x] Substituir os `<img>` restantes por `<Image />` ou componente equivalente

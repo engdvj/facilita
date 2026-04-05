@@ -47,7 +47,7 @@ export class FavoritesController {
     description: 'Item já está nos favoritos',
   })
   async create(@Request() req: any, @Body() createFavoriteDto: CreateFavoriteDto) {
-    return this.favoritesService.create(req.user.id, createFavoriteDto);
+    return this.favoritesService.create(req.user, createFavoriteDto);
   }
 
   @Get('me')
@@ -67,9 +67,9 @@ export class FavoritesController {
     @Query('type') type?: EntityType,
   ) {
     if (type) {
-      return this.favoritesService.findByUserAndType(req.user.id, type);
+      return this.favoritesService.findByUserAndType(req.user, type);
     }
-    return this.favoritesService.findAllByUser(req.user.id);
+    return this.favoritesService.findAllByUser(req.user);
   }
 
   @Get('me/count')
@@ -79,7 +79,7 @@ export class FavoritesController {
     description: 'Total de favoritos',
   })
   async countMyFavorites(@Request() req: any) {
-    const count = await this.favoritesService.countByUser(req.user.id);
+    const count = await this.favoritesService.countByUser(req.user);
     return { count };
   }
 
@@ -95,7 +95,7 @@ export class FavoritesController {
     @Param('entityId') entityId: string,
   ) {
     const isFavorited = await this.favoritesService.isFavorited(
-      req.user.id,
+      req.user,
       entityType,
       entityId,
     );

@@ -7,9 +7,20 @@ export type SystemConfigSeed = {
   category: string;
 };
 
+export const INITIAL_SUPERADMIN_BOOTSTRAP_KEY = 'initial_superadmin_bootstrapped';
+export const SHORTCUT_CATALOG_CONFIG_KEY = 'shortcut_catalog';
+
 const today = new Date().toISOString().slice(0, 10);
 
 export const SYSTEM_CONFIG_DEFAULTS: SystemConfigSeed[] = [
+  {
+    key: SHORTCUT_CATALOG_CONFIG_KEY,
+    value: '[]',
+    description: 'Catalogo de atalhos globais customizados do portal.',
+    type: 'string',
+    isEditable: false,
+    category: 'shortcuts',
+  },
   {
     key: 'backup_directory',
     value: 'backups/auto',
@@ -71,6 +82,14 @@ export const SYSTEM_CONFIG_DEFAULTS: SystemConfigSeed[] = [
     value: 'v2',
     description: 'Versao instalada do sistema.',
     type: 'string',
+    isEditable: false,
+    category: 'system',
+  },
+  {
+    key: INITIAL_SUPERADMIN_BOOTSTRAP_KEY,
+    value: 'false',
+    description: 'Indica se o superadmin inicial ja foi provisionado.',
+    type: 'boolean',
     isEditable: false,
     category: 'system',
   },

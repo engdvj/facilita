@@ -1,14 +1,20 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { EntityType } from '@prisma/client';
+import type { PermissionFlags } from '../permissions/permissions.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 
 type FavoriteEntityType = 'LINK' | 'SCHEDULE' | 'NOTE';
+type FavoritesActor = {
+  id: string;
+  permissions?: PermissionFlags | null;
+};
 
 @Injectable()
 export class FavoritesService {
@@ -26,6 +32,56 @@ export class FavoritesService {
     }
   }
 
+  private canUseEntityType(actor: FavoritesActor, entityType: FavoriteEntityType) {
+    if (entityType === EntityType.LINK) {
+      return actor.permissions?.canViewLinks === true;
+    }
+
+    if (entityType === EntityType.SCHEDULE) {
+      return actor.permissions?.canViewSchedules === true;
+    }
+
+    if (entityType === EntityType.NOTE) {
+      return actor.permissions?.canViewNotes === true;
+    }
+
+    return false;
+  }
+
+  private filterVisibleFavorites<
+    T extends {
+      entityType: EntityType;
+      link?: unknown | null;
+      schedule?: unknown | null;
+      note?: unknown | null;
+    },
+  >(actor: FavoritesActor, favorites: T[]) {
+    return favorites.filter((favorite) => {
+      if (
+        favorite.entityType === EntityType.LINK &&
+        this.canUseEntityType(actor, EntityType.LINK)
+      ) {
+        return Boolean(favorite.link);
+      }
+
+      if (
+        favorite.entityType === EntityType.SCHEDULE &&
+        this.canUseEntityType(actor, EntityType.SCHEDULE)
+      ) {
+        return Boolean(favorite.schedule);
+      }
+
+      if (
+        favorite.entityType === EntityType.NOTE &&
+        this.canUseEntityType(actor, EntityType.NOTE)
+      ) {
+        return Boolean(favorite.note);
+      }
+
+      return false;
+    });
+  }
+
   private async canAccessEntity(
     userId: string,
     entityType: FavoriteEntityType,
@@ -34,16 +90,11 @@ export class FavoritesService {
     if (entityType === EntityType.LINK) {
       const link = await this.prisma.link.findUnique({
         where: { id: entityId },
-        include: {
-          owner: {
-            select: { role: true },
-          },
-        },
+        select: { id: true, ownerId: true, deletedAt: true },
       });
       if (!link || link.deletedAt) return false;
 
       if (link.ownerId === userId) return true;
-      if (link.visibility === 'PUBLIC' && link.owner.role === 'SUPERADMIN') return true;
 
       const shared = await this.prisma.share.findFirst({
         where: {
@@ -60,16 +111,11 @@ export class FavoritesService {
     if (entityType === EntityType.SCHEDULE) {
       const schedule = await this.prisma.uploadedSchedule.findUnique({
         where: { id: entityId },
-        include: {
-          owner: {
-            select: { role: true },
-          },
-        },
+        select: { id: true, ownerId: true, deletedAt: true },
       });
       if (!schedule || schedule.deletedAt) return false;
 
       if (schedule.ownerId === userId) return true;
-      if (schedule.visibility === 'PUBLIC' && schedule.owner.role === 'SUPERADMIN') return true;
 
       const shared = await this.prisma.share.findFirst({
         where: {
@@ -86,16 +132,11 @@ export class FavoritesService {
     if (entityType === EntityType.NOTE) {
       const note = await this.prisma.note.findUnique({
         where: { id: entityId },
-        include: {
-          owner: {
-            select: { role: true },
-          },
-        },
+        select: { id: true, ownerId: true, deletedAt: true },
       });
       if (!note || note.deletedAt) return false;
 
       if (note.ownerId === userId) return true;
-      if (note.visibility === 'PUBLIC' && note.owner.role === 'SUPERADMIN') return true;
 
       const shared = await this.prisma.share.findFirst({
         where: {
@@ -112,7 +153,7 @@ export class FavoritesService {
     return false;
   }
 
-  async create(userId: string, dto: CreateFavoriteDto) {
+  async create(actor: FavoritesActor, dto: CreateFavoriteDto) {
     this.assertEntityTypeSupported(dto.entityType);
 
     const idsProvided = [dto.linkId, dto.scheduleId, dto.noteId].filter(Boolean).length;
@@ -139,14 +180,18 @@ export class FavoritesService {
       throw new BadRequestException('Entity ID is required');
     }
 
-    const canAccess = await this.canAccessEntity(userId, dto.entityType, entityId);
+    if (!this.canUseEntityType(actor, dto.entityType)) {
+      throw new ForbiddenException('Permission denied for this content type');
+    }
+
+    const canAccess = await this.canAccessEntity(actor.id, dto.entityType, entityId);
     if (!canAccess) {
       throw new NotFoundException('Content not found or not accessible');
     }
 
     const existingFavorite = await this.prisma.favorite.findFirst({
       where: {
-        userId,
+        userId: actor.id,
         entityType: dto.entityType,
         linkId: dto.linkId ?? null,
         scheduleId: dto.scheduleId ?? null,
@@ -160,7 +205,7 @@ export class FavoritesService {
 
     return this.prisma.favorite.create({
       data: {
-        userId,
+        userId: actor.id,
         entityType: dto.entityType,
         linkId: dto.linkId,
         scheduleId: dto.scheduleId,
@@ -207,9 +252,9 @@ export class FavoritesService {
     });
   }
 
-  async findAllByUser(userId: string) {
-    return this.prisma.favorite.findMany({
-      where: { userId },
+  async findAllByUser(actor: FavoritesActor) {
+    const favorites = await this.prisma.favorite.findMany({
+      where: { userId: actor.id },
       include: {
         link: {
           where: { deletedAt: null },
@@ -256,12 +301,19 @@ export class FavoritesService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return this.filterVisibleFavorites(actor, favorites);
   }
 
-  async findByUserAndType(userId: string, entityType: EntityType) {
+  async findByUserAndType(actor: FavoritesActor, entityType: EntityType) {
     this.assertEntityTypeSupported(entityType);
-    return this.prisma.favorite.findMany({
-      where: { userId, entityType },
+
+    if (!this.canUseEntityType(actor, entityType)) {
+      return [];
+    }
+
+    const favorites = await this.prisma.favorite.findMany({
+      where: { userId: actor.id, entityType },
       include: {
         link: {
           where: { deletedAt: null },
@@ -278,17 +330,23 @@ export class FavoritesService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return this.filterVisibleFavorites(actor, favorites);
   }
 
   async isFavorited(
-    userId: string,
+    actor: FavoritesActor,
     entityType: EntityType,
     entityId: string,
   ): Promise<boolean> {
     this.assertEntityTypeSupported(entityType);
 
+    if (!this.canUseEntityType(actor, entityType)) {
+      return false;
+    }
+
     const where: any = {
-      userId,
+      userId: actor.id,
       entityType,
     };
 
@@ -344,8 +402,9 @@ export class FavoritesService {
     return { message: 'Favorite removed successfully' };
   }
 
-  async countByUser(userId: string): Promise<number> {
-    return this.prisma.favorite.count({ where: { userId } });
+  async countByUser(actor: FavoritesActor): Promise<number> {
+    const favorites = await this.findAllByUser(actor);
+    return favorites.length;
   }
 
   async countByEntity(entityType: EntityType, entityId: string): Promise<number> {

@@ -1,16 +1,7 @@
-import {
-  IsEnum,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Min,
-  MinLength,
-} from 'class-validator';
-import { ContentVisibility, EntityStatus } from '@prisma/client';
+import { IsInt, IsString, Min, MinLength } from 'class-validator';
+import { BaseContentDto } from '../../common/dto/base-content.dto';
 
-export class CreateScheduleDto {
+export class CreateScheduleDto extends BaseContentDto {
   @IsString()
   @MinLength(2)
   title!: string;
@@ -24,36 +15,4 @@ export class CreateScheduleDto {
   @IsInt()
   @Min(0)
   fileSize!: number;
-
-  @IsOptional()
-  @IsString()
-  color?: string;
-
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  imagePosition?: string;
-
-  @IsOptional()
-  @IsNumber()
-  imageScale?: number;
-
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string;
-
-  @IsOptional()
-  @IsEnum(ContentVisibility)
-  visibility?: ContentVisibility;
-
-  @IsOptional()
-  @IsString()
-  publicToken?: string;
-
-  @IsOptional()
-  @IsEnum(EntityStatus)
-  status?: EntityStatus;
 }

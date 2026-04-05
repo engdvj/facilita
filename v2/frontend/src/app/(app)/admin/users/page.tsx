@@ -1,24 +1,56 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import AvatarUpload from '@/components/admin/avatar-upload';
 import ConfirmModal from '@/components/admin/confirm-modal';
-import ImageSelector from '@/components/admin/image-selector';
+import AdminFilterSelect from '@/components/admin/filter-select';
+import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
 import AdminModal from '@/components/admin/modal';
-import UserAvatar from '@/components/user-avatar';
+import AdminUserCard from '@/components/admin/user-card';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/error';
+import { parseImagePosition } from '@/lib/image';
+import { hasAllPermissions, hasPermission } from '@/lib/permissions';
+import { getUserRoleLabel } from '@/lib/user-role';
+import {
+  buildUserTheme,
+  getUserCardVisual,
+  getUserTheme,
+} from '@/lib/user-card-visual';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { User, UserRole, UserStatus } from '@/types';
 
-const emptyForm = {
+type UserFormState = {
+  name: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  status: UserStatus;
+  avatarUrl: string;
+  theme: Record<string, unknown>;
+  imagePosition: string;
+  imageScale: number;
+};
+
+const defaultUserCardVisual = {
+  imagePosition: '50% 50%',
+  imageScale: 1,
+};
+
+const emptyForm: UserFormState = {
   name: '',
   username: '',
   password: '',
   role: 'USER' as UserRole,
   status: 'ACTIVE' as UserStatus,
   avatarUrl: '',
+  theme: {},
+  imagePosition: defaultUserCardVisual.imagePosition,
+  imageScale: defaultUserCardVisual.imageScale,
 };
+
+type FormTab = 'DATA' | 'VISUAL';
 type UserFormErrors = {
   name?: string;
   username?: string;
@@ -38,16 +70,20 @@ export default function UsersPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
+  const [form, setForm] = useState<UserFormState>({ ...emptyForm });
+  const [formTab, setFormTab] = useState<FormTab>('DATA');
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<UserFormErrors>({});
   const [deleting, setDeleting] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<User | null>(null);
 
-  const isSuperadmin = authUser?.role === 'SUPERADMIN';
+  const canViewUsers = hasAllPermissions(authUser, ['canViewUsers']);
+  const canCreateUsers = hasPermission(authUser, 'canCreateUsers');
+  const canEditUsers = hasPermission(authUser, 'canEditUsers');
+  const canDeleteUsers = hasPermission(authUser, 'canDeleteUsers');
 
   const load = useCallback(async () => {
-    if (!isSuperadmin) {
+    if (!canViewUsers) {
       setLoading(false);
       return;
     }
@@ -63,7 +99,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [isSuperadmin]);
+  }, [canViewUsers]);
 
   useEffect(() => {
     void load();
@@ -82,14 +118,30 @@ export default function UsersPage() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [users, globalSearch, roleFilter, statusFilter]);
 
+  const imagePosition = useMemo(
+    () => parseImagePosition(form.imagePosition),
+    [form.imagePosition],
+  );
+
   const openCreate = () => {
+    if (!canCreateUsers) {
+      return;
+    }
+
     setEditing(null);
     setForm({ ...emptyForm });
     setFormErrors({});
+    setFormTab('DATA');
     setModalOpen(true);
   };
 
   const openEdit = (user: User) => {
+    if (!canEditUsers && !canDeleteUsers) {
+      return;
+    }
+
+    const visual = getUserCardVisual(user.theme);
+
     setEditing(user);
     setForm({
       name: user.name,
@@ -98,8 +150,12 @@ export default function UsersPage() {
       role: user.role,
       status: user.status,
       avatarUrl: user.avatarUrl || '',
+      theme: getUserTheme(user.theme),
+      imagePosition: visual.imagePosition,
+      imageScale: visual.imageScale,
     });
     setFormErrors({});
+    setFormTab('DATA');
     setModalOpen(true);
   };
 
@@ -119,10 +175,17 @@ export default function UsersPage() {
     }
 
     setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setFormTab('DATA');
+    }
     return Object.keys(nextErrors).length === 0;
   };
 
   const save = async () => {
+    if ((editing && !canEditUsers) || (!editing && !canCreateUsers)) {
+      return;
+    }
+
     if (!validateForm()) return;
 
     setSaving(true);
@@ -135,6 +198,7 @@ export default function UsersPage() {
           role: form.role,
           status: form.status,
           avatarUrl: form.avatarUrl || undefined,
+          theme: buildUserTheme(form.theme, form.imagePosition, form.imageScale),
         });
       } else {
         await api.post('/users', {
@@ -144,6 +208,7 @@ export default function UsersPage() {
           role: form.role,
           status: form.status,
           avatarUrl: form.avatarUrl || undefined,
+          theme: buildUserTheme(form.theme, form.imagePosition, form.imageScale),
         });
       }
 
@@ -155,6 +220,10 @@ export default function UsersPage() {
   };
 
   const toggleStatus = async (user: User) => {
+    if (!canEditUsers) {
+      return;
+    }
+
     try {
       await api.patch(`/users/${user.id}`, {
         status: user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
@@ -169,6 +238,7 @@ export default function UsersPage() {
   const remove = async () => {
     if (!confirmTarget) return;
     if (confirmTarget.id === authUser?.id) return;
+    if (!canDeleteUsers) return;
 
     setDeleting(true);
     try {
@@ -182,56 +252,54 @@ export default function UsersPage() {
     }
   };
 
-  if (!isSuperadmin) {
+  if (!canViewUsers) {
     return (
-      <div className="fac-panel px-6 py-6 text-[14px] text-muted-foreground">
-        Acesso restrito ao superadmin.
-      </div>
+      <div className="fac-error-state">Acesso restrito.</div>
     );
   }
 
   return (
     <div className="fac-page">
-      <section className="fac-page-head">
-        <div>
-          <h1 className="fac-subtitle">Usuários</h1>
-          <p className="text-[15px] text-muted-foreground">Perfis, papeis e acessos da equipe administrativa.</p>
-        </div>
-
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[180px_180px_auto]">
-          <select
-            value={roleFilter}
-            onChange={(event) => setRoleFilter(event.target.value as 'ALL' | UserRole)}
-            className="fac-select"
-          >
-            <option value="ALL">Todas as roles</option>
-            <option value="SUPERADMIN">SUPERADMIN</option>
-            <option value="USER">USER</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as 'ALL' | UserStatus)
-            }
-            className="fac-select"
-          >
-            <option value="ALL">Todos os status</option>
-            <option value="ACTIVE">Ativo</option>
-            <option value="INACTIVE">Inativo</option>
-          </select>
-
-          <button type="button" className="fac-button-primary" onClick={openCreate}>
-            Novo usuário
-          </button>
-        </div>
-      </section>
-
       <section className="fac-panel">
-        <div className="fac-panel-head">
-          <p className="fac-panel-title">Lista</p>
-          <p className="fac-panel-meta">{filtered.length} registros</p>
-        </div>
+        <AdminPanelHeaderBar
+          title="Usuários"
+          count={filtered.length}
+          actionsClassName="sm:grid-cols-2 xl:grid-cols-[180px_180px_auto]"
+          actions={
+            <>
+              <AdminFilterSelect
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value as 'ALL' | UserRole)}
+              >
+                <option value="ALL">Todos os perfis</option>
+                <option value="SUPERADMIN">{getUserRoleLabel('SUPERADMIN')}</option>
+                <option value="USER">{getUserRoleLabel('USER')}</option>
+              </AdminFilterSelect>
+
+              <AdminFilterSelect
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as 'ALL' | UserStatus)
+                }
+              >
+                <option value="ALL">Todos os status</option>
+                <option value="ACTIVE">Ativo</option>
+                <option value="INACTIVE">Inativo</option>
+              </AdminFilterSelect>
+
+              <button
+                type="button"
+                className="fac-button-primary !h-10 !w-10 !rounded-full !px-0 !tracking-normal transition-colors duration-200 hover:!bg-accent hover:!text-accent-foreground"
+                onClick={openCreate}
+                aria-label="Novo usuário"
+                title="Novo usuário"
+                disabled={!canCreateUsers}
+              >
+                <span className="text-[22px] leading-none">+</span>
+              </button>
+            </>
+          }
+        />
 
         <div className="fac-panel-body">
           {loading ? (
@@ -243,58 +311,21 @@ export default function UsersPage() {
           ) : (
             <div className="flex flex-wrap gap-3">
               {filtered.map((user) => (
-                <article key={user.id} className={`fac-card w-[220px] max-w-full ${user.status === 'INACTIVE' ? 'opacity-80 grayscale' : ''}`}>
-                  <button
-                    type="button"
-                    className="relative aspect-square w-full overflow-hidden bg-muted text-left"
-                    onClick={() => openEdit(user)}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/5 dark:from-black/35 dark:to-black/20" />
-
-                    <div className="absolute left-3 top-3">
-                      <UserAvatar
-                        name={user.name}
-                        avatarUrl={user.avatarUrl}
-                        size="md"
-                        className="!h-12 !w-12 !rounded-full border border-black/10 bg-white/95 shadow-sm"
-                      />
-                    </div>
-
-                  </button>
-
-                  <div className="flex items-center justify-between border-t border-border bg-white/92 px-3 py-2">
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 pr-2 text-left"
-                      onClick={() => openEdit(user)}
-                    >
-                      <div>
-                        <p className="line-clamp-1 text-[14px] font-semibold text-foreground">{user.name}</p>
-                        <p className="line-clamp-1 mt-1 text-[12px] text-muted-foreground">{user.email}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                          {user.role}
-                        </p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={user.status === 'ACTIVE'}
-                      aria-label={user.status === 'ACTIVE' ? `Desativar ${user.name}` : `Ativar ${user.name}`}
-                      className={`fac-toggle shrink-0 ${user.id === authUser?.id ? 'cursor-not-allowed opacity-50' : ''}`}
-                      data-state={user.status === 'ACTIVE' ? 'on' : 'off'}
-                      onClick={() => {
-                        if (user.id !== authUser?.id) {
+                <AdminUserCard
+                  key={user.id}
+                  user={user}
+                  onEdit={
+                    canEditUsers || canDeleteUsers ? () => openEdit(user) : undefined
+                  }
+                  onToggleStatus={
+                    canEditUsers
+                      ? () => {
                           void toggleStatus(user);
                         }
-                      }}
-                      disabled={user.id === authUser?.id}
-                    >
-                      <span className="fac-toggle-dot" />
-                    </button>
-                  </div>
-                </article>
+                      : undefined
+                  }
+                  toggleDisabled={user.id === authUser?.id || !canEditUsers}
+                />
               ))}
             </div>
           )}
@@ -306,10 +337,10 @@ export default function UsersPage() {
         title={editing ? 'Editar usuário' : 'Novo usuário'}
         description="Configure credenciais e acessos do usuário."
         onClose={() => setModalOpen(false)}
-        panelClassName="max-w-[760px]"
+        panelClassName="max-w-[820px]"
         footer={
           <>
-            {editing && editing.id !== authUser?.id ? (
+            {editing && editing.id !== authUser?.id && canDeleteUsers ? (
               <button
                 type="button"
                 className="fac-button-secondary text-[11px]"
@@ -335,6 +366,7 @@ export default function UsersPage() {
               onClick={save}
               disabled={
                 saving ||
+                (editing ? !canEditUsers : !canCreateUsers) ||
                 !form.name.trim() ||
                 !form.username.trim() ||
                 (!editing && !form.password.trim())
@@ -345,101 +377,209 @@ export default function UsersPage() {
           </>
         }
       >
-        <section className="fac-form-card">
-          <p className="fac-form-title">Dados</p>
+        <div className="fac-tabs !grid-cols-2">
+          <button
+            type="button"
+            className="fac-tab"
+            data-active={formTab === 'DATA' ? 'true' : 'false'}
+            onClick={() => setFormTab('DATA')}
+          >
+            Dados
+          </button>
+          <button
+            type="button"
+            className="fac-tab"
+            data-active={formTab === 'VISUAL' ? 'true' : 'false'}
+            onClick={() => setFormTab('VISUAL')}
+          >
+            Visual
+          </button>
+        </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="fac-label">Nome</label>
-              <input
-                value={form.name}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, name: event.target.value }));
-                  setFormErrors((prev) => ({ ...prev, name: undefined }));
-                }}
-                className={`fac-input ${formErrors.name ? 'border-destructive' : ''}`}
-              />
-              {formErrors.name ? (
-                <p className="mt-1 text-[12px] text-destructive">{formErrors.name}</p>
-              ) : null}
+        {formTab === 'DATA' ? (
+          <section className="fac-form-card mt-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="fac-label">Nome</label>
+                <input
+                  value={form.name}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, name: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.name ? 'border-destructive' : ''}`}
+                />
+                {formErrors.name ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.name}</p>
+                ) : null}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="fac-label">Usuário</label>
+                <input
+                  value={form.username}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, username: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, username: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.username ? 'border-destructive' : ''}`}
+                />
+                {formErrors.username ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.username}</p>
+                ) : null}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="fac-label">Senha</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, password: event.target.value }));
+                    setFormErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                  className={`fac-input ${formErrors.password ? 'border-destructive' : ''}`}
+                  placeholder={editing ? 'Nova senha (opcional)' : ''}
+                />
+                {formErrors.password ? (
+                  <p className="mt-1 text-[12px] text-destructive">{formErrors.password}</p>
+                ) : null}
+              </div>
+
+              <div>
+                <label className="fac-label">Perfil</label>
+                <select
+                  value={form.role}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, role: event.target.value as UserRole }))
+                  }
+                  className="fac-select"
+                  disabled={editing ? !canEditUsers : !canCreateUsers}
+                >
+                  <option value="USER">{getUserRoleLabel('USER')}</option>
+                  <option value="SUPERADMIN">{getUserRoleLabel('SUPERADMIN')}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="fac-label">Status</label>
+                <select
+                  value={form.status}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, status: event.target.value as UserStatus }))
+                  }
+                  className="fac-select"
+                  disabled={editing ? !canEditUsers : !canCreateUsers}
+                >
+                  <option value="ACTIVE">Ativo</option>
+                  <option value="INACTIVE">Inativo</option>
+                </select>
+              </div>
             </div>
+          </section>
+        ) : null}
 
-            <div className="sm:col-span-2">
-              <label className="fac-label">Usuário</label>
-              <input
-                value={form.username}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, username: event.target.value }));
-                  setFormErrors((prev) => ({ ...prev, username: undefined }));
-                }}
-                className={`fac-input ${formErrors.username ? 'border-destructive' : ''}`}
-              />
-              {formErrors.username ? (
-                <p className="mt-1 text-[12px] text-destructive">{formErrors.username}</p>
-              ) : null}
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="fac-label">Senha</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, password: event.target.value }));
-                  setFormErrors((prev) => ({ ...prev, password: undefined }));
-                }}
-                className={`fac-input ${formErrors.password ? 'border-destructive' : ''}`}
-                placeholder={editing ? 'Nova senha (opcional)' : ''}
-              />
-              {formErrors.password ? (
-                <p className="mt-1 text-[12px] text-destructive">{formErrors.password}</p>
-              ) : null}
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="fac-label">Imagem</label>
-              <ImageSelector
+        {formTab === 'VISUAL' ? (
+          <div className="mt-4 space-y-4">
+            <section className="fac-form-card">
+              <label className="fac-label">Foto do usuário</label>
+              <AvatarUpload
                 value={form.avatarUrl}
                 onChange={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
+                name={form.name || 'Usuário'}
+                disabled={saving}
               />
-              <p className="mt-1 text-[12px] text-muted-foreground">Opcional</p>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        <section className="fac-form-card mt-4">
-          <p className="fac-form-title">Acesso</p>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="fac-label">Role</label>
-              <select
-                value={form.role}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, role: event.target.value as UserRole }))
+            <section className="fac-form-card">
+              <p className="fac-form-title">Prévia do card</p>
+              <div
+                className={
+                  form.avatarUrl
+                    ? 'mt-4 grid gap-6 md:grid-cols-[minmax(0,248px)_minmax(0,1fr)] md:items-center'
+                    : 'mt-4'
                 }
-                className="fac-select"
               >
-                <option value="USER">COLLABORATOR</option>
-                <option value="SUPERADMIN">SUPERADMIN</option>
-              </select>
-            </div>
+                <div className="flex justify-center md:justify-start">
+                  <AdminUserCard
+                    user={{
+                      name: form.name.trim() || 'Nome do usuário',
+                      email: form.username.trim() || 'usuario@facilita.local',
+                      role: form.role,
+                      status: form.status,
+                      avatarUrl: form.avatarUrl,
+                      theme: buildUserTheme(form.theme, form.imagePosition, form.imageScale),
+                    }}
+                    size="preview"
+                  />
+                </div>
 
-            <div>
-              <label className="fac-label">Status</label>
-              <select
-                value={form.status}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, status: event.target.value as UserStatus }))
-                }
-                className="fac-select"
-              >
-                <option value="ACTIVE">Ativo</option>
-                <option value="INACTIVE">Inativo</option>
-              </select>
-            </div>
+                {form.avatarUrl ? (
+                  <div className="grid gap-4">
+                    <div>
+                      <label className="fac-label">Largura</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={imagePosition.x}
+                        onChange={(event) => {
+                          const nextX = Number.parseInt(event.target.value, 10);
+                          setForm((prev) => ({
+                            ...prev,
+                            imagePosition: `${nextX}% ${imagePosition.y}%`,
+                          }));
+                        }}
+                        className="w-full"
+                      />
+                      <p className="mt-1 text-[12px] text-muted-foreground">{imagePosition.x}%</p>
+                    </div>
+
+                    <div>
+                      <label className="fac-label">Altura</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={imagePosition.y}
+                        onChange={(event) => {
+                          const nextY = Number.parseInt(event.target.value, 10);
+                          setForm((prev) => ({
+                            ...prev,
+                            imagePosition: `${imagePosition.x}% ${nextY}%`,
+                          }));
+                        }}
+                        className="w-full"
+                      />
+                      <p className="mt-1 text-[12px] text-muted-foreground">{imagePosition.y}%</p>
+                    </div>
+
+                    <div>
+                      <label className="fac-label">Zoom</label>
+                      <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.1"
+                        value={form.imageScale}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            imageScale: Number.parseFloat(event.target.value),
+                          }))
+                        }
+                        className="w-full"
+                      />
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        {form.imageScale.toFixed(1)}x
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </section>
           </div>
-        </section>
+        ) : null}
       </AdminModal>
 
       <ConfirmModal

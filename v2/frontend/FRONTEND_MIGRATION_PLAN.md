@@ -449,7 +449,7 @@ const [formData, setFormData] = useState<UserFormData>({
   name: '',
   username: '',
   password: '',
-  role: 'COLLABORATOR',
+  role: 'USER',
   status: 'ACTIVE',
   companyId: '',
   sectors: [], // ✅ NOVO

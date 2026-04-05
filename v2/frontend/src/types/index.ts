@@ -1,7 +1,6 @@
 export type UserRole = 'SUPERADMIN' | 'USER';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type EntityStatus = 'ACTIVE' | 'INACTIVE';
-export type ContentVisibility = 'PRIVATE' | 'PUBLIC';
 export type EntityType = 'LINK' | 'SCHEDULE' | 'NOTE' | 'USER';
 
 export type UserPreview = {
@@ -20,7 +19,7 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   avatarUrl?: string;
-  theme?: any;
+  theme?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +34,7 @@ export interface Category {
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
+  owner?: UserPreview;
   _count?: {
     links: number;
     schedules: number;
@@ -53,8 +53,6 @@ export interface Link {
   imageUrl?: string | null;
   imagePosition?: string | null;
   imageScale?: number | null;
-  visibility: ContentVisibility;
-  publicToken?: string | null;
   order: number;
   status: EntityStatus;
   createdAt: string;
@@ -70,6 +68,16 @@ export interface Link {
   };
 }
 
+export interface CustomShortcut {
+  id: string;
+  title: string;
+  description: string;
+  context: string;
+  keys: string[];
+  target: string;
+  openInNewTab: boolean;
+}
+
 export interface UploadedSchedule {
   id: string;
   ownerId: string;
@@ -82,8 +90,6 @@ export interface UploadedSchedule {
   imageUrl?: string | null;
   imagePosition?: string | null;
   imageScale?: number | null;
-  visibility: ContentVisibility;
-  publicToken?: string | null;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
@@ -108,8 +114,6 @@ export interface Note {
   imageUrl?: string | null;
   imagePosition?: string | null;
   imageScale?: number | null;
-  visibility: ContentVisibility;
-  publicToken?: string | null;
   status: EntityStatus;
   createdAt: string;
   updatedAt: string;
@@ -161,33 +165,84 @@ export interface Notification {
   title: string;
   message: string;
   actionUrl?: string | null;
-  metadata?: any;
+  metadata?: unknown;
   read: boolean;
   createdAt: string;
+}
+
+export type ChatRoomType = 'DIRECT' | 'GROUP';
+
+export interface ChatMember {
+  id: string;
+  roomId: string;
+  userId: string;
+  joinedAt: string;
+  lastReadAt?: string | null;
+  user: Pick<User, 'id' | 'name' | 'email' | 'avatarUrl' | 'role'>;
+}
+
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  senderId: string;
+  content: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  createdAt: string;
+  sender: Pick<User, 'id' | 'name' | 'avatarUrl'>;
+}
+
+export interface ChatRoom {
+  id: string;
+  type: ChatRoomType;
+  name?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  members: ChatMember[];
+  lastMessage?: ChatMessage;
+  unreadCount: number;
+}
+
+export interface ChatMessagesResponse {
+  items: ChatMessage[];
+  nextCursor: string | null;
 }
 
 export interface RolePermission {
   id: string;
   role: UserRole;
+  canViewHome: boolean;
   canViewDashboard: boolean;
+  canViewFavorites: boolean;
+  canViewSharesPage: boolean;
   canAccessAdmin: boolean;
   canViewUsers: boolean;
   canCreateUsers: boolean;
   canEditUsers: boolean;
   canDeleteUsers: boolean;
+  canViewCategories: boolean;
+  canManageCategories: boolean;
   canViewLinks: boolean;
   canManageLinks: boolean;
-  canManageCategories: boolean;
+  canViewSchedules: boolean;
   canManageSchedules: boolean;
-  canViewPrivateContent: boolean;
+  canViewNotes: boolean;
+  canManageNotes: boolean;
+  canViewImages: boolean;
+  canManageImages: boolean;
   canBackupSystem: boolean;
   canResetSystem: boolean;
-  canViewAuditLogs: boolean;
   canManageSystemConfig: boolean;
   canManageShares: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+export type PermissionFlags = Omit<
+  RolePermission,
+  'id' | 'role' | 'createdAt' | 'updatedAt'
+>;
 
 export interface SystemConfig {
   id: string;

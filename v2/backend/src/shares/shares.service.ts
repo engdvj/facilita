@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EntityType, NotificationType, UserRole, UserStatus } from '@prisma/client';
+import type { PermissionFlags } from '../permissions/permissions.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateShareDto } from './dto/create-share.dto';
@@ -14,6 +15,11 @@ type ShareableEntityType =
   | 'LINK'
   | 'SCHEDULE'
   | 'NOTE';
+type ShareActor = {
+  id: string;
+  role: UserRole;
+  permissions?: PermissionFlags | null;
+};
 
 @Injectable()
 export class SharesService {
@@ -38,6 +44,56 @@ export class SharesService {
     ) {
       throw new BadRequestException('Unsupported entity type for share');
     }
+  }
+
+  private canUseEntityType(actor: ShareActor, entityType: ShareableEntityType) {
+    if (entityType === EntityType.LINK) {
+      return actor.permissions?.canViewLinks === true;
+    }
+
+    if (entityType === EntityType.SCHEDULE) {
+      return actor.permissions?.canViewSchedules === true;
+    }
+
+    if (entityType === EntityType.NOTE) {
+      return actor.permissions?.canViewNotes === true;
+    }
+
+    return false;
+  }
+
+  private filterVisibleShares<
+    T extends {
+      entityType: EntityType;
+      link?: unknown | null;
+      schedule?: unknown | null;
+      note?: unknown | null;
+    },
+  >(actor: ShareActor, shares: T[]) {
+    return shares.filter((share) => {
+      if (
+        share.entityType === EntityType.LINK &&
+        this.canUseEntityType(actor, EntityType.LINK)
+      ) {
+        return Boolean(share.link);
+      }
+
+      if (
+        share.entityType === EntityType.SCHEDULE &&
+        this.canUseEntityType(actor, EntityType.SCHEDULE)
+      ) {
+        return Boolean(share.schedule);
+      }
+
+      if (
+        share.entityType === EntityType.NOTE &&
+        this.canUseEntityType(actor, EntityType.NOTE)
+      ) {
+        return Boolean(share.note);
+      }
+
+      return false;
+    });
   }
 
   private buildEntityWhere(entityType: ShareableEntityType, entityId: string) {
@@ -155,9 +211,13 @@ export class SharesService {
     } as const;
   }
 
-  async create(actor: { id: string; role: UserRole }, dto: CreateShareDto) {
+  async create(actor: ShareActor, dto: CreateShareDto) {
     this.assertUserOnly(actor);
     this.assertShareableEntityType(dto.entityType);
+
+    if (!this.canUseEntityType(actor, dto.entityType)) {
+      throw new ForbiddenException('Permission denied for this content type');
+    }
 
     const entity = await this.resolveEntity(dto.entityType, dto.entityId);
     if (entity.ownerId !== actor.id) {
@@ -168,6 +228,7 @@ export class SharesService {
     const entityWhere = this.buildEntityWhere(dto.entityType, dto.entityId);
 
     const shares = [];
+    const notifiedRecipientIds: string[] = [];
     for (const recipientId of recipientIds) {
       const existing = await this.prisma.share.findFirst({
         where: {
@@ -176,9 +237,15 @@ export class SharesService {
           entityType: dto.entityType,
           ...entityWhere,
         },
+        include: this.includeShareRelations(),
       });
 
       if (existing) {
+        if (!existing.revokedAt && !existing.removedAt) {
+          shares.push(existing);
+          continue;
+        }
+
         const reactivated = await this.prisma.share.update({
           where: { id: existing.id },
           data: {
@@ -189,6 +256,7 @@ export class SharesService {
           include: this.includeShareRelations(),
         });
         shares.push(reactivated);
+        notifiedRecipientIds.push(recipientId);
         continue;
       }
 
@@ -203,36 +271,43 @@ export class SharesService {
       });
 
       shares.push(created);
+      notifiedRecipientIds.push(recipientId);
     }
 
-    await this.notificationsService.createBulk(recipientIds, {
-      type: NotificationType.CONTENT_SHARED,
-      entityType: dto.entityType,
-      entityId: dto.entityId,
-      title: 'Novo compartilhamento',
-      message: `${entity.title} foi compartilhado com voce`,
-      actionUrl: '/compartilhados',
-      metadata: {
-        ownerId: actor.id,
-        entityTitle: entity.title,
-      },
-    });
+    if (notifiedRecipientIds.length > 0) {
+      await this.notificationsService.createBulk(notifiedRecipientIds, {
+        type: NotificationType.CONTENT_SHARED,
+        entityType: dto.entityType,
+        entityId: dto.entityId,
+        title: 'Novo compartilhamento',
+        message: `${entity.title} foi compartilhado com voce`,
+        actionUrl: '/compartilhados',
+        metadata: {
+          ownerId: actor.id,
+          entityTitle: entity.title,
+        },
+      });
+    }
 
     return {
       entityType: dto.entityType,
       entityId: dto.entityId,
-      totalRecipients: recipientIds.length,
+      totalRecipients: notifiedRecipientIds.length,
       shares,
     };
   }
 
-  async findReceived(actor: { id: string; role: UserRole }, type?: EntityType) {
+  async findReceived(actor: ShareActor, type?: EntityType) {
     this.assertUserOnly(actor);
     if (type) {
       this.assertShareableEntityType(type);
+
+      if (!this.canUseEntityType(actor, type)) {
+        return [];
+      }
     }
 
-    return this.prisma.share.findMany({
+    const shares = await this.prisma.share.findMany({
       where: {
         recipientId: actor.id,
         revokedAt: null,
@@ -242,15 +317,21 @@ export class SharesService {
       include: this.includeShareRelations(),
       orderBy: { createdAt: 'desc' },
     });
+
+    return this.filterVisibleShares(actor, shares);
   }
 
-  async findSent(actor: { id: string; role: UserRole }, type?: EntityType) {
+  async findSent(actor: ShareActor, type?: EntityType) {
     this.assertUserOnly(actor);
     if (type) {
       this.assertShareableEntityType(type);
+
+      if (!this.canUseEntityType(actor, type)) {
+        return [];
+      }
     }
 
-    return this.prisma.share.findMany({
+    const shares = await this.prisma.share.findMany({
       where: {
         ownerId: actor.id,
         revokedAt: null,
@@ -259,12 +340,61 @@ export class SharesService {
       include: this.includeShareRelations(),
       orderBy: { createdAt: 'desc' },
     });
+
+    return this.filterVisibleShares(actor, shares);
   }
 
-  async findRecipients(actor: { id: string; role: UserRole }) {
+  async findRecipients(actor: ShareActor) {
+    this.assertUserOnly(actor);
+    return this.findRecipientsForEntity(actor);
+  }
+
+  async findRecipientsForEntity(
+    actor: ShareActor,
+    entityType?: EntityType,
+    entityId?: string,
+  ) {
     this.assertUserOnly(actor);
 
-    return this.prisma.user.findMany({
+    if ((entityType && !entityId) || (!entityType && entityId)) {
+      throw new BadRequestException('entityType and entityId must be provided together');
+    }
+
+    const activeSharesByRecipientId = new Map<string, string>();
+
+    if (entityType && entityId) {
+      this.assertShareableEntityType(entityType);
+
+      if (!this.canUseEntityType(actor, entityType)) {
+        throw new ForbiddenException('Permission denied for this content type');
+      }
+
+      const entity = await this.resolveEntity(entityType, entityId);
+      if (entity.ownerId !== actor.id) {
+        throw new ForbiddenException('You can only view recipients for your own content');
+      }
+
+      const entityWhere = this.buildEntityWhere(entityType, entityId);
+      const activeShares = await this.prisma.share.findMany({
+        where: {
+          ownerId: actor.id,
+          entityType,
+          revokedAt: null,
+          removedAt: null,
+          ...entityWhere,
+        },
+        select: {
+          id: true,
+          recipientId: true,
+        },
+      });
+
+      activeShares.forEach((share) => {
+        activeSharesByRecipientId.set(share.recipientId, share.id);
+      });
+    }
+
+    const recipients = await this.prisma.user.findMany({
       where: {
         role: UserRole.USER,
         status: UserStatus.ACTIVE,
@@ -278,6 +408,12 @@ export class SharesService {
       },
       orderBy: { name: 'asc' },
     });
+
+    return recipients.map((recipient) => ({
+      ...recipient,
+      alreadyShared: activeSharesByRecipientId.has(recipient.id),
+      activeShareId: activeSharesByRecipientId.get(recipient.id) ?? null,
+    }));
   }
 
   async updateLocalCategory(

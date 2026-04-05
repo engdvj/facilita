@@ -1,62 +1,48 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Ban, Check, Download } from 'lucide-react';
-import AdminModal from '@/components/admin/modal';
-import ContentCoverImage from '@/components/content-cover-image';
-import { FavoriteButton } from '@/components/FavoriteButton';
-import { useFavorites } from '@/hooks/useFavorites';
-import { resolveAssetUrl } from '@/lib/image';
+import AdminFilterSelect from '@/components/admin/filter-select';
+import FileViewerModal from '@/components/admin/file-viewer-modal';
+import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
+import FavoriteItemCard, {
+  type FavoriteCardItem,
+} from '@/components/favorite-item-card';
+import NoteViewerModal from '@/components/note-viewer-modal';
+import { useFavorites, type EntityType } from '@/hooks/useFavorites';
+import { getContrastTextColor } from '@/lib/color';
+import { hasPermission } from '@/lib/permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { Note } from '@/types';
 
-type ItemType = 'LINK' | 'SCHEDULE' | 'NOTE';
-
-type FavoriteItem = {
-  id: string;
-  type: ItemType;
-  title: string;
-  description?: string;
-  content?: string;
-  url?: string;
-  fileUrl?: string;
-  fileName?: string;
-  imageUrl?: string | null;
-  imagePosition?: string | null;
-  imageScale?: number | null;
-  categoryName?: string;
-  categoryColor?: string | null;
-  status: 'ACTIVE' | 'INACTIVE';
-};
-
-const typeLabel: Record<ItemType, string> = {
-  LINK: 'LINK',
-  SCHEDULE: 'DOC',
-  NOTE: 'NOTA',
-};
-
-function getContrastTextColor(color: string) {
-  const hex = color.replace('#', '').trim();
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#263238';
-  const value = Number.parseInt(hex, 16);
-  const r = (value >> 16) & 255;
-  const g = (value >> 8) & 255;
-  const b = value & 255;
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 150 ? '#263238' : '#ffffff';
-}
-
 export default function FavoritosPage() {
-  const { favorites, loading } = useFavorites();
+  const user = useAuthStore((state) => state.user);
+  const { favorites, loading, error } = useFavorites();
 
   const globalSearch = useUiStore((state) => state.globalSearch);
-  const [typeFilter, setTypeFilter] = useState<'ALL' | ItemType>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | EntityType>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [viewingFile, setViewingFile] = useState<{ id: string; url: string; name: string } | null>(null);
+  const canViewLinks = hasPermission(user, 'canViewLinks');
+  const canViewSchedules = hasPermission(user, 'canViewSchedules');
+  const canViewNotes = hasPermission(user, 'canViewNotes');
 
-  const items = useMemo<FavoriteItem[]>(() => {
+  const availableTypes = useMemo(
+    () =>
+      [
+        canViewLinks ? 'LINK' : null,
+        canViewSchedules ? 'SCHEDULE' : null,
+        canViewNotes ? 'NOTE' : null,
+      ].filter((type): type is EntityType => Boolean(type)),
+    [canViewLinks, canViewNotes, canViewSchedules],
+  );
+  const effectiveTypeFilter =
+    typeFilter === 'ALL' || availableTypes.includes(typeFilter) ? typeFilter : 'ALL';
+
+  const items = useMemo<FavoriteCardItem[]>(() => {
     return favorites
-      .map<FavoriteItem | null>((favorite) => {
+      .map<FavoriteCardItem | null>((favorite) => {
         if (favorite.entityType === 'LINK' && favorite.link) {
           return {
             id: favorite.link.id,
@@ -69,6 +55,7 @@ export default function FavoritosPage() {
             imageScale: favorite.link.imageScale,
             categoryName: favorite.link.category?.name,
             categoryColor: favorite.link.category?.color || null,
+            categoryIcon: favorite.link.category?.icon || null,
             status: favorite.link.status,
           };
         }
@@ -85,6 +72,7 @@ export default function FavoritosPage() {
             imageScale: favorite.schedule.imageScale,
             categoryName: favorite.schedule.category?.name,
             categoryColor: favorite.schedule.category?.color || null,
+            categoryIcon: favorite.schedule.category?.icon || null,
             status: favorite.schedule.status,
           };
         }
@@ -100,20 +88,21 @@ export default function FavoritosPage() {
             imageScale: favorite.note.imageScale,
             categoryName: favorite.note.category?.name,
             categoryColor: favorite.note.category?.color || null,
+            categoryIcon: favorite.note.category?.icon || null,
             status: favorite.note.status,
           };
         }
 
         return null;
       })
-      .filter((item): item is FavoriteItem => item !== null);
+      .filter((item): item is FavoriteCardItem => item !== null);
   }, [favorites]);
 
   const searchedItems = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
 
     return items
-      .filter((item) => (typeFilter === 'ALL' ? true : item.type === typeFilter))
+      .filter((item) => (effectiveTypeFilter === 'ALL' ? true : item.type === effectiveTypeFilter))
       .filter((item) => {
         if (!term) return true;
 
@@ -131,7 +120,7 @@ export default function FavoritosPage() {
         return haystack.includes(term);
       })
       .sort((a, b) => a.title.localeCompare(b.title));
-  }, [items, globalSearch, typeFilter]);
+  }, [effectiveTypeFilter, globalSearch, items]);
 
   const categoryTabs = useMemo(() => {
     const map = new Map<string, { count: number; color?: string | null }>();
@@ -156,7 +145,9 @@ export default function FavoritosPage() {
 
   const filteredItems = useMemo(() => {
     if (categoryFilter === 'ALL') return searchedItems;
-    return searchedItems.filter((item) => (item.categoryName || 'Sem categoria') === categoryFilter);
+    return searchedItems.filter(
+      (item) => (item.categoryName || 'Sem categoria') === categoryFilter,
+    );
   }, [searchedItems, categoryFilter]);
 
   const noteMap = useMemo(() => {
@@ -169,7 +160,7 @@ export default function FavoritosPage() {
     return map;
   }, [favorites]);
 
-  const openItem = (item: FavoriteItem) => {
+  const openItem = (item: FavoriteCardItem) => {
     if (item.status !== 'ACTIVE') return;
 
     if (item.type === 'LINK' && item.url) {
@@ -178,7 +169,7 @@ export default function FavoritosPage() {
     }
 
     if (item.type === 'SCHEDULE' && item.fileUrl) {
-      window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
+      setViewingFile({ id: item.id, url: item.fileUrl, name: item.fileName || item.title });
       return;
     }
 
@@ -190,170 +181,116 @@ export default function FavoritosPage() {
     }
   };
 
+  const activeSearch = globalSearch.trim();
+  const hasActiveFilters =
+    activeSearch.length > 0 || typeFilter !== 'ALL' || categoryFilter !== 'ALL';
+  const emptyMessage = activeSearch
+    ? `Nenhum resultado para "${activeSearch}".`
+    : hasActiveFilters
+      ? 'Nenhum favorito corresponde ao filtro.'
+      : 'Voce ainda nao tem favoritos.';
+
   return (
     <div className="fac-page">
-      <section className="fac-page-head">
-        <div>
-          <h1 className="fac-subtitle">Links, documentos e notas favoritas</h1>
-          <p className="text-[15px] text-muted-foreground">
-            Acesse rapidamente os itens que você marcou como favoritos.
-          </p>
-        </div>
-
-        <div>
-          <label className="fac-label">Tipo</label>
-          <select
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value as 'ALL' | ItemType)}
-            className="fac-select !w-auto"
-          >
-            <option value="ALL">Todos</option>
-            <option value="LINK">Links</option>
-            <option value="SCHEDULE">Documentos</option>
-            <option value="NOTE">Notas</option>
-          </select>
-        </div>
-      </section>
-
-      <section className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          data-active={categoryFilter === 'ALL' ? 'true' : 'false'}
-          className="fac-pill"
-          onClick={() => setCategoryFilter('ALL')}
-        >
-          Todos ({searchedItems.length})
-        </button>
-
-        {categoryTabs.map((tab) => {
-          const isActive = categoryFilter === tab.name;
-          const textColor = tab.color ? getContrastTextColor(tab.color) : undefined;
-          return (
-            <button
-              key={tab.name}
-              type="button"
-              data-active={isActive ? 'true' : 'false'}
-              className="fac-pill"
-              style={
-                tab.color
-                  ? isActive
-                    ? { backgroundColor: tab.color, borderColor: tab.color, color: textColor }
-                    : { borderColor: tab.color, color: tab.color }
-                  : undefined
-              }
-              onClick={() => setCategoryFilter(tab.name)}
+      <section className="fac-panel">
+        <AdminPanelHeaderBar
+          title="Favoritos"
+          count={filteredItems.length}
+          actionsClassName="sm:max-w-[220px] xl:w-[220px]"
+          actions={
+            <AdminFilterSelect
+              value={effectiveTypeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as 'ALL' | EntityType)}
             >
-              {tab.name} ({tab.count})
+              <option value="ALL">Todos os tipos</option>
+              {canViewLinks ? <option value="LINK">Links</option> : null}
+              {canViewSchedules ? <option value="SCHEDULE">Documentos</option> : null}
+              {canViewNotes ? <option value="NOTE">Notas</option> : null}
+            </AdminFilterSelect>
+          }
+        />
+
+        <div className="fac-panel-body space-y-4">
+          {activeSearch ? (
+            <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+              Busca ativa:{' '}
+              <span className="normal-case tracking-normal text-foreground">{activeSearch}</span>
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-active={categoryFilter === 'ALL' ? 'true' : 'false'}
+              className="fac-pill"
+              onClick={() => setCategoryFilter('ALL')}
+            >
+              Todos ({searchedItems.length})
             </button>
-          );
-        })}
+
+            {categoryTabs.map((tab) => {
+              const isActive = categoryFilter === tab.name;
+              const textColor = tab.color ? getContrastTextColor(tab.color) : undefined;
+              return (
+                <button
+                  key={tab.name}
+                  type="button"
+                  data-active={isActive ? 'true' : 'false'}
+                  className="fac-pill"
+                  style={
+                    tab.color
+                      ? isActive
+                        ? { backgroundColor: tab.color, borderColor: tab.color, color: textColor }
+                        : { borderColor: tab.color, color: tab.color }
+                      : undefined
+                  }
+                  onClick={() => setCategoryFilter(tab.name)}
+                >
+                  {tab.name} ({tab.count})
+                </button>
+              );
+            })}
+          </div>
+
+          {loading ? (
+            <div className="fac-loading-state">Carregando favoritos...</div>
+          ) : error ? (
+            <div className="fac-error-state">{error}</div>
+          ) : filteredItems.length === 0 ? (
+            <div className="fac-empty-state">{emptyMessage}</div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {filteredItems.map((item) => (
+                <FavoriteItemCard
+                  key={`${item.type}-${item.id}`}
+                  item={item}
+                  detailsVariant="home"
+                  onOpen={() => openItem(item)}
+                  onDownload={
+                    item.type === 'SCHEDULE' && item.fileUrl
+                      ? () => setViewingFile({ id: item.id, url: item.fileUrl!, name: item.fileName || item.title })
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
-      {loading ? (
-        <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">
-          Carregando favoritos...
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="fac-panel px-6 py-10 text-center text-[14px] text-muted-foreground">
-          Nenhum favorito encontrado.
-        </div>
-      ) : (
-        <section className="flex flex-wrap gap-4">
-          {filteredItems.map((item) => {
-            const isInactive = item.status === 'INACTIVE';
-            const imageUrl = item.imageUrl ? resolveAssetUrl(item.imageUrl) : '';
-            const categoryName = item.categoryName || 'Sem categoria';
-
-            return (
-              <article
-                key={`${item.type}-${item.id}`}
-                className={`fac-card w-[220px] ${isInactive ? 'opacity-80 grayscale' : ''}`}
-              >
-                <div
-                  className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
-                  onClick={() => openItem(item)}
-                  onKeyDown={(event) => {
-                    if ((event.key === 'Enter' || event.key === ' ') && !isInactive) {
-                      event.preventDefault();
-                      openItem(item);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={isInactive ? -1 : 0}
-                >
-                  <ContentCoverImage
-                    src={imageUrl}
-                    alt={item.title}
-                    position={item.imagePosition}
-                    scale={item.imageScale}
-                    width={440}
-                    height={440}
-                    fallbackClassName="bg-gradient-to-b from-black/20 to-black/10"
-                  />
-
-                  <span className="absolute left-3 top-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] font-semibold text-foreground">
-                    {categoryName}
-                  </span>
-
-                  <div className="absolute right-3 top-3 flex items-center gap-2">
-                    <FavoriteButton entityType={item.type} entityId={item.id} />
-                    {item.type === 'SCHEDULE' && item.fileUrl ? (
-                      <button
-                        type="button"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/95 text-foreground"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (isInactive) return;
-                          window.open(resolveAssetUrl(item.fileUrl), '_blank', 'noopener,noreferrer');
-                        }}
-                        aria-label="Baixar documento"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <span className="fac-status-badge absolute bottom-3 left-3" data-status={item.status}>
-                    {item.status === 'ACTIVE' ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <Ban className="h-5 w-5" />
-                    )}
-                  </span>
-
-                  <span className="absolute bottom-3 right-3 rounded-xl border border-black/10 bg-white/95 px-3 py-1 text-[13px] uppercase tracking-[0.16em] text-foreground">
-                    {typeLabel[item.type]}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
-
-      <AdminModal
+      <NoteViewerModal
         open={Boolean(selectedNote)}
-        title={selectedNote?.title || 'Nota'}
+        note={selectedNote}
         onClose={() => setSelectedNote(null)}
-        panelClassName="max-w-3xl"
-      >
-        {selectedNote?.imageUrl ? (
-          <div className="mb-4 overflow-hidden rounded-xl">
-            <ContentCoverImage
-              src={selectedNote.imageUrl}
-              alt={selectedNote.title}
-              position={selectedNote.imagePosition}
-              scale={selectedNote.imageScale}
-              width={1200}
-              height={560}
-              className="h-56 w-full object-cover"
-            />
-          </div>
-        ) : null}
-        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-          {selectedNote?.content}
-        </p>
-      </AdminModal>
+      />
+
+      <FileViewerModal
+        open={Boolean(viewingFile)}
+        scheduleId={viewingFile?.id}
+        fileName={viewingFile?.name ?? ''}
+        fileUrl={viewingFile?.url ?? ''}
+        onClose={() => setViewingFile(null)}
+      />
     </div>
   );
 }

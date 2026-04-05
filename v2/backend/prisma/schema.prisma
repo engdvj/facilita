@@ -21,11 +21,6 @@ enum EntityStatus {
   INACTIVE
 }
 
-enum ContentVisibility {
-  PRIVATE
-  PUBLIC
-}
-
 enum EntityType {
   LINK
   SCHEDULE
@@ -43,6 +38,11 @@ enum NotificationType {
   CONTENT_FAVORITED
   CONTENT_SHARED
   CONTENT_SHARE_REVOKED
+}
+
+enum ChatRoomType {
+  DIRECT
+  GROUP
 }
 
 model User {
@@ -71,25 +71,35 @@ model User {
   notifications    Notification[]      @relation("UserNotifications")
   sharesSent       Share[]             @relation("ShareOwner")
   sharesReceived   Share[]             @relation("ShareRecipient")
+  chatRoomsCreated ChatRoom[]          @relation("ChatRoomsCreated")
+  chatMembers      ChatMember[]
+  sentMessages     ChatMessage[]       @relation("SentChatMessages")
 }
 
 model RolePermission {
   id                   String   @id @default(uuid()) @db.Uuid
   role                 UserRole @unique
+  canViewHome          Boolean  @default(true)
   canViewDashboard     Boolean  @default(false)
+  canViewFavorites     Boolean  @default(true)
+  canViewSharesPage    Boolean  @default(true)
   canAccessAdmin       Boolean  @default(false)
   canViewUsers         Boolean  @default(false)
   canCreateUsers       Boolean  @default(false)
   canEditUsers         Boolean  @default(false)
   canDeleteUsers       Boolean  @default(false)
+  canViewCategories    Boolean  @default(true)
+  canManageCategories  Boolean  @default(false)
   canViewLinks         Boolean  @default(true)
   canManageLinks       Boolean  @default(false)
-  canManageCategories  Boolean  @default(false)
+  canViewSchedules     Boolean  @default(true)
   canManageSchedules   Boolean  @default(false)
-  canViewPrivateContent Boolean @default(false)
+  canViewNotes         Boolean  @default(true)
+  canManageNotes       Boolean  @default(false)
+  canViewImages        Boolean  @default(true)
+  canManageImages      Boolean  @default(false)
   canBackupSystem      Boolean  @default(false)
   canResetSystem       Boolean  @default(false)
-  canViewAuditLogs     Boolean  @default(false)
   canManageSystemConfig Boolean @default(false)
   canManageShares      Boolean  @default(false)
   createdAt            DateTime @default(now())
@@ -140,8 +150,6 @@ model Link {
   imageUrl      String?
   imagePosition String?
   imageScale    Float?
-  visibility    ContentVisibility @default(PRIVATE)
-  publicToken   String?           @unique
   order         Int               @default(0)
   status        EntityStatus      @default(ACTIVE)
   createdAt     DateTime          @default(now())
@@ -156,7 +164,6 @@ model Link {
 
   @@index([ownerId])
   @@index([categoryId])
-  @@index([visibility])
   @@index([deletedAt])
 }
 
@@ -172,8 +179,6 @@ model UploadedSchedule {
   imageUrl      String?
   imagePosition String?
   imageScale    Float?
-  visibility    ContentVisibility @default(PRIVATE)
-  publicToken   String?           @unique
   status        EntityStatus      @default(ACTIVE)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
@@ -186,7 +191,6 @@ model UploadedSchedule {
 
   @@index([ownerId])
   @@index([categoryId])
-  @@index([visibility])
   @@index([deletedAt])
 }
 
@@ -200,8 +204,6 @@ model Note {
   imageUrl      String?
   imagePosition String?
   imageScale    Float?
-  visibility    ContentVisibility @default(PRIVATE)
-  publicToken   String?           @unique
   status        EntityStatus      @default(ACTIVE)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
@@ -214,7 +216,6 @@ model Note {
 
   @@index([ownerId])
   @@index([categoryId])
-  @@index([visibility])
   @@index([deletedAt])
 }
 
@@ -311,6 +312,52 @@ model Favorite {
 
   @@unique([userId, entityType, linkId, scheduleId, noteId])
   @@index([userId])
+}
+
+model ChatRoom {
+  id        String       @id @default(uuid()) @db.Uuid
+  type      ChatRoomType
+  name      String?
+  createdBy String?      @db.Uuid
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  creator  User?         @relation("ChatRoomsCreated", fields: [createdBy], references: [id], onDelete: SetNull)
+  members  ChatMember[]
+  messages ChatMessage[]
+
+  @@index([type])
+  @@index([createdBy])
+}
+
+model ChatMember {
+  id         String    @id @default(uuid()) @db.Uuid
+  roomId     String    @db.Uuid
+  userId     String    @db.Uuid
+  joinedAt   DateTime  @default(now())
+  lastReadAt DateTime?
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String    @id @default(uuid()) @db.Uuid
+  roomId    String    @db.Uuid
+  senderId  String    @db.Uuid
+  content   String
+  editedAt  DateTime?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User     @relation("SentChatMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@index([senderId])
 }
 
 model LinkVersion {

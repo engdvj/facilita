@@ -1,14 +1,34 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import AppNav from '@/components/app-nav';
+import GlobalSearch from '@/components/global-search';
 import UserProfileModal from '@/components/user-profile-modal';
 import UserNavMenu from './user-nav-menu';
 import api from '@/lib/api';
+import { canAccessPath, getFallbackPath } from '@/lib/permissions';
+import {
+  buildShortcutCombo,
+  getKeyboardEventShortcutKeys,
+  GLOBAL_SEARCH_SHORTCUT_KEYS,
+  isActionShortcutTarget,
+  isEditableKeyboardTarget,
+  isInternalShortcutTarget,
+  type ShortcutActionId,
+} from '@/lib/shortcuts';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import {
   NAV_WIDTH_DEFAULT,
+  NAV_WIDTH_MAX,
   useUiStore,
 } from '@/stores/ui-store';
 
@@ -17,6 +37,8 @@ type AppShellProps = {
 };
 
 export default function AppShell({ children }: AppShellProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
@@ -27,13 +49,20 @@ export default function AppShell({ children }: AppShellProps) {
   const navWidth = useUiStore((state) => state.navWidth);
   const toggleNavCollapsed = useUiStore((state) => state.toggleNavCollapsed);
   const toggleNavMode = useUiStore((state) => state.toggleNavMode);
+  const toggleTheme = useUiStore((state) => state.toggleTheme);
   const setNavWidth = useUiStore((state) => state.setNavWidth);
   const resetNavWidth = useUiStore((state) => state.resetNavWidth);
+  const shortcutCatalog = useUiStore((state) => state.shortcutCatalog);
+  const setShortcutCatalog = useUiStore((state) => state.setShortcutCatalog);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navResizing, setNavResizing] = useState(false);
   const [navHovered, setNavHovered] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const navResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const globalSearchShortcutCombo = buildShortcutCombo([...GLOBAL_SEARCH_SHORTCUT_KEYS]);
+
+  const closeGlobalSearch = () => setGlobalSearchOpen(false);
 
   useEffect(() => {
     if (!hasHydrated || !accessToken) return;
@@ -57,6 +86,36 @@ export default function AppShell({ children }: AppShellProps) {
       active = false;
     };
   }, [accessToken, clearAuth, hasHydrated, setUser]);
+
+  useEffect(() => {
+    if (!hasHydrated || !accessToken || !user) {
+      setShortcutCatalog([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadShortcutCatalog = async () => {
+      try {
+        const response = await api.get('/system-config/shortcuts/catalog', {
+          skipNotify: true,
+        });
+
+        if (active) {
+          setShortcutCatalog(Array.isArray(response.data) ? response.data : []);
+        }
+      } catch {
+        if (active) {
+          setShortcutCatalog([]);
+        }
+      }
+    };
+
+    void loadShortcutCatalog();
+    return () => {
+      active = false;
+    };
+  }, [accessToken, hasHydrated, setShortcutCatalog, user]);
 
   useEffect(() => {
     if (!navResizing) return;
@@ -85,6 +144,87 @@ export default function AppShell({ children }: AppShellProps) {
     };
   }, [navResizing, setNavWidth]);
 
+  const executeAction = useEffectEvent((actionId: ShortcutActionId) => {
+    switch (actionId) {
+      case 'action:open_search':
+        setGlobalSearchOpen(true);
+        break;
+      case 'action:toggle_theme':
+        toggleTheme();
+        break;
+      case 'action:toggle_nav':
+        toggleNavCollapsed();
+        break;
+      case 'action:toggle_nav_mode':
+        toggleNavMode();
+        break;
+      case 'action:logout':
+        clearAuth();
+        router.push('/login');
+        break;
+    }
+  });
+
+  const handleGlobalSearchHotkey = useEffectEvent((event: KeyboardEvent) => {
+    if (!user) {
+      return;
+    }
+
+    if (isEditableKeyboardTarget(event.target)) {
+      return;
+    }
+
+    const keys = getKeyboardEventShortcutKeys(event);
+    if (!keys) {
+      return;
+    }
+
+    const combo = buildShortcutCombo(keys);
+
+    if (combo === globalSearchShortcutCombo) {
+      event.preventDefault();
+      setGlobalSearchOpen(true);
+      return;
+    }
+
+    const matchedShortcut = shortcutCatalog.find(
+      (shortcut) => buildShortcutCombo(shortcut.keys) === combo,
+    );
+
+    if (!matchedShortcut) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (isActionShortcutTarget(matchedShortcut.target)) {
+      executeAction(matchedShortcut.target);
+      return;
+    }
+
+    if (isInternalShortcutTarget(matchedShortcut.target) && !matchedShortcut.openInNewTab) {
+      router.push(matchedShortcut.target);
+      return;
+    }
+
+    if (matchedShortcut.openInNewTab) {
+      window.open(matchedShortcut.target, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (isInternalShortcutTarget(matchedShortcut.target)) {
+      window.open(matchedShortcut.target, '_self');
+      return;
+    }
+
+    window.location.assign(matchedShortcut.target);
+  });
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleGlobalSearchHotkey);
+    return () => window.removeEventListener('keydown', handleGlobalSearchHotkey);
+  }, []);
+
   const handleNavResizeStart = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (navMode === 'manual' && navCollapsed) return;
 
@@ -101,9 +241,30 @@ export default function AppShell({ children }: AppShellProps) {
   const navEffectiveCollapsed =
     navMode === 'auto' ? !(navHovered || navResizing) : navCollapsed;
 
+  const navFontGrow = Math.min(
+    1,
+    Math.max(0, (navWidth - NAV_WIDTH_DEFAULT) / (NAV_WIDTH_MAX - NAV_WIDTH_DEFAULT)),
+  );
+
   const mainGridStyle = user
-    ? ({ '--fac-sidebar-width': `${navWidth}px` } as CSSProperties)
+    ? ({
+        '--fac-sidebar-width': `${navWidth}px`,
+        '--fac-sidebar-grow': `${navFontGrow}`,
+      } as CSSProperties)
     : undefined;
+
+  const canAccessCurrentPath = !user || canAccessPath(user, pathname);
+
+  useEffect(() => {
+    if (!hasHydrated || !user || canAccessCurrentPath) {
+      return;
+    }
+
+    const fallbackPath = getFallbackPath(user) ?? '/';
+    if (fallbackPath !== pathname) {
+      router.replace(fallbackPath);
+    }
+  }, [canAccessCurrentPath, hasHydrated, pathname, router, user]);
 
   return (
     <div className="flex min-h-screen flex-col text-foreground">
@@ -164,7 +325,9 @@ export default function AppShell({ children }: AppShellProps) {
               ) : null}
             </aside>
           ) : null}
-          <main className={`fac-outlet ${user ? 'fac-main-content' : ''}`}>{children}</main>
+          <main className={`fac-outlet ${user ? 'fac-main-content' : ''}`}>
+            {canAccessCurrentPath ? children : <div className="fac-loading-state">Redirecionando...</div>}
+          </main>
         </div>
       </div>
 
@@ -185,6 +348,7 @@ export default function AppShell({ children }: AppShellProps) {
         />
       ) : null}
       {user ? <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} /> : null}
+      {user ? <GlobalSearch open={globalSearchOpen} onClose={closeGlobalSearch} /> : null}
     </div>
   );
 }

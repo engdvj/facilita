@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { PermissionsService } from '../permissions/permissions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -24,10 +25,23 @@ const userSelect = {
 };
 
 type UserProfile = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+type AuthUserProfile = UserProfile & {
+  permissions: Awaited<ReturnType<PermissionsService['getResolvedRolePermissions']>>;
+};
+type SharedUserUpdateData = {
+  name?: string;
+  username?: string;
+  avatarUrl?: string | null;
+  theme?: Record<string, unknown>;
+  password?: string;
+};
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionsService: PermissionsService,
+  ) {}
 
   findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
@@ -46,6 +60,16 @@ export class UsersService {
       where: { id, status: UserStatus.ACTIVE },
       select: userSelect,
     });
+  }
+
+  async findActiveAuthById(id: string): Promise<AuthUserProfile | null> {
+    const user = await this.findActiveById(id);
+
+    if (!user) {
+      return null;
+    }
+
+    return this.attachPermissions(user);
   }
 
   async findAll(options?: {
@@ -97,6 +121,11 @@ export class UsersService {
     return user;
   }
 
+  async findAuthProfile(id: string): Promise<AuthUserProfile> {
+    const user = await this.findOne(id);
+    return this.attachPermissions(user);
+  }
+
   async create(data: CreateUserDto) {
     const existingEmail = await this.findByEmail(data.username);
     if (existingEmail) {
@@ -123,9 +152,10 @@ export class UsersService {
     });
   }
 
-  async update(id: string, data: UpdateUserDto) {
-    const current = await this.findOne(id);
-
+  private async buildUserUpdateData(
+    current: { email: string },
+    data: SharedUserUpdateData,
+  ): Promise<Prisma.UserUpdateInput> {
     if (data.username && data.username !== current.email) {
       const existingEmail = await this.findByEmail(data.username);
       if (existingEmail) {
@@ -136,8 +166,6 @@ export class UsersService {
     const updateData: Prisma.UserUpdateInput = {
       ...(data.name !== undefined ? { name: data.name } : {}),
       ...(data.username !== undefined ? { email: data.username } : {}),
-      ...(data.role !== undefined ? { role: data.role } : {}),
-      ...(data.status !== undefined ? { status: data.status } : {}),
       ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
       ...(data.theme !== undefined
         ? { theme: data.theme as Prisma.InputJsonValue }
@@ -146,6 +174,21 @@ export class UsersService {
 
     if (data.password) {
       updateData.passwordHash = await bcrypt.hash(data.password, 12);
+    }
+
+    return updateData;
+  }
+
+  async update(id: string, data: UpdateUserDto) {
+    const current = await this.findOne(id);
+    const updateData = await this.buildUserUpdateData(current, data);
+
+    if (data.role !== undefined) {
+      updateData.role = data.role;
+    }
+
+    if (data.status !== undefined) {
+      updateData.status = data.status;
     }
 
     return this.prisma.user.update({
@@ -157,32 +200,18 @@ export class UsersService {
 
   async updateProfile(id: string, data: UpdateProfileDto) {
     const current = await this.findOne(id);
-
-    if (data.username && data.username !== current.email) {
-      const existingEmail = await this.findByEmail(data.username);
-      if (existingEmail) {
-        throw new ConflictException('Email already in use');
-      }
-    }
-
-    const updateData: Prisma.UserUpdateInput = {
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.username !== undefined ? { email: data.username } : {}),
-      ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
-      ...(data.theme !== undefined
-        ? { theme: data.theme as Prisma.InputJsonValue }
-        : {}),
-    };
-
-    if (data.password) {
-      updateData.passwordHash = await bcrypt.hash(data.password, 12);
-    }
+    const updateData = await this.buildUserUpdateData(current, data);
 
     return this.prisma.user.update({
       where: { id },
       data: updateData,
       select: userSelect,
     });
+  }
+
+  async updateOwnProfile(id: string, data: UpdateProfileDto): Promise<AuthUserProfile> {
+    const updated = await this.updateProfile(id, data);
+    return this.attachPermissions(updated);
   }
 
   async getDependencies(id: string) {
@@ -254,5 +283,13 @@ export class UsersService {
       where: { id },
       select: userSelect,
     });
+  }
+
+  private async attachPermissions(user: UserProfile): Promise<AuthUserProfile> {
+    const permissions = await this.permissionsService.getResolvedRolePermissions(user.role);
+    return {
+      ...user,
+      permissions,
+    };
   }
 }

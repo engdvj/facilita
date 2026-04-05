@@ -16,8 +16,10 @@ import { ResetsModule } from './resets/resets.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { SystemConfigModule } from './system-config/system-config.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { PublicModule } from './public/public.module';
+import { SearchModule } from './search/search.module';
 import { SharesModule } from './shares/shares.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -41,8 +43,10 @@ import { SharesModule } from './shares/shares.module';
     FavoritesModule,
     SystemConfigModule,
     NotificationsModule,
-    PublicModule,
+    SearchModule,
     SharesModule,
+    DashboardModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

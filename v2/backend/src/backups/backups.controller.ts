@@ -13,7 +13,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UserRole } from '@prisma/client';
 import { Response } from 'express';
 import { execFile } from 'child_process';
 import { createReadStream, mkdirSync } from 'fs';
@@ -21,8 +20,8 @@ import { mkdir, readdir, stat } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { join, resolve, sep } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { SystemConfigService } from '../system-config/system-config.service';
 import { BackupsService } from './backups.service';
 import { ExportBackupDto } from './dto/export-backup.dto';
@@ -41,8 +40,8 @@ const backupStorage = diskStorage({
 });
 
 @Controller('backups')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPERADMIN)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('canBackupSystem')
 export class BackupsController {
   constructor(
     private readonly backupsService: BackupsService,

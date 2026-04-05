@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import FileViewerModal from "@/components/admin/file-viewer-modal";
+import { RichTextViewer } from "@/components/admin/rich-text-editor";
 import { useFavorites, type Favorite, type EntityType } from "@/hooks/useFavorites";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ export function FavoritesSection() {
 
   const [filter, setFilter] = useState<EntityType | "ALL">("ALL");
   const [viewingNote, setViewingNote] = useState<Favorite | null>(null);
+  const [viewingFile, setViewingFile] = useState<{ id: string; url: string; name: string } | null>(null);
 
   const filteredFavorites = favorites.filter((fav) => {
     if (filter === "ALL") return true;
@@ -34,7 +37,7 @@ export function FavoritesSection() {
     }
   };
 
-  const normalizeImagePosition = (position?: string) => {
+  const normalizeImagePosition = (position?: string | null) => {
     if (!position) return "50% 50%";
     const [x = "50%", y = "50%"] = position.trim().split(/\s+/);
     const withPercent = (value: string) =>
@@ -57,10 +60,10 @@ export function FavoritesSection() {
     const typeLabel = isLink ? "LINK" : isSchedule ? "AGENDA" : "NOTA";
 
     const handleCardClick = () => {
-      if (isLink && item.url) {
-        window.open(item.url, "_blank");
-      } else if (isSchedule && item.fileUrl) {
-        window.open(item.fileUrl, "_blank");
+      if (isLink && favorite.link?.url) {
+        window.open(favorite.link.url, "_blank");
+      } else if (isSchedule && favorite.schedule?.fileUrl) {
+        setViewingFile({ id: favorite.schedule.id, url: favorite.schedule.fileUrl, name: favorite.schedule.fileName || favorite.schedule.title });
       } else if (isNote) {
         setViewingNote(favorite);
       }
@@ -240,9 +243,7 @@ export function FavoritesSection() {
               </div>
             )}
             <div className="rounded-xl border border-border/70 bg-card/60 p-5">
-              <p className="whitespace-pre-wrap text-sm text-foreground">
-                {viewingNote.note.content}
-              </p>
+              <RichTextViewer content={viewingNote.note.content} />
             </div>
             {viewingNote.note.category?.name && (
               <div className="flex items-center gap-2">
@@ -261,6 +262,14 @@ export function FavoritesSection() {
           </div>
         </AdminModal>
       )}
+
+      <FileViewerModal
+        open={Boolean(viewingFile)}
+        scheduleId={viewingFile?.id}
+        fileName={viewingFile?.name ?? ''}
+        fileUrl={viewingFile?.url ?? ''}
+        onClose={() => setViewingFile(null)}
+      />
     </Card>
   );
 }
