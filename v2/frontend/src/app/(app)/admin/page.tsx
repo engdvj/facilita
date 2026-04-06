@@ -122,7 +122,7 @@ export default function AdminHomePage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 xl:grid-cols-2">
+                    <div className="grid gap-3 lg:grid-cols-2">
                       {group.items.map((route) => {
                         const Icon = route.icon as LucideIcon;
 

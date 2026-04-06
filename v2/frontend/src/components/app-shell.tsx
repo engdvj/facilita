@@ -29,6 +29,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import {
   NAV_WIDTH_DEFAULT,
   NAV_WIDTH_MAX,
+  NAV_WIDTH_MIN,
   useUiStore,
 } from '@/stores/ui-store';
 
@@ -241,10 +242,11 @@ export default function AppShell({ children }: AppShellProps) {
   const navEffectiveCollapsed =
     navMode === 'auto' ? !(navHovered || navResizing) : navCollapsed;
 
-  const navFontGrow = Math.min(
-    1,
-    Math.max(0, (navWidth - NAV_WIDTH_DEFAULT) / (NAV_WIDTH_MAX - NAV_WIDTH_DEFAULT)),
-  );
+  // Full bidirectional smoothstep: shrinks below DEFAULT, grows above DEFAULT
+  const _lo = -((NAV_WIDTH_DEFAULT - NAV_WIDTH_MIN) / (NAV_WIDTH_MAX - NAV_WIDTH_DEFAULT));
+  const _t = Math.min(1, Math.max(_lo, (navWidth - NAV_WIDTH_DEFAULT) / (NAV_WIDTH_MAX - NAV_WIDTH_DEFAULT)));
+  const _a = Math.abs(_t);
+  const navFontGrow = Math.sign(_t) * _a * _a * (3 - 2 * _a);
 
   const mainGridStyle = user
     ? ({

@@ -17,6 +17,7 @@ import { CreateDmDto } from './dto/create-dm.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { EditMessageDto } from './dto/edit-message.dto';
 import { GetMessagesDto } from './dto/get-messages.dto';
+import { SendMessageDto } from './dto/send-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -97,6 +98,16 @@ export class ChatController {
     return { success: true };
   }
 
+  @Delete('rooms/:id')
+  async deleteRoom(
+    @Param('id', new ParseUUIDPipe()) roomId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.chatService.deleteRoomForUser(roomId, user.id);
+    this.chatGateway.emitRoomRemoved(result.removedUserId, result.roomId);
+    return { success: true };
+  }
+
   @Get('rooms/:id/messages')
   getMessages(
     @Param('id', new ParseUUIDPipe()) roomId: string,
@@ -104,6 +115,16 @@ export class ChatController {
     @Query() query: GetMessagesDto,
   ) {
     return this.chatService.getMessages(roomId, user.id, query.cursor, query.limit);
+  }
+
+  @Post('messages')
+  async sendMessage(
+    @CurrentUser() user: { id: string },
+    @Body() dto: SendMessageDto,
+  ) {
+    const message = await this.chatService.sendMessage(dto.roomId, user.id, dto.content);
+    this.chatGateway.server.to(`chat:${dto.roomId}`).emit('chat:message', message);
+    return message;
   }
 
   @Patch('rooms/:id/read')

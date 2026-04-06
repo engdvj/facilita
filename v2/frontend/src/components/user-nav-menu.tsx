@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Bell,
   LogOut,
+  MessageSquare,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -15,8 +16,14 @@ import {
 import UserNotificationsModal from '@/components/user-notifications-modal';
 import UserAvatar from '@/components/user-avatar';
 import api from '@/lib/api';
+import {
+  formatChatTimestamp,
+  getChatMessagePreview,
+  getChatRoomTitle,
+} from '@/components/chat/chat-helpers';
 import { getUserRoleLabel } from '@/lib/user-role';
 import { useAuthStore } from '@/stores/auth-store';
+import { useChatStore } from '@/stores/chat-store';
 import { useRealtimeNotificationStore } from '@/stores/realtime-notification-store';
 import { type NavMode, useUiStore } from '@/stores/ui-store';
 
@@ -31,16 +38,21 @@ type UserNavMenuProps = {
 export default function UserNavMenu(props: UserNavMenuProps) {
   const { navMode, onToggleNavMode, onOpenProfile } = props;
   const user = useAuthStore((state) => state.user);
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const globalSearch = useUiStore((state) => state.globalSearch);
   const setGlobalSearch = useUiStore((state) => state.setGlobalSearch);
   const theme = useUiStore((state) => state.theme);
   const toggleTheme = useUiStore((state) => state.toggleTheme);
+  const chatRooms = useChatStore((state) => state.rooms);
+  const chatUnreadCount = useChatStore((state) => state.totalUnread);
+  const setActiveRoom = useChatStore((state) => state.setActiveRoom);
   const unreadCount = useRealtimeNotificationStore((state) => state.unreadCount);
   const clearNotifications = useRealtimeNotificationStore((state) => state.clear);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -54,6 +66,7 @@ export default function UserNavMenu(props: UserNavMenuProps) {
       if (!wrapperRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
         setOpen(false);
         setSearchOpen(false);
+        setChatMenuOpen(false);
       }
     };
 
@@ -64,6 +77,7 @@ export default function UserNavMenu(props: UserNavMenuProps) {
   useEffect(() => {
     if (!open) {
       setSearchOpen(false);
+      setChatMenuOpen(false);
       return;
     }
 
@@ -78,6 +92,7 @@ export default function UserNavMenu(props: UserNavMenuProps) {
   const closeMenu = () => {
     setOpen(false);
     setSearchOpen(false);
+    setChatMenuOpen(false);
   };
 
   const handleLogout = async () => {
@@ -95,8 +110,11 @@ export default function UserNavMenu(props: UserNavMenuProps) {
   };
 
   const roleLabel = getUserRoleLabel(user.role);
-  const hasActivity = unreadCount > 0;
+  const hasActivity = unreadCount > 0 || chatUnreadCount > 0;
   const hasSearchTerm = globalSearch.trim().length > 0;
+  const recentChatRooms = chatRooms
+    .filter((room) => Boolean(room.lastMessage))
+    .slice(0, 5);
   const nextThemeLabel = theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro';
   const navModeLabel =
     navMode === 'manual'
@@ -166,7 +184,77 @@ export default function UserNavMenu(props: UserNavMenuProps) {
             </div>
           </div>
 
+          {chatMenuOpen ? (
+            <div className="mt-2 w-full rounded-[18px] border border-border/70 bg-background/70 p-2">
+              <div className="mb-1 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Conversas recentes
+              </div>
+
+              {recentChatRooms.length > 0 ? (
+                <div className="space-y-1">
+                  {recentChatRooms.map((room) => (
+                    <button
+                      key={room.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveRoom(room.id);
+                        closeMenu();
+                        router.push('/chat');
+                      }}
+                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-[14px] px-2 py-2 text-left hover:bg-foreground/5"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-[12px] font-semibold text-foreground">
+                          {getChatRoomTitle(room, currentUserId)}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                          {getChatMessagePreview(room.lastMessage)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                        {formatChatTimestamp(room.lastMessage?.createdAt)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    router.push('/chat');
+                  }}
+                  className="w-full rounded-[14px] px-3 py-3 text-left text-[12px] text-muted-foreground hover:bg-foreground/5"
+                >
+                  Nenhuma conversa com mensagem. Abrir chat.
+                </button>
+              )}
+            </div>
+          ) : null}
+
           <div className="fac-floating-user-grid">
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                setChatMenuOpen((prev) => !prev);
+              }}
+              className="fac-floating-user-action"
+              aria-label="Chat"
+              title={
+                chatUnreadCount > 0
+                  ? `${chatUnreadCount} mensagem${chatUnreadCount === 1 ? '' : 'ens'} nao lida${chatUnreadCount === 1 ? '' : 's'}`
+                  : 'Chat'
+              }
+            >
+              <MessageSquare className="h-4 w-4" />
+              {chatUnreadCount > 0 ? (
+                <span className="fac-floating-user-badge">
+                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                </span>
+              ) : null}
+            </button>
+
             <button
               type="button"
               onClick={() => setSearchOpen((prev) => !prev)}

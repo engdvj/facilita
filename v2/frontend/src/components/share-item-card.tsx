@@ -6,6 +6,7 @@ import AdminEntityCard from '@/components/admin/entity-card';
 import ContentCoverImage from '@/components/content-cover-image';
 import ContentTypeSurface from '@/components/content-type-surface';
 import { FavoriteButton } from '@/components/FavoriteButton';
+import UserAvatar from '@/components/user-avatar';
 import { getContentTypeColor, getContentTypeLabel } from '@/lib/content-type';
 import { downloadScheduleFile } from '@/lib/download';
 import type { Category, Share } from '@/types';
@@ -98,6 +99,16 @@ function getShareOwnerLabel(share: Share, variant: ShareCardVariant) {
   };
 }
 
+function getShareOwnerMeta(share: Share, variant: ShareCardVariant) {
+  const label = getShareOwnerLabel(share, variant);
+  const user = variant === 'received' ? share.owner : share.recipient;
+
+  return {
+    ...label,
+    avatarUrl: user?.avatarUrl || null,
+  };
+}
+
 export default function ShareItemCard({
   share,
   variant,
@@ -116,35 +127,39 @@ export default function ShareItemCard({
   const scheduleFileUrl =
     share.entityType === 'SCHEDULE' ? share.schedule?.fileUrl || null : null;
   const scheduleId = share.entityType === 'SCHEDULE' ? share.schedule?.id || null : null;
-  const ownerLabel = getShareOwnerLabel(share, variant);
+  const ownerLabel = getShareOwnerMeta(share, variant);
   const dividerColor = getContentTypeColor(share.entityType);
   const accentColor = categoryColor || dividerColor;
   const hasImage = Boolean(getShareImage(share));
   const Icon = shareTypeIcons[share.entityType];
 
   const cover = (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/share-card:scale-[1.045]">
+        {hasImage ? (
+          <ContentCoverImage
+            src={getShareImage(share)}
+            alt={getShareTitle(share)}
+            position={getShareImagePosition(share)}
+            scale={getShareImageScale(share)}
+            width={440}
+            height={320}
+          />
+        ) : (
+          <div className="h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/share-card:scale-[1.03] group-hover/share-card:rotate-[0.5deg]">
+            <ContentTypeSurface accentColor={accentColor} icon={Icon} />
+          </div>
+        )}
+      </div>
       {hasImage ? (
-        <ContentCoverImage
-          src={getShareImage(share)}
-          alt={getShareTitle(share)}
-          position={getShareImagePosition(share)}
-          scale={getShareImageScale(share)}
-          width={440}
-          height={320}
-        />
-      ) : (
-        <ContentTypeSurface accentColor={accentColor} icon={Icon} />
-      )}
-      {hasImage ? (
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent transition-opacity duration-300 group-hover/share-card:from-black/60 group-hover/share-card:opacity-90" />
       ) : null}
     </div>
   );
 
   const details = (
-    <div>
-      <p className="line-clamp-1 text-[14px] font-semibold text-foreground">
+    <div className="transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/share-card:translate-x-0.5">
+      <p className="line-clamp-1 text-[14px] font-semibold text-foreground transition-colors duration-300 group-hover/share-card:text-primary">
         {getShareTitle(share)}
       </p>
       <p className="line-clamp-1 mt-1 text-[12px] text-muted-foreground">{categoryLabel}</p>
@@ -155,7 +170,7 @@ export default function ShareItemCard({
   );
 
   const trailing = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/share-card:-translate-y-0.5">
       {scheduleFileUrl && scheduleId ? (
         <button
           type="button"
@@ -185,11 +200,19 @@ export default function ShareItemCard({
 
   const footer = (
     <div className="space-y-3">
-      <div>
-        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {ownerLabel.kicker}
-        </p>
-        <p className="line-clamp-1 mt-1 text-[12px] text-foreground">{ownerLabel.value}</p>
+      <div className="flex items-center gap-2.5 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/share-card:translate-x-0.5">
+        <UserAvatar
+          name={ownerLabel.value}
+          avatarUrl={ownerLabel.avatarUrl}
+          size="sm"
+          className="shrink-0 border-white/60 bg-white/80 shadow-[0_8px_18px_rgba(15,22,26,0.08)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/share-card:scale-105"
+        />
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            {ownerLabel.kicker}
+          </p>
+          <p className="line-clamp-1 mt-1 text-[12px] text-foreground">{ownerLabel.value}</p>
+        </div>
       </div>
 
       {variant === 'received' && onUpdateCategory ? (
@@ -234,7 +257,11 @@ export default function ShareItemCard({
       trailing={trailing}
       footer={footer}
       onOpen={isInactive ? undefined : () => onOpen(share)}
-      className={isInactive ? 'w-full opacity-80 grayscale' : 'w-full'}
+      className={isInactive ? 'group/share-card w-full opacity-80 grayscale' : 'group/share-card w-full'}
+      coverClassName="overflow-hidden"
+      contentClassName="transition-[background,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+      footerClassName="transition-[background,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+      hoverClassName="hover:-translate-y-1.5 hover:scale-[1.025] hover:shadow-[0_22px_38px_rgba(15,22,26,0.18)]"
       dividerColor={dividerColor}
     />
   );

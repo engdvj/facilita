@@ -854,7 +854,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
               {config.isEditable ? (
                 <AdminField label="Valor" htmlFor={inputId} hint={getInputHint(config)}>
@@ -1520,7 +1520,7 @@ export default function SettingsPage() {
 
               {selectedGroup ? (
                 <section className="fac-form-card">
-                  <div className="flex flex-col gap-4 border-b border-border/70 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex flex-col gap-4 border-b border-border/70 pb-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground">
@@ -1559,7 +1559,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[380px]">
+                    <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[380px]">
                       {[
                         {
                           label: selectedGroup.kind === 'shortcuts' ? 'Atalhos' : 'Itens',
@@ -1669,7 +1669,7 @@ export default function SettingsPage() {
                     </div>
                   ) : null}
 
-                  <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
                     {selectedGroup.kind === 'shortcuts'
                       ? shortcutItems.map((shortcut) => renderShortcutCard(shortcut))
                       : selectedGroup.items.map((config) => renderConfigCard(config))}

@@ -176,10 +176,10 @@ export class SharesService {
   private includeShareRelations() {
     return {
       owner: {
-        select: { id: true, name: true, email: true, role: true },
+        select: { id: true, name: true, email: true, role: true, avatarUrl: true },
       },
       recipient: {
-        select: { id: true, name: true, email: true, role: true },
+        select: { id: true, name: true, email: true, role: true, avatarUrl: true },
       },
       localCategory: {
         select: { id: true, name: true, color: true },
@@ -188,7 +188,7 @@ export class SharesService {
         include: {
           category: true,
           owner: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, avatarUrl: true },
           },
         },
       },
@@ -196,7 +196,7 @@ export class SharesService {
         include: {
           category: true,
           owner: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, avatarUrl: true },
           },
         },
       },
@@ -204,7 +204,7 @@ export class SharesService {
         include: {
           category: true,
           owner: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, avatarUrl: true },
           },
         },
       },

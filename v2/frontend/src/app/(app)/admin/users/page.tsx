@@ -264,7 +264,7 @@ export default function UsersPage() {
         <AdminPanelHeaderBar
           title="Usuários"
           count={filtered.length}
-          actionsClassName="sm:grid-cols-2 xl:grid-cols-[180px_180px_auto]"
+          actionsClassName="sm:grid-cols-2 lg:grid-cols-[180px_180px_auto]"
           actions={
             <>
               <AdminFilterSelect

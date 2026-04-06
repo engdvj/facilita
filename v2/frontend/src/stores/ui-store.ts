@@ -1,20 +1,48 @@
 import { create } from 'zustand';
+import { useAuthStore } from '@/stores/auth-store';
 import type { CustomShortcut } from '@/types';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
 export type NavMode = 'manual' | 'auto';
 export const NAV_WIDTH_DEFAULT = 272;
 export const NAV_WIDTH_MIN = 200;
 export const NAV_WIDTH_MAX = 420;
+export const THEME_STORAGE_PREFIX = 'facilita:theme';
+export const LEGACY_THEME_STORAGE_KEY = 'theme';
 
 const clampNavWidth = (value: number) =>
   Math.min(NAV_WIDTH_MAX, Math.max(NAV_WIDTH_MIN, value));
 
-const getInitialTheme = (): Theme => {
+export const getThemeStorageKey = (userId?: string | null) =>
+  `${THEME_STORAGE_PREFIX}:${userId ?? 'guest'}`;
+
+export const applyThemeToDocument = (theme: Theme) => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+};
+
+export const getStoredTheme = (userId?: string | null): Theme => {
   if (typeof window === 'undefined') return 'light';
-  const stored = localStorage.getItem('theme');
+
+  const stored = localStorage.getItem(getThemeStorageKey(userId));
+  if (stored === 'light' || stored === 'dark') {
+    return stored;
+  }
+
+  if (!userId) {
+    const legacy = localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+    if (legacy === 'light' || legacy === 'dark') {
+      return legacy;
+    }
+  }
+
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return stored === 'dark' || (stored !== 'light' && prefersDark) ? 'dark' : 'light';
+  return prefersDark ? 'dark' : 'light';
+};
+
+export const persistTheme = (theme: Theme, userId?: string | null) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(getThemeStorageKey(userId), theme);
 };
 
 const getInitialNavCollapsed = () => {
@@ -52,6 +80,7 @@ type UiState = {
   shortcutCatalog: CustomShortcut[];
   setShortcutCatalog: (items: CustomShortcut[]) => void;
   theme: Theme;
+  hydrateTheme: (theme: Theme) => void;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 };
@@ -97,17 +126,23 @@ export const useUiStore = create<UiState>((set) => ({
   setGlobalSearch: (q) => set({ globalSearch: q }),
   shortcutCatalog: [],
   setShortcutCatalog: (items) => set({ shortcutCatalog: items }),
-  theme: getInitialTheme(),
+  theme: getStoredTheme(),
+  hydrateTheme: (theme) => {
+    applyThemeToDocument(theme);
+    set({ theme });
+  },
   setTheme: (theme) => {
-    localStorage.setItem('theme', theme);
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    const currentUserId = useAuthStore.getState().user?.id ?? null;
+    persistTheme(theme, currentUserId);
+    applyThemeToDocument(theme);
     set({ theme });
   },
   toggleTheme: () =>
     set((state) => {
       const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('theme', nextTheme);
-      document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+      const currentUserId = useAuthStore.getState().user?.id ?? null;
+      persistTheme(nextTheme, currentUserId);
+      applyThemeToDocument(nextTheme);
       return { theme: nextTheme };
     }),
 }));

@@ -336,6 +336,7 @@ model ChatMember {
   userId     String    @db.Uuid
   joinedAt   DateTime  @default(now())
   lastReadAt DateTime?
+  removedAt  DateTime?
 
   room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User     @relation(fields: [userId], references: [id], onDelete: Cascade)

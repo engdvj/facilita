@@ -244,7 +244,7 @@ export default function CompartilhadosPage() {
         <AdminPanelHeaderBar
           title="Compartilhados"
           count={totalFiltered}
-          actionsClassName="sm:grid-cols-2 xl:grid-cols-[180px_180px]"
+          actionsClassName="sm:grid-cols-2 lg:grid-cols-[180px_180px]"
           actions={
             <>
               <AdminFilterSelect
@@ -287,9 +287,9 @@ export default function CompartilhadosPage() {
           ) : error ? (
             <div className="fac-error-state">{error}</div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               <section className="fac-form-card min-w-0">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex items-center gap-3">
                   <p className="fac-form-title !mb-0">Recebidos</p>
                   <div className="flex h-8 min-w-8 items-center justify-center rounded-full border border-primary/60 bg-primary px-2 text-[12px] font-medium text-primary-foreground shadow-[0_8px_18px_rgba(15,22,26,0.18)]">
                     {filteredReceived.length}
@@ -318,7 +318,7 @@ export default function CompartilhadosPage() {
               </section>
 
               <section className="fac-form-card min-w-0">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex items-center gap-3">
                   <p className="fac-form-title !mb-0">Enviados</p>
                   <div className="flex h-8 min-w-8 items-center justify-center rounded-full border border-primary/60 bg-primary px-2 text-[12px] font-medium text-primary-foreground shadow-[0_8px_18px_rgba(15,22,26,0.18)]">
                     {filteredSent.length}

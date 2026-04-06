@@ -46,7 +46,10 @@
       "Bash(npx ts-node -e \":*)",
       "Bash(PGPASSWORD=admin psql -U postgres -h 127.0.0.1 -d facilita_v2 -c \"SELECT key, value FROM \"\"SystemConfig\"\" WHERE key = ''upload_directory'';\")",
       "Bash(echo \"SELECT key, value FROM \"\"SystemConfig\"\" WHERE key = ''''upload_directory'''';\")",
-      "Bash(find \"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\" -type f -name \"*.tsx\" -o -name \"*.ts\")"
+      "Bash(find \"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\" -type f -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(grep -r tailwind /c/Users/HGVC/Documents/GitHub/facilita/v2/frontend/src --include=*.ts --include=*.tsx --include=*.js -l)",
+      "Bash(ls \"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\")",
+      "Bash(ls \"c:\\\\Users\\\\HGVC\\\\Documents\\\\GitHub\\\\facilita\\\\v2\\\\frontend\\\\src\\\\app\\\\\\(app\\)\\\\chat\")"
     ]
   }
 }

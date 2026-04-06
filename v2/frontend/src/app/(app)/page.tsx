@@ -9,13 +9,14 @@ import FileViewerModal from '@/components/admin/file-viewer-modal';
 import AdminPanelHeaderBar from '@/components/admin/panel-header-bar';
 import FavoriteItemCard, { type FavoriteCardItem } from '@/components/favorite-item-card';
 import NoteViewerModal from '@/components/note-viewer-modal';
+import PublicThemeToggle from '@/components/public-theme-toggle';
 import { getContrastTextColor } from '@/lib/color';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/error';
 import { hasPermission } from '@/lib/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { Link as LinkType, Note, UploadedSchedule } from '@/types';
+import type { Link as LinkType, Note, Share, UploadedSchedule } from '@/types';
 
 // ─── Landing page ─────────────────────────────────────────────────────────────
 
@@ -44,20 +45,21 @@ const pillars = [
 
 function LandingPage() {
   return (
-    <div className="min-h-screen" style={{ animation: 'fadeUp var(--duration-slow) var(--ease-out) both' }}>
-
-      {/* Hero */}
-      <section className="mx-auto max-w-3xl px-6 pb-20 pt-24 text-center motion-stagger">
-
-        <div
-          className="motion-item inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground shadow-[0_6px_18px_rgba(16,44,50,0.06)] backdrop-blur-sm"
-          style={staggerStyle(1)}
-        >
+    <div
+      className="min-h-screen"
+      style={{ animation: 'fadeUp var(--duration-slow) var(--ease-out) both' }}
+    >
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 pt-6">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground shadow-[0_6px_18px_rgba(16,44,50,0.06)] backdrop-blur-sm">
           <span className="h-1.5 w-1.5 rounded-full bg-accent" />
           Facilita
         </div>
+        <PublicThemeToggle className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card/85 text-muted-foreground shadow-[0_10px_24px_rgba(16,44,50,0.10)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:text-foreground" />
+      </header>
 
-        <div className="motion-item mt-7 space-y-4" style={staggerStyle(2)}>
+      {/* Hero */}
+      <section className="mx-auto max-w-3xl px-6 pb-20 pt-20 text-center motion-stagger">
+        <div className="motion-item space-y-4" style={staggerStyle(1)}>
           <h1 className="font-display text-5xl leading-[1.1] text-foreground sm:text-6xl lg:text-7xl">
             Links, documentos<br />
             <span className="sm:whitespace-nowrap">
@@ -71,22 +73,21 @@ function LandingPage() {
             Um portal pessoal para guardar o que importa, encontrar rápido e compartilhar quando precisar.
             </span>
           </p>
-        </div>
-
-        <div className="motion-item mt-9" style={staggerStyle(3)}>
-          <Link
-            href="/login"
-            className="motion-press inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-[13px] font-semibold text-primary-foreground shadow-[0_12px_28px_rgba(15,55,65,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(15,55,65,0.3)] sm:text-sm"
-          >
-            Entrar no Facilita
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="motion-item pt-5" style={staggerStyle(2)}>
+            <Link
+              href="/login"
+              className="motion-press inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-[13px] font-semibold text-primary-foreground shadow-[0_12px_28px_rgba(15,55,65,0.22)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(15,55,65,0.3)] sm:text-sm"
+            >
+              Entrar no Facilita
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Pillars */}
       <section className="mx-auto max-w-5xl px-6 pb-16">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pillars.map((pillar, i) => {
             const Icon = pillar.icon;
             return (
@@ -144,6 +145,7 @@ function LandingPage() {
 // ─── Home (authenticated) ─────────────────────────────────────────────────────
 
 type ContentType = 'ALL' | 'LINK' | 'SCHEDULE' | 'NOTE';
+type SourceFilter = 'ALL' | 'OWN' | 'SHARED';
 
 function HomePage() {
   const user = useAuthStore((state) => state.user);
@@ -152,11 +154,13 @@ function HomePage() {
   const canViewSchedules = hasPermission(user, 'canViewSchedules');
   const canViewNotes = hasPermission(user, 'canViewNotes');
   const [typeFilter, setTypeFilter] = useState<ContentType>('ALL');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   const [links, setLinks] = useState<LinkType[]>([]);
   const [schedules, setSchedules] = useState<UploadedSchedule[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [receivedShares, setReceivedShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -167,20 +171,22 @@ function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [linksRes, schedulesRes, notesRes] = await Promise.all([
+      const [linksRes, schedulesRes, notesRes, receivedSharesRes] = await Promise.all([
         canViewLinks ? api.get('/links') : Promise.resolve({ data: [] }),
         canViewSchedules ? api.get('/schedules') : Promise.resolve({ data: [] }),
         canViewNotes ? api.get('/notes') : Promise.resolve({ data: [] }),
+        user?.role === 'SUPERADMIN' ? Promise.resolve({ data: [] }) : api.get('/shares/received'),
       ]);
       setLinks(Array.isArray(linksRes.data) ? linksRes.data : []);
       setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
       setNotes(Array.isArray(notesRes.data) ? notesRes.data : []);
+      setReceivedShares(Array.isArray(receivedSharesRes.data) ? receivedSharesRes.data : []);
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Não foi possível carregar os itens.'));
     } finally {
       setLoading(false);
     }
-  }, [canViewLinks, canViewNotes, canViewSchedules]);
+  }, [canViewLinks, canViewNotes, canViewSchedules, user?.role]);
 
   useEffect(() => {
     void load();
@@ -199,6 +205,70 @@ function HomePage() {
   const effectiveTypeFilter =
     typeFilter === 'ALL' || availableTypes.includes(typeFilter) ? typeFilter : 'ALL';
 
+  const receivedItems = useMemo<FavoriteCardItem[]>(() => {
+    return receivedShares
+      .map<FavoriteCardItem | null>((share) => {
+        if (share.entityType === 'LINK' && share.link && canViewLinks) {
+          return {
+            id: share.link.id,
+            type: 'LINK',
+            title: share.link.title,
+            description: share.link.description || undefined,
+            url: share.link.url,
+            imageUrl: share.link.imageUrl,
+            imagePosition: share.link.imagePosition,
+            imageScale: share.link.imageScale,
+            categoryName: share.localCategory?.name || share.link.category?.name,
+            categoryColor: share.localCategory?.color || share.link.category?.color || null,
+            categoryIcon: share.link.category?.icon || null,
+            sourceKind: 'SHARED',
+            sharedByName: share.owner?.name,
+            status: share.link.status,
+          };
+        }
+
+        if (share.entityType === 'SCHEDULE' && share.schedule && canViewSchedules) {
+          return {
+            id: share.schedule.id,
+            type: 'SCHEDULE',
+            title: share.schedule.title,
+            fileUrl: share.schedule.fileUrl,
+            fileName: share.schedule.fileName,
+            imageUrl: share.schedule.imageUrl,
+            imagePosition: share.schedule.imagePosition,
+            imageScale: share.schedule.imageScale,
+            categoryName: share.localCategory?.name || share.schedule.category?.name,
+            categoryColor: share.localCategory?.color || share.schedule.category?.color || null,
+            categoryIcon: share.schedule.category?.icon || null,
+            sourceKind: 'SHARED',
+            sharedByName: share.owner?.name,
+            status: share.schedule.status,
+          };
+        }
+
+        if (share.entityType === 'NOTE' && share.note && canViewNotes) {
+          return {
+            id: share.note.id,
+            type: 'NOTE',
+            title: share.note.title,
+            content: share.note.content,
+            imageUrl: share.note.imageUrl,
+            imagePosition: share.note.imagePosition,
+            imageScale: share.note.imageScale,
+            categoryName: share.localCategory?.name || share.note.category?.name,
+            categoryColor: share.localCategory?.color || share.note.category?.color || null,
+            categoryIcon: share.note.category?.icon || null,
+            sourceKind: 'SHARED',
+            sharedByName: share.owner?.name,
+            status: share.note.status,
+          };
+        }
+
+        return null;
+      })
+      .filter((item): item is FavoriteCardItem => item !== null);
+  }, [canViewLinks, canViewNotes, canViewSchedules, receivedShares]);
+
   const allItems = useMemo<FavoriteCardItem[]>(() => {
     const linkItems: FavoriteCardItem[] = links.map((link) => ({
       id: link.id,
@@ -212,6 +282,7 @@ function HomePage() {
       categoryName: link.category?.name,
       categoryColor: link.category?.color || null,
       categoryIcon: link.category?.icon || null,
+      sourceKind: 'OWN',
       status: link.status,
     }));
 
@@ -227,6 +298,7 @@ function HomePage() {
       categoryName: schedule.category?.name,
       categoryColor: schedule.category?.color || null,
       categoryIcon: schedule.category?.icon || null,
+      sourceKind: 'OWN',
       status: schedule.status,
     }));
 
@@ -241,17 +313,19 @@ function HomePage() {
       categoryName: note.category?.name,
       categoryColor: note.category?.color || null,
       categoryIcon: note.category?.icon || null,
+      sourceKind: 'OWN',
       status: note.status,
     }));
 
-    return [...linkItems, ...scheduleItems, ...noteItems];
-  }, [links, schedules, notes]);
+    return [...linkItems, ...scheduleItems, ...noteItems, ...receivedItems];
+  }, [links, notes, receivedItems, schedules]);
 
   const searchedItems = useMemo(() => {
     const term = globalSearch.trim().toLowerCase();
 
     return allItems
       .filter((item) => (effectiveTypeFilter === 'ALL' ? true : item.type === effectiveTypeFilter))
+      .filter((item) => (sourceFilter === 'ALL' ? true : item.sourceKind === sourceFilter))
       .filter((item) => {
         if (!term) return true;
         const haystack = [item.title, item.description, item.content, item.categoryName, item.fileName]
@@ -261,7 +335,7 @@ function HomePage() {
         return haystack.includes(term);
       })
       .sort((a, b) => a.title.localeCompare(b.title));
-  }, [allItems, effectiveTypeFilter, globalSearch]);
+  }, [allItems, effectiveTypeFilter, globalSearch, sourceFilter]);
 
   const categoryTabs = useMemo(() => {
     const map = new Map<string, { count: number; color?: string | null }>();
@@ -288,8 +362,13 @@ function HomePage() {
   const noteMap = useMemo(() => {
     const map = new Map<string, Note>();
     notes.forEach((note) => map.set(note.id, note));
+    receivedShares.forEach((share) => {
+      if (share.entityType === 'NOTE' && share.note) {
+        map.set(share.note.id, share.note);
+      }
+    });
     return map;
-  }, [notes]);
+  }, [notes, receivedShares]);
 
   const openItem = (item: FavoriteCardItem) => {
     if (item.status !== 'ACTIVE') return;
@@ -312,7 +391,10 @@ function HomePage() {
 
   const activeSearch = globalSearch.trim();
   const hasActiveFilters =
-    activeSearch.length > 0 || effectiveTypeFilter !== 'ALL' || categoryFilter !== 'ALL';
+    activeSearch.length > 0 ||
+    effectiveTypeFilter !== 'ALL' ||
+    sourceFilter !== 'ALL' ||
+    categoryFilter !== 'ALL';
   const emptyMessage = activeSearch
     ? `Nenhum resultado para "${activeSearch}".`
     : hasActiveFilters
@@ -325,17 +407,28 @@ function HomePage() {
         <AdminPanelHeaderBar
           title="Início"
           count={filteredItems.length}
-          actionsClassName="sm:max-w-[220px] xl:w-[220px]"
+          actionsClassName="sm:grid-cols-2 xl:grid-cols-[220px_180px]"
           actions={
-            <AdminFilterSelect
-              value={effectiveTypeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as ContentType)}
-            >
-              <option value="ALL">Todos os tipos</option>
-              {canViewLinks ? <option value="LINK">Links</option> : null}
-              {canViewSchedules ? <option value="SCHEDULE">Documentos</option> : null}
-              {canViewNotes ? <option value="NOTE">Notas</option> : null}
-            </AdminFilterSelect>
+            <>
+              <AdminFilterSelect
+                value={effectiveTypeFilter}
+                onChange={(event) => setTypeFilter(event.target.value as ContentType)}
+              >
+                <option value="ALL">Todos os tipos</option>
+                {canViewLinks ? <option value="LINK">Links</option> : null}
+                {canViewSchedules ? <option value="SCHEDULE">Documentos</option> : null}
+                {canViewNotes ? <option value="NOTE">Notas</option> : null}
+              </AdminFilterSelect>
+
+              <AdminFilterSelect
+                value={sourceFilter}
+                onChange={(event) => setSourceFilter(event.target.value as SourceFilter)}
+              >
+                <option value="ALL">Todas as origens</option>
+                <option value="OWN">Meus itens</option>
+                <option value="SHARED">Recebidos</option>
+              </AdminFilterSelect>
+            </>
           }
         />
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useChatRealtime } from '@/hooks/useChat';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function WebSocketProvider({
@@ -13,6 +14,7 @@ export default function WebSocketProvider({
   }, []);
 
   useWebSocket();
+  useChatRealtime();
 
   return <>{children}</>;
 }

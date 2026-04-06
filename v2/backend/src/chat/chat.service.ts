@@ -21,6 +21,7 @@ const chatMemberSelect = Prisma.validator<Prisma.ChatMemberSelect>()({
   userId: true,
   joinedAt: true,
   lastReadAt: true,
+  removedAt: true,
   user: {
     select: chatUserSelect,
   },
@@ -52,6 +53,9 @@ const chatRoomSelect = Prisma.validator<Prisma.ChatRoomSelect>()({
   updatedAt: true,
   members: {
     select: chatMemberSelect,
+    where: {
+      removedAt: null,
+    },
     orderBy: {
       joinedAt: 'asc',
     },
@@ -80,7 +84,7 @@ export class ChatService {
 
   async getUserRooms(userId: string) {
     const memberships = await this.prisma.chatMember.findMany({
-      where: { userId },
+      where: { userId, removedAt: null },
       select: { roomId: true },
     });
 
@@ -123,13 +127,16 @@ export class ChatService {
       where: {
         type: ChatRoomType.DIRECT,
         AND: [
-          { members: { some: { userId } } },
-          { members: { some: { userId: recipientId } } },
+          { members: { some: { userId, removedAt: null } } },
+          { members: { some: { userId: recipientId, removedAt: null } } },
         ],
       },
       select: {
         id: true,
         members: {
+          where: {
+            removedAt: null,
+          },
           select: {
             userId: true,
           },
@@ -209,7 +216,7 @@ export class ChatService {
     const rooms = await this.prisma.chatRoom.findMany({
       where: {
         members: {
-          some: { userId },
+          some: { userId, removedAt: null },
         },
       },
       select: chatRoomSelect,
@@ -236,7 +243,7 @@ export class ChatService {
       where: {
         id: roomId,
         members: {
-          some: { userId },
+          some: { userId, removedAt: null },
         },
       },
       select: chatRoomSelect,
@@ -471,6 +478,49 @@ export class ChatService {
     };
   }
 
+  async deleteRoomForUser(roomId: string, userId: string) {
+    await this.ensureRoomMembership(roomId, userId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.chatMember.update({
+        where: {
+          roomId_userId: {
+            roomId,
+            userId,
+          },
+        },
+        data: {
+          removedAt: new Date(),
+          lastReadAt: new Date(),
+        },
+      });
+
+      const activeMembers = await tx.chatMember.findMany({
+        where: {
+          roomId,
+          removedAt: null,
+        },
+        select: {
+          userId: true,
+        },
+      });
+
+      if (activeMembers.length === 0) {
+        await tx.chatRoom.delete({
+          where: { id: roomId },
+        });
+      } else {
+        await this.touchRoom(tx, roomId);
+      }
+
+      return {
+        roomId,
+        removedUserId: userId,
+        remainingUserIds: activeMembers.map((member) => member.userId),
+      };
+    });
+  }
+
   async ensureRoomMembership(roomId: string, userId: string) {
     const membership = await this.prisma.chatMember.findUnique({
       where: {
@@ -482,6 +532,10 @@ export class ChatService {
     });
 
     if (!membership) {
+      throw new ForbiddenException('Voce nao participa desta sala.');
+    }
+
+    if (membership.removedAt) {
       throw new ForbiddenException('Voce nao participa desta sala.');
     }
 
@@ -519,7 +573,7 @@ export class ChatService {
       where: {
         id: roomId,
         members: {
-          some: { userId: actorId },
+          some: { userId: actorId, removedAt: null },
         },
       },
       select: {
@@ -527,6 +581,9 @@ export class ChatService {
         type: true,
         createdBy: true,
         members: {
+          where: {
+            removedAt: null,
+          },
           select: {
             userId: true,
           },
